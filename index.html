@@ -34,8 +34,21 @@
       will-change: transform;
     }
 
-    .own { background: #dcf8c6; margin-left: auto; text-align: right; }
-    .other { background: #e5e5ea; margin-right: auto; text-align: left; }
+    .own {
+      background: #dcf8c6;
+      margin-left: auto;
+      text-align: left;
+    }
+
+    .own * {
+      text-align: left !important;
+    }
+
+    .other {
+      background: #e5e5ea;
+      margin-right: auto;
+      text-align: left;
+    }
 
     .reply {
       font-size: 3.2vw;
@@ -106,7 +119,7 @@
     }
 
     .own .time {
-      text-align: right;
+      text-align: left;
     }
 
     .other .time {
@@ -206,7 +219,6 @@
       }
 
       const contentDiv = document.createElement("div");
-      contentDiv.style.textAlign = isOwn ? "right" : "left";
 
       if (data.imageURL) {
         if (!isOwn) {
