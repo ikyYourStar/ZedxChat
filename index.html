@@ -39,6 +39,9 @@
       word-wrap: break-word;
       font-size: 4vw;
       position: relative;
+      transition: transform 0.2s ease;
+      touch-action: pan-y;
+      will-change: transform;
     }
 
     .own {
@@ -120,10 +123,9 @@
       authDomain: "realtime-df5d0.firebaseapp.com",
       databaseURL: "https://realtime-df5d0-default-rtdb.asia-southeast1.firebasedatabase.app",
       projectId: "realtime-df5d0",
-      storageBucket: "realtime-df5d0.firebasestorage.app",
+      storageBucket: "realtime-df5d0.appspot.com",
       messagingSenderId: "1065067984786",
-      appId: "1:1065067984786:web:b315a080932587ec53f34b",
-      measurementId: "G-Z923CJMN44"
+      appId: "1:1065067984786:web:b315a080932587ec53f34b"
     };
 
     firebase.initializeApp(firebaseConfig);
@@ -162,23 +164,44 @@
       }
 
       div.appendChild(document.createTextNode(data.user + ": " + data.message));
+      chatContainer.appendChild(div);
+      scrollToBottom();
 
-      // Swipe right to reply
-      let touchStartX = 0;
+      // Swipe to reply (animated)
+      let startX = 0, startY = 0, moved = false;
+
       div.addEventListener("touchstart", e => {
-        touchStartX = e.changedTouches[0].clientX;
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        moved = false;
       });
+
+      div.addEventListener("touchmove", e => {
+        const currentX = e.touches[0].clientX;
+        const currentY = e.touches[0].clientY;
+        const deltaX = currentX - startX;
+        const deltaY = currentY - startY;
+
+        if (Math.abs(deltaY) > Math.abs(deltaX)) return;
+
+        if (deltaX > 0) {
+          moved = true;
+          div.style.transform = `translateX(${deltaX}px)`;
+        }
+      });
+
       div.addEventListener("touchend", e => {
-        const touchEndX = e.changedTouches[0].clientX;
-        if (touchEndX - touchStartX > 50) {
+        const endX = e.changedTouches[0].clientX;
+        const deltaX = endX - startX;
+
+        if (moved && deltaX > 60) {
           replyTo = { user: data.user, message: data.message };
           replyPreview.style.display = "block";
           replyPreview.textContent = "Balas: " + replyTo.user + ": " + replyTo.message;
         }
-      });
 
-      chatContainer.appendChild(div);
-      scrollToBottom();
+        div.style.transform = "translateX(0)";
+      });
     });
 
     sendBtn.onclick = () => {
