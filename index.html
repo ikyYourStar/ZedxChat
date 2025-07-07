@@ -38,6 +38,7 @@
       border-radius: 2vw;
       word-wrap: break-word;
       font-size: 4vw;
+      position: relative;
     }
 
     .own {
@@ -52,6 +53,20 @@
       text-align: left;
     }
 
+    .reply {
+      font-size: 3.2vw;
+      opacity: 0.6;
+      margin-bottom: 1vw;
+    }
+
+    #reply-preview {
+      background: #e1e1e1;
+      padding: 2vw;
+      font-size: 3.5vw;
+      opacity: 0.6;
+      display: none;
+    }
+
     #input-area {
       display: flex;
       gap: 2vw;
@@ -59,6 +74,7 @@
       background: #ffffff;
       border-top: 1px solid #ccc;
       box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.05);
+      align-items: center;
     }
 
     #input {
@@ -80,23 +96,18 @@
     }
 
     @media (min-width: 768px) {
-      .msg {
-        font-size: 16px;
-      }
-
-      #input {
-        font-size: 16px;
-      }
-
-      #send {
-        font-size: 16px;
-      }
+      .msg { font-size: 16px; }
+      .reply { font-size: 13px; }
+      #input { font-size: 16px; }
+      #send { font-size: 16px; }
+      #reply-preview { font-size: 14px; }
     }
   </style>
 </head>
 <body>
 
   <div id="chat-container"></div>
+  <div id="reply-preview"></div>
 
   <div id="input-area">
     <input type="text" id="input" placeholder="Ketik pesan..." />
@@ -128,19 +139,44 @@
     const chatContainer = document.getElementById("chat-container");
     const input = document.getElementById("input");
     const sendBtn = document.getElementById("send");
+    const replyPreview = document.getElementById("reply-preview");
+
+    let replyTo = null;
 
     function scrollToBottom() {
       setTimeout(() => {
         chatContainer.scrollTop = chatContainer.scrollHeight;
-      }, 100); // delay agar render selesai
+      }, 100);
     }
 
     db.ref("chats").on("child_added", snapshot => {
       const data = snapshot.val();
       const div = document.createElement("div");
-      div.classList.add("msg");
-      div.classList.add(data.user === username ? "own" : "other");
-      div.textContent = data.user + ": " + data.message;
+      div.classList.add("msg", data.user === username ? "own" : "other");
+
+      if (data.reply) {
+        const replyDiv = document.createElement("div");
+        replyDiv.className = "reply";
+        replyDiv.textContent = data.reply.user + ": " + data.reply.message;
+        div.appendChild(replyDiv);
+      }
+
+      div.appendChild(document.createTextNode(data.user + ": " + data.message));
+
+      // Swipe right to reply
+      let touchStartX = 0;
+      div.addEventListener("touchstart", e => {
+        touchStartX = e.changedTouches[0].clientX;
+      });
+      div.addEventListener("touchend", e => {
+        const touchEndX = e.changedTouches[0].clientX;
+        if (touchEndX - touchStartX > 50) {
+          replyTo = { user: data.user, message: data.message };
+          replyPreview.style.display = "block";
+          replyPreview.textContent = "Balas: " + replyTo.user + ": " + replyTo.message;
+        }
+      });
+
       chatContainer.appendChild(div);
       scrollToBottom();
     });
@@ -149,13 +185,20 @@
       const message = input.value.trim();
       if (message === "") return;
 
-      db.ref("chats").push({
+      const newMsg = {
         user: username,
         message: message,
         timestamp: Date.now()
-      });
+      };
 
+      if (replyTo) {
+        newMsg.reply = replyTo;
+      }
+
+      db.ref("chats").push(newMsg);
       input.value = "";
+      replyTo = null;
+      replyPreview.style.display = "none";
     };
 
     input.addEventListener("keypress", e => {
