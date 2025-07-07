@@ -20,9 +20,10 @@
     }
 
     #chat-container {
-      height: calc(100vh - 64px); /* sisakan ruang untuk input di bawah */
+      height: calc(100vh - 64px); /* sisakan ruang untuk input */
       overflow-y: auto;
       padding: 3vw;
+      padding-bottom: 80px; /* agar chat terakhir tidak ketutupan */
       background: white;
     }
 
@@ -58,6 +59,8 @@
       background: #ffffff;
       border-top: 1px solid #ccc;
       box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.05);
+      height: 64px;
+      align-items: center;
     }
 
     #input {
