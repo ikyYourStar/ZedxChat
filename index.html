@@ -21,7 +21,7 @@
     /* Login Page */
     #login-page {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: url('https://raw.githubusercontent.com/ikyYourStar/ZedxChat/refs/heads/main/assets/ced57229-34ea-461b-9ecd-7a1b17154cd3.jpeg') no-repeat center center fixed;
+      background: url('https://raw.githubusercontent.com/ikyYourStar/ZedxChat/refs/heads/main/assets/ced57229-34ea-461b-9ecd-7a1b154cd3.jpeg') no-repeat center center fixed;
       background-size: cover; display: flex; justify-content: center; align-items: center;
       flex-direction: column; z-index: 1000; color: white; text-shadow: 1px 1px 2px black;
     }
@@ -315,10 +315,10 @@
 
     // Chat
     const chatHeader = document.getElementById('chat-header');
-    const sidebarToggleButton = document.getElementById('sidebar-toggle-button'); // New
-    const backToPublicChatButton = document.getElementById('back-to-public-chat'); // New
-    const chatTitle = document.getElementById('chat-title'); // Changed from headerUsername
-    const optionsButton = document.getElementById("options-button"); // Changed from menuButton
+    const sidebarToggleButton = document.getElementById('sidebar-toggle-button');
+    const backToPublicChatButton = document.getElementById('back-to-public-chat');
+    const chatTitle = document.getElementById('chat-title');
+    const optionsButton = document.getElementById("options-button");
     const logoutMenu = document.getElementById("logout-menu");
     const logoutButton = document.getElementById("logout-button");
     const chatContainer = document.getElementById("chat-container");
@@ -342,19 +342,18 @@
     // --- Global State Variables ---
     let isLoginMode = true;
     let currentUsername = null;
-    let currentUid = null; // Store current user's UID
+    let currentUid = null;
     let replyTo = null;
 
     let currentChatMode = 'public'; // 'public' or 'private'
-    let currentPrivateChatFriendUid = null; // UID of the friend in private chat
-    let currentPrivateChatFriendUsername = null; // Username of the friend in private chat
+    let currentPrivateChatFriendUid = null;
+    let currentPrivateChatFriendUsername = null;
 
     // --- Helper Functions ---
     function usernameToEmail(username) {
         return `${username.toLowerCase().replace(/[^a-z0-9]/g, '')}@chatkita.com`;
     }
 
-    // Function to generate a consistent chat ID for private chats
     function getPrivateChatId(uid1, uid2) {
         return uid1 < uid2 ? `${uid1}_${uid2}` : `${uid2}_${uid1}`;
     }
@@ -410,10 +409,9 @@
           await auth.signInWithEmailAndPassword(emailForAuth, password);
         } else {
           const userCredential = await auth.createUserWithEmailAndPassword(emailForAuth, password);
-          // Store username and an "emailForAuth" for quick lookups
           await db.ref('users/' + userCredential.user.uid).set({
             username: username,
-            emailForAuth: emailForAuth // Store this for easier reverse lookup
+            emailForAuth: emailForAuth
           });
           alert("Pendaftaran berhasil! Silakan login.");
           isLoginMode = true;
@@ -443,7 +441,8 @@
     // --- Message Rendering ---
     function renderMessage(key, data, isPrivate = false) {
       const div = document.createElement("div");
-      const isOwn = data.userUid === currentUid; // Use Uid for ownership check
+      // Kunci perbaikan: Memastikan `userUid` dari data pesan dibandingkan dengan `currentUid`
+      const isOwn = data.userUid === currentUid;
       div.classList.add("msg", isOwn ? "own" : "other");
       div.id = "msg-" + key;
 
@@ -455,7 +454,7 @@
         div.textContent = "Pesan ini telah dihapus";
         div.style.fontStyle = "italic";
         chatContainer.appendChild(div);
-        return; // Don't scroll here, let the main listener handle it
+        return;
       }
 
       if (data.reply) {
@@ -468,7 +467,7 @@
       const contentDiv = document.createElement("div");
 
       if (data.imageURL) {
-        if (!isOwn) { // Display username for others' messages
+        if (!isOwn) {
           const label = document.createElement("strong");
           label.textContent = data.user;
           contentDiv.appendChild(label);
@@ -494,7 +493,6 @@
       div.appendChild(contentDiv);
       chatContainer.appendChild(div);
 
-      // Swipe to reply and delete (same as before)
       let startX = 0, startY = 0, moved = false;
       div.addEventListener("touchstart", e => {
         startX = e.touches[0].clientX;
@@ -537,18 +535,18 @@
     }
 
     // --- Chat Mode Management ---
-    let chatListenerRef = null; // Store current chat listener reference
+    let chatListenerRef = null;
 
     function loadPublicChat() {
         if (chatListenerRef) {
-            chatListenerRef.off(); // Detach previous listener
+            chatListenerRef.off();
         }
         currentChatMode = 'public';
         currentPrivateChatFriendUid = null;
         currentPrivateChatFriendUsername = null;
         chatTitle.textContent = "Chat Publik";
         backToPublicChatButton.style.display = 'none';
-        chatContainer.innerHTML = ''; // Clear chat area
+        chatContainer.innerHTML = '';
 
         chatListenerRef = db.ref("chats");
         chatListenerRef.on("value", (snapshot) => {
@@ -562,21 +560,22 @@
 
     function loadPrivateChat(friendUid, friendUsername) {
         if (chatListenerRef) {
-            chatListenerRef.off(); // Detach previous listener
+            chatListenerRef.off();
         }
         currentChatMode = 'private';
         currentPrivateChatFriendUid = friendUid;
         currentPrivateChatFriendUsername = friendUsername;
         chatTitle.textContent = friendUsername;
         backToPublicChatButton.style.display = 'block';
-        chatContainer.innerHTML = ''; // Clear chat area
-        closeSidebar(); // Close sidebar after selecting friend
+        chatContainer.innerHTML = '';
+        closeSidebar();
 
         const privateChatId = getPrivateChatId(currentUid, friendUid);
         chatListenerRef = db.ref(`private_chats/${privateChatId}/messages`);
         chatListenerRef.on("value", (snapshot) => {
             chatContainer.innerHTML = '';
             snapshot.forEach((childSnapshot) => {
+                // Kunci perbaikan: Pastikan `isPrivate` true saat memanggil renderMessage
                 renderMessage(childSnapshot.key, childSnapshot.val(), true);
             });
             scrollToBottom();
@@ -592,18 +591,17 @@
     function closeSidebar() {
         sidebar.classList.remove('active');
         sidebarOverlay.style.display = 'none';
-        // Hide logout menu if open when sidebar closes
         logoutMenu.style.display = 'none';
     }
 
     sidebarToggleButton.addEventListener('click', openSidebar);
     closeSidebarButton.addEventListener('click', closeSidebar);
-    sidebarOverlay.addEventListener('click', closeSidebar); // Close sidebar when overlay is clicked
+    sidebarOverlay.addEventListener('click', closeSidebar);
 
     // --- Add Friend Logic ---
     addFriendBtn.addEventListener('click', async () => {
         const friendUsername = addFriendInput.value.trim();
-        addFriendMessage.textContent = ''; // Clear previous messages
+        addFriendMessage.textContent = '';
 
         if (!friendUsername) {
             addFriendMessage.textContent = 'Masukkan username teman.';
@@ -615,16 +613,15 @@
         }
 
         try {
-            // Find friend's UID by username
             const allUsersSnapshot = await db.ref('users').once('value');
             let friendUid = null;
-            let foundFriendUsername = null; // Store the exact username from DB
+            let foundFriendUsername = null;
 
             allUsersSnapshot.forEach(userNode => {
                 if (userNode.val().username === friendUsername) {
                     friendUid = userNode.key;
                     foundFriendUsername = userNode.val().username;
-                    return true; // Break loop
+                    return true;
                 }
             });
 
@@ -635,15 +632,15 @@
                     uid: friendUid
                 });
 
-                // (Optional) Add current user to friend's friend list for mutual connection
-                // await db.ref(`users/${friendUid}/friends/${currentUid}`).set({
-                //     username: currentUsername,
-                //     uid: currentUid
-                // });
+                // Kunci perbaikan: Tambahkan current user ke friend's friend list (Mutual)
+                await db.ref(`users/${friendUid}/friends/${currentUid}`).set({
+                    username: currentUsername,
+                    uid: currentUid
+                });
 
                 addFriendInput.value = '';
                 addFriendMessage.textContent = `Berhasil menambahkan ${foundFriendUsername}!`;
-                loadFriendList(); // Reload friend list
+                loadFriendList(); // Reload friend list for both users if they are online
             } else {
                 addFriendMessage.textContent = 'Username tidak ditemukan atau Anda mencoba menambahkan diri sendiri.';
             }
@@ -657,14 +654,14 @@
     function loadFriendList() {
         if (!currentUid) return;
 
-        friendList.innerHTML = ''; // Clear existing list
+        friendList.innerHTML = '';
         db.ref(`users/${currentUid}/friends`).on('value', (snapshot) => {
-            friendList.innerHTML = ''; // Clear again to prevent duplicates on update
+            friendList.innerHTML = '';
             snapshot.forEach((friendNode) => {
                 const friendData = friendNode.val();
                 const friendItem = document.createElement('div');
                 friendItem.classList.add('friend-item');
-                friendItem.dataset.friendUid = friendData.uid; // Store UID for easy access
+                friendItem.dataset.friendUid = friendData.uid;
 
                 const avatar = document.createElement('div');
                 avatar.classList.add('friend-avatar');
@@ -714,7 +711,7 @@
 
       const msgData = {
         user: currentUsername,
-        userUid: currentUid, // Store sender's UID
+        userUid: currentUid,
         message,
         timestamp: Date.now()
       };
@@ -724,7 +721,13 @@
         db.ref("chats").push(msgData);
       } else if (currentChatMode === 'private' && currentPrivateChatFriendUid) {
         const privateChatId = getPrivateChatId(currentUid, currentPrivateChatFriendUid);
-        db.ref(`private_chats/${privateChatId}/messages`).push(msgData);
+        const privateChatRef = db.ref(`private_chats/${privateChatId}`);
+
+        // Set participants if not already set (for new private chat)
+        privateChatRef.child('participants').child(currentUid).set(true);
+        privateChatRef.child('participants').child(currentPrivateChatFriendUid).set(true);
+
+        privateChatRef.child('messages').push(msgData);
       }
       input.value = "";
       cancelReply();
@@ -748,7 +751,7 @@
         .then(result => {
           const msgData = {
             user: currentUsername,
-            userUid: currentUid, // Store sender's UID
+            userUid: currentUid,
             imageURL: result.data.url,
             timestamp: Date.now()
           };
@@ -758,7 +761,13 @@
             db.ref("chats").push(msgData);
           } else if (currentChatMode === 'private' && currentPrivateChatFriendUid) {
             const privateChatId = getPrivateChatId(currentUid, currentPrivateChatFriendUid);
-            db.ref(`private_chats/${privateChatId}/messages`).push(msgData);
+            const privateChatRef = db.ref(`private_chats/${privateChatId}`);
+
+            // Set participants if not already set
+            privateChatRef.child('participants').child(currentUid).set(true);
+            privateChatRef.child('participants').child(currentPrivateChatFriendUid).set(true);
+
+            privateChatRef.child('messages').push(msgData);
           }
           cancelReply();
         })
@@ -801,20 +810,19 @@
     // Auth State Change Listener
     auth.onAuthStateChanged(async user => {
       if (user) {
-        currentUid = user.uid; // Set current user's UID
+        currentUid = user.uid;
         const userProfileRef = db.ref('users/' + currentUid);
         userProfileRef.once('value').then(snapshot => {
           if (snapshot.exists()) {
             currentUsername = snapshot.val().username;
-            // headerUsername.textContent = currentUsername; // Not needed, chatTitle will be "Chat Publik"
             loginPage.style.display = "none";
             chatWrapper.style.display = "flex";
 
             adjustChatWrapperPadding();
             window.addEventListener('resize', adjustChatWrapperPadding);
 
-            loadPublicChat(); // Load public chat by default
-            loadFriendList(); // Load friend list
+            loadPublicChat();
+            loadFriendList(); // Ensure friend list is loaded/updated
           } else {
             console.error("User profile not found in database. Logging out.");
             auth.signOut();
@@ -828,9 +836,9 @@
         currentUid = null;
         loginPage.style.display = "flex";
         chatWrapper.style.display = "none";
-        if (chatListenerRef) chatListenerRef.off(); // Detach current chat listener
+        if (chatListenerRef) chatListenerRef.off();
         window.removeEventListener('resize', adjustChatWrapperPadding);
-        closeSidebar(); // Ensure sidebar is closed on logout
+        closeSidebar();
       }
     });
 
