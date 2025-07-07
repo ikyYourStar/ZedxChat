@@ -8,6 +8,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <style>
+    /* Reset & Base Styles */
     * { box-sizing: border-box; }
     html, body {
       margin: 0; padding: 0; height: 100%;
@@ -17,295 +18,198 @@
     }
     body { display: flex; flex-direction: column; }
 
-    /* Gaya untuk halaman chat */
+    /* Login Page */
+    #login-page {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: url('https://raw.githubusercontent.com/ikyYourStar/ZedxChat/refs/heads/main/assets/ced57229-34ea-461b-9ecd-7a1b17154cd3.jpeg') no-repeat center center fixed;
+      background-size: cover; display: flex; justify-content: center; align-items: center;
+      flex-direction: column; z-index: 1000; color: white; text-shadow: 1px 1px 2px black;
+    }
+    #login-form {
+      background: rgba(0, 0, 0, 0.7); padding: 5vw; border-radius: 2vw; text-align: center;
+      width: 80%; max-width: 400px;
+    }
+    #login-form h2 { margin-bottom: 4vw; font-size: 6vw; }
+    #login-form input {
+      width: calc(100% - 4vw); padding: 3vw; margin-bottom: 3vw; border-radius: 1vw;
+      border: none; font-size: 4vw;
+    }
+    #login-form button {
+      width: 100%; padding: 3vw; background: #4caf50; color: white; border: none;
+      border-radius: 1vw; font-size: 4.5vw; cursor: pointer; margin-top: 2vw;
+    }
+    #login-form #toggle-mode {
+      background: none; color: #add8e6; border: none; font-size: 3.5vw;
+      cursor: pointer; margin-top: 3vw; padding: 0; text-decoration: underline;
+    }
+    #login-error { color: #ffdddd; margin-top: 2vw; font-size: 3.5vw; display: none; }
+
+    /* Chat Wrapper (Main Layout) */
     #chat-wrapper {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      display: none;
-      /* Padding akan disesuaikan secara dinamis oleh JavaScript */
-      padding-top: 0;
-      padding-bottom: 0;
-      overflow: hidden; /* Penting untuk menjaga scroll hanya di chat-container */
+      flex: 1; display: flex; flex-direction: column; display: none;
+      padding-top: 0; padding-bottom: 0; overflow: hidden;
+      position: relative; /* Penting untuk z-index sidebar */
     }
 
+    /* Sidebar/Overlay Menu */
+    #sidebar {
+      position: fixed; top: 0; left: -80vw; /* Dimulai di luar layar */
+      width: 80vw; height: 100%; background: #2c3e50; /* Warna gelap */
+      z-index: 1000; transition: left 0.3s ease; /* Animasi geser */
+      box-shadow: 2px 0 5px rgba(0,0,0,0.5);
+      padding: 5vw 3vw; color: white;
+      display: flex; flex-direction: column;
+    }
+    #sidebar.active {
+      left: 0; /* Geser ke dalam layar */
+    }
+    #sidebar-header {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-bottom: 5vw; padding-bottom: 3vw; border-bottom: 1px solid rgba(255,255,255,0.2);
+    }
+    #sidebar-header h3 {
+        margin: 0; font-size: 6vw;
+    }
+    #close-sidebar {
+        background: none; border: none; color: white; font-size: 8vw; cursor: pointer;
+    }
+    #add-friend-section {
+        margin-bottom: 5vw; padding-bottom: 3vw; border-bottom: 1px solid rgba(255,255,255,0.2);
+    }
+    #add-friend-section h4 { margin: 0 0 3vw 0; font-size: 4.5vw; }
+    #add-friend-input {
+        width: calc(100% - 2vw); padding: 2.5vw; margin-right: 1vw; border-radius: 1vw;
+        border: none; font-size: 4vw;
+    }
+    #add-friend-btn {
+        padding: 2.5vw 4vw; background: #3498db; color: white; border: none;
+        border-radius: 1vw; font-size: 4vw; cursor: pointer;
+    }
+    #add-friend-message { color: #e74c3c; margin-top: 2vw; font-size: 3.5vw; }
+
+    #friend-list-section h4 { margin: 0 0 3vw 0; font-size: 4.5vw; }
+    #friend-list {
+        flex-grow: 1; /* Agar daftar teman bisa di-scroll jika panjang */
+        overflow-y: auto;
+    }
+    .friend-item {
+        display: flex; align-items: center; padding: 3vw; margin-bottom: 2vw;
+        background: rgba(255,255,255,0.1); border-radius: 1vw; cursor: pointer;
+        transition: background 0.2s ease;
+    }
+    .friend-item:hover { background: rgba(255,255,255,0.2); }
+    .friend-item .friend-avatar {
+        width: 10vw; height: 10vw; border-radius: 50%; background: #ddd;
+        margin-right: 3vw; display: flex; justify-content: center; align-items: center;
+        font-size: 5vw; font-weight: bold; color: #333;
+    }
+    .friend-item .friend-name {
+        font-size: 4.5vw; font-weight: bold;
+    }
+
+    /* Overlay untuk menutup sidebar saat di klik di luar */
+    #sidebar-overlay {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.5); z-index: 999; display: none;
+    }
+
+    /* Chat Header */
     #chat-header {
-      background: #f0f2f5;
-      padding: 3vw;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid #ccc;
-      font-size: 5vw;
-      font-weight: bold;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      z-index: 999;
+      background: #f0f2f5; padding: 3vw; display: flex; justify-content: space-between;
+      align-items: center; border-bottom: 1px solid #ccc; font-size: 5vw; font-weight: bold;
+      position: fixed; top: 0; left: 0; width: 100%; z-index: 990; /* Z-index lebih rendah dari sidebar */
     }
-
+    #chat-header h3 { margin: 0; font-size: 5vw; text-align: center; flex-grow: 1; }
     #header-username {
-      flex-grow: 1;
-      text-align: center;
-      margin-left: 5vw;
+      flex-grow: 1; text-align: center; /* Diubah menjadi header-title untuk nama chat */
     }
+    #menu-button, #back-to-public-chat, #options-button {
+      background: none; border: none; font-size: 6vw; cursor: pointer; padding: 0;
+    }
+    #menu-button { margin-right: 2vw; } /* Tombol sidebar */
+    #options-button { margin-left: 2vw; } /* Tombol logout */
 
-    #menu-button {
-      background: none;
-      border: none;
-      font-size: 6vw;
-      cursor: pointer;
-      position: relative;
-      padding: 0;
-    }
 
     #logout-menu {
-      position: absolute;
-      top: 100%;
-      right: 0;
-      background: white;
-      border: 1px solid #ddd;
-      border-radius: 1vw;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-      display: none;
-      flex-direction: column;
-      min-width: 25vw;
-      z-index: 1001;
+      position: absolute; top: 100%; right: 0; background: white; border: 1px solid #ddd;
+      border-radius: 1vw; box-shadow: 0 2px 5px rgba(0,0,0,0.2); display: none;
+      flex-direction: column; min-width: 25vw; z-index: 1001;
     }
-
     #logout-menu button {
-      background: none;
-      border: none;
-      padding: 3vw;
-      text-align: left;
-      font-size: 4vw;
-      width: 100%;
-      cursor: pointer;
-      color: #333;
+      background: none; border: none; padding: 3vw; text-align: left; font-size: 4vw;
+      width: 100%; cursor: pointer; color: #333;
     }
+    #logout-menu button:hover { background: #f0f0f0; }
 
-    #logout-menu button:hover {
-      background: #f0f0f0;
-    }
-
+    /* Chat Container (Scrollable Area) */
     #chat-container {
-      flex: 1; /* Akan memenuhi ruang yang tersisa */
-      overflow-y: auto; /* Ini yang akan di-scroll */
-      padding: 3vw;
-      /* Properti ini tidak perlu lagi padding-top/bottom karena sudah di handle oleh chat-wrapper yang punya padding */
+      flex: 1; overflow-y: auto; padding: 3vw;
     }
 
+    /* Message Styles */
     .msg {
-      max-width: 75%;
-      padding: 3vw;
-      margin: 2vw 0;
-      border-radius: 2vw;
-      word-wrap: break-word;
-      font-size: 4vw;
-      position: relative;
-      transition: transform 0.2s ease;
-      will-change: transform;
+      max-width: 75%; padding: 3vw; margin: 2vw 0; border-radius: 2vw; word-wrap: break-word;
+      font-size: 4vw; position: relative; transition: transform 0.2s ease; will-change: transform;
     }
+    .own { background: #dcf8c6; margin-left: auto; text-align: left; }
+    .own * { text-align: left !important; }
+    .other { background: #e5e5ea; margin-right: auto; text-align: left; }
+    .reply { font-size: 3.2vw; opacity: 0.6; margin-bottom: 1vw; }
+    .msg img { max-width: 100%; border-radius: 1vw; margin-top: 1vw; }
+    .time { font-size: 3vw; opacity: 0.5; display: block; margin-top: 1vw; }
+    .own .time { text-align: left; }
+    .other .time { text-align: left; }
 
-    .own {
-      background: #dcf8c6;
-      margin-left: auto;
-      text-align: left;
-    }
-
-    .own * {
-      text-align: left !important;
-    }
-
-    .other {
-      background: #e5e5ea;
-      margin-right: auto;
-      text-align: left;
-    }
-
-    .reply {
-      font-size: 3.2vw;
-      opacity: 0.6;
-      margin-bottom: 1vw;
-    }
-
+    /* Reply & Input Area (Fixed) */
     #reply-preview {
-      background: rgba(0,0,0,0.6);
-      color: white;
-      padding: 2vw;
-      font-size: 3.5vw;
-      display: none;
-      justify-content: space-between;
-      align-items: center;
-      position: fixed;
-      bottom: var(--input-area-height, 15vw); /* Gunakan CSS variable */
-      left: 0;
-      width: 100%;
-      z-index: 998;
+      background: rgba(0,0,0,0.6); color: white; padding: 2vw; font-size: 3.5vw;
+      display: none; justify-content: space-between; align-items: center;
+      position: fixed; bottom: var(--input-area-height, 15vw); left: 0; width: 100%; z-index: 998;
     }
-
-    #reply-preview span {
-      flex: 1;
-    }
+    #reply-preview span { flex: 1; }
 
     #input-area {
-      display: flex;
-      gap: 2vw;
-      padding: 2vw;
-      background: #fff;
-      border-top: 1px solid #ccc;
-      align-items: center;
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-      z-index: 999;
+      display: flex; gap: 2vw; padding: 2vw; background: #fff; border-top: 1px solid #ccc;
+      align-items: center; position: fixed; bottom: 0; left: 0; width: 100%; z-index: 999;
     }
-
     #input {
-      flex: 1;
-      padding: 2.5vw;
-      font-size: 4vw;
-      border: 1px solid #ccc;
-      border-radius: 1vw;
+      flex: 1; padding: 2.5vw; font-size: 4vw; border: 1px solid #ccc; border-radius: 1vw;
     }
-
     #send {
-      padding: 2.5vw 4vw;
-      background: #4caf50;
-      color: white;
-      font-size: 4vw;
-      border: none;
-      border-radius: 1vw;
-      cursor: pointer;
+      padding: 2.5vw 4vw; background: #4caf50; color: white; border: none;
+      border-radius: 1vw; font-size: 4vw; cursor: pointer;
     }
+    #uploadBtn { background: none; border: none; font-size: 6vw; cursor: pointer; }
 
-    #uploadBtn {
-      background: none;
-      border: none;
-      font-size: 6vw;
-      cursor: pointer;
-    }
 
-    .msg img {
-      max-width: 100%;
-      border-radius: 1vw;
-      margin-top: 1vw;
-    }
-
-    .time {
-      font-size: 3vw;
-      opacity: 0.5;
-      display: block;
-      margin-top: 1vw;
-    }
-
-    .own .time {
-      text-align: left;
-    }
-
-    .other .time {
-      text-align: left;
-    }
-
-    /* Gaya untuk halaman login */
-    #login-page {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: url('https://raw.githubusercontent.com/ikyYourStar/ZedxChat/refs/heads/main/assets/ced57229-34ea-461b-9ecd-7a1b17154cd3.jpeg') no-repeat center center fixed;
-      background-size: cover;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-      z-index: 1000;
-      color: white;
-      text-shadow: 1px 1px 2px black;
-    }
-
-    #login-form {
-      background: rgba(0, 0, 0, 0.7);
-      padding: 5vw;
-      border-radius: 2vw;
-      text-align: center;
-      width: 80%;
-      max-width: 400px;
-    }
-
-    #login-form h2 {
-      margin-bottom: 4vw;
-      font-size: 6vw;
-    }
-
-    #login-form input {
-      width: calc(100% - 4vw);
-      padding: 3vw;
-      margin-bottom: 3vw;
-      border-radius: 1vw;
-      border: none;
-      font-size: 4vw;
-    }
-
-    #login-form button {
-      width: 100%;
-      padding: 3vw;
-      background: #4caf50;
-      color: white;
-      border: none;
-      border-radius: 1vw;
-      font-size: 4.5vw;
-      cursor: pointer;
-      margin-top: 2vw;
-    }
-
-    #login-form #toggle-mode {
-      background: none;
-      color: #add8e6;
-      border: none;
-      font-size: 3.5vw;
-      cursor: pointer;
-      margin-top: 3vw;
-      padding: 0;
-      text-decoration: underline;
-    }
-
-    #login-error {
-      color: #ffdddd;
-      margin-top: 2vw;
-      font-size: 3.5vw;
-      display: none;
-    }
-
-    /* Media queries untuk desktop */
+    /* Media Queries for Desktop */
     @media (min-width: 768px) {
+      #sidebar { left: -300px; width: 300px; padding: 20px 15px; }
+      #sidebar.active { left: 0; }
+      #sidebar-header h3 { font-size: 24px; }
+      #close-sidebar { font-size: 32px; }
+      #add-friend-section h4, #friend-list-section h4 { font-size: 18px; }
+      #add-friend-input { padding: 10px; font-size: 16px; width: calc(100% - 10px); }
+      #add-friend-btn { padding: 10px 15px; font-size: 16px; }
+      #add-friend-message { font-size: 14px; }
+      .friend-item { padding: 12px; margin-bottom: 8px; }
+      .friend-item .friend-avatar { width: 40px; height: 40px; font-size: 20px; margin-right: 15px; }
+      .friend-item .friend-name { font-size: 18px; }
+
+
       #chat-header {
-        padding: 15px;
-        font-size: 20px;
+        padding: 15px; font-size: 20px;
       }
-      #header-username {
-        margin-left: 20px;
-      }
-      #menu-button {
-        font-size: 24px;
-      }
-      #logout-menu {
-        border-radius: 4px;
-        min-width: 100px;
-      }
-      #logout-menu button {
-        padding: 12px;
-        font-size: 16px;
-      }
-      #input-area {
-        padding: 10px;
-      }
-      #reply-preview {
-        bottom: var(--input-area-height, 60px); /* Gunakan CSS variable */
-      }
+      #chat-header h3 { font-size: 20px; }
+      #menu-button, #back-to-public-chat, #options-button { font-size: 24px; }
+      #menu-button { margin-right: 10px; }
+      #options-button { margin-left: 10px; }
+
+
+      #logout-menu { border-radius: 4px; min-width: 100px; }
+      #logout-menu button { padding: 12px; font-size: 16px; }
+      #input-area { padding: 10px; }
+      #reply-preview { bottom: var(--input-area-height, 60px); padding: 10px; font-size: 14px; }
 
       .msg { font-size: 16px; }
       .reply { font-size: 13px; }
@@ -337,10 +241,30 @@
   </div>
 
   <div id="chat-wrapper">
+
+    <div id="sidebar">
+        <div id="sidebar-header">
+            <h3>Menu</h3>
+            <button id="close-sidebar">×</button>
+        </div>
+
+        <div id="add-friend-section">
+            <h4>Tambah Teman</h4>
+            <input type="text" id="add-friend-input" placeholder="Username teman" />
+            <button id="add-friend-btn">Tambah</button>
+            <p id="add-friend-message"></p>
+        </div>
+
+        <div id="friend-list-section">
+            <h4>Daftar Teman</h4>
+            <div id="friend-list">
+                </div>
+        </div>
+    </div>
+    <div id="sidebar-overlay"></div>
+
     <div id="chat-header">
-      <span id="header-username"></span>
-      <button id="menu-button">⋮</button>
-      <div id="logout-menu">
+      <button id="sidebar-toggle-button">☰</button> <button id="back-to-public-chat" style="display:none;">←</button> <h3 id="chat-title">Chat Publik</h3> <button id="options-button">⋮</button> <div id="logout-menu">
         <button id="logout-button">Logout</button>
       </div>
     </div>
@@ -361,6 +285,7 @@
   </div>
 
   <script>
+    // Firebase Config (your actual config)
     const firebaseConfig = {
       apiKey: "AIzaSyCTjBsKdHmmTELY3wnfGYANEzzDBEF2BIo",
       authDomain: "realtime-df5d0.firebaseapp.com",
@@ -377,6 +302,8 @@
 
     const imgbbKey = "a12e3657b8edd041c13eda8c12ff5925";
 
+    // --- UI Elements ---
+    // Login
     const loginPage = document.getElementById("login-page");
     const usernameInput = document.getElementById("username-input");
     const passwordInput = document.getElementById("password-input");
@@ -386,102 +313,72 @@
     const loginError = document.getElementById("login-error");
     const chatWrapper = document.getElementById("chat-wrapper");
 
-    const headerUsername = document.getElementById("header-username");
-    const menuButton = document.getElementById("menu-button");
+    // Chat
+    const chatHeader = document.getElementById('chat-header');
+    const sidebarToggleButton = document.getElementById('sidebar-toggle-button'); // New
+    const backToPublicChatButton = document.getElementById('back-to-public-chat'); // New
+    const chatTitle = document.getElementById('chat-title'); // Changed from headerUsername
+    const optionsButton = document.getElementById("options-button"); // Changed from menuButton
     const logoutMenu = document.getElementById("logout-menu");
     const logoutButton = document.getElementById("logout-button");
-
-    let isLoginMode = true;
-    let currentUsername = null;
-
     const chatContainer = document.getElementById("chat-container");
+    const inputArea = document.getElementById('input-area');
     const input = document.getElementById("input");
     const sendBtn = document.getElementById("send");
     const fileInput = document.getElementById("fileInput");
     const uploadBtn = document.getElementById("uploadBtn");
     const replyPreview = document.getElementById("reply-preview");
     const replyText = document.getElementById("reply-text");
+
+    // Sidebar
+    const sidebar = document.getElementById('sidebar');
+    const closeSidebarButton = document.getElementById('close-sidebar');
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
+    const addFriendInput = document.getElementById('add-friend-input');
+    const addFriendBtn = document.getElementById('add-friend-btn');
+    const addFriendMessage = document.getElementById('add-friend-message');
+    const friendList = document.getElementById('friend-list');
+
+    // --- Global State Variables ---
+    let isLoginMode = true;
+    let currentUsername = null;
+    let currentUid = null; // Store current user's UID
     let replyTo = null;
 
-    // --- Fungsi Penyesuaian Padding Dinamis ---
-    function adjustChatWrapperPadding() {
-        const headerHeight = chatHeader.offsetHeight;
-        const inputAreaHeight = inputArea.offsetHeight;
-        chatWrapper.style.paddingTop = `${headerHeight}px`;
-        chatWrapper.style.paddingBottom = `${inputAreaHeight}px`;
+    let currentChatMode = 'public'; // 'public' or 'private'
+    let currentPrivateChatFriendUid = null; // UID of the friend in private chat
+    let currentPrivateChatFriendUsername = null; // Username of the friend in private chat
 
-        // Sesuaikan posisi reply-preview agar tetap di atas input-area
-        replyPreview.style.setProperty('--input-area-height', `${inputAreaHeight}px`);
-        // if (window.innerWidth >= 768) { // Untuk desktop
-        //     replyPreview.style.bottom = `${inputAreaHeight}px`;
-        // } else { // Untuk mobile
-        //     replyPreview.style.bottom = `${inputAreaHeight}px`;
-        // }
+    // --- Helper Functions ---
+    function usernameToEmail(username) {
+        return `${username.toLowerCase().replace(/[^a-z0-9]/g, '')}@chatkita.com`;
     }
 
-    // --- Menggulir ke bawah, kini dipanggil di berbagai kondisi ---
+    // Function to generate a consistent chat ID for private chats
+    function getPrivateChatId(uid1, uid2) {
+        return uid1 < uid2 ? `${uid1}_${uid2}` : `${uid2}_${uid1}`;
+    }
+
     function scrollToBottom() {
-      // Menunda scroll sedikit agar DOM punya waktu render sepenuhnya
       requestAnimationFrame(() => {
         chatContainer.scrollTop = chatContainer.scrollHeight;
       });
     }
 
-    // --- Memantau keyboard virtual di perangkat seluler ---
-    let initialViewportHeight = window.innerHeight;
-    let isKeyboardOpen = false;
-
-    // Fungsi untuk memantau perubahan ukuran viewport (saat keyboard muncul/sembunyi)
-    function onViewportResize() {
-        const currentViewportHeight = window.innerHeight;
-        const diff = initialViewportHeight - currentViewportHeight;
-
-        if (diff > (initialViewportHeight * 0.2)) { // Jika perubahan tinggi signifikan (biasanya keyboard)
-            if (!isKeyboardOpen) {
-                console.log("Keyboard dibuka");
-                isKeyboardOpen = true;
-                // Gulir ke bawah ketika keyboard muncul
-                scrollToBottom();
-            }
-        } else if (diff < (initialViewportHeight * 0.2) && isKeyboardOpen) {
-            console.log("Keyboard ditutup");
-            isKeyboardOpen = false;
-            // Gulir ke bawah ketika keyboard ditutup
-            scrollToBottom();
-        }
-        // Atur ulang tinggi awal setiap kali ada resize besar
-        // initialViewportHeight = currentViewportHeight; // Ini bisa membuat loop, lebih baik disimpan awal saja
+    function cancelReply() {
+      replyTo = null;
+      replyPreview.style.display = "none";
     }
 
-    // Tambahkan event listener untuk resize
-    window.addEventListener('resize', onViewportResize);
-
-    // Dapatkan referensi elemen yang fixed setelah DOM siap
-    const chatHeader = document.getElementById('chat-header');
-    const inputArea = document.getElementById('input-area');
-
-
-    // Dipanggil saat chat dimuat pertama kali atau saat ada pesan baru
-    db.ref("chats").on("value", (snapshot) => {
-        // Hapus semua pesan yang ada di UI sebelum merender ulang
-        chatContainer.innerHTML = '';
-        snapshot.forEach((childSnapshot) => {
-            renderMessage(childSnapshot.key, childSnapshot.val());
-        });
-        scrollToBottom(); // Pastikan selalu scroll ke bawah setelah semua pesan dirender
-    });
-
-
-    // Helper untuk membuat email fiktif dari username
-    function usernameToEmail(username) {
-        return `${username.toLowerCase().replace(/[^a-z0-9]/g, '')}@chatkita.com`;
+    function adjustChatWrapperPadding() {
+        const headerHeight = chatHeader.offsetHeight;
+        const inputAreaHeight = inputArea.offsetHeight;
+        chatWrapper.style.paddingTop = `${headerHeight}px`;
+        chatWrapper.style.paddingBottom = `${inputAreaHeight}px`;
+        replyPreview.style.setProperty('--input-area-height', `${inputAreaHeight}px`);
     }
 
-    // Helper untuk membersihkan username dari email fiktif
-    // function emailToUsername(email) { // Tidak lagi digunakan secara langsung
-    //     return email.split('@')[0];
-    // }
-
+    // --- Authentication Logic ---
     toggleModeButton.addEventListener("click", () => {
       isLoginMode = !isLoginMode;
       if (isLoginMode) {
@@ -513,8 +410,10 @@
           await auth.signInWithEmailAndPassword(emailForAuth, password);
         } else {
           const userCredential = await auth.createUserWithEmailAndPassword(emailForAuth, password);
+          // Store username and an "emailForAuth" for quick lookups
           await db.ref('users/' + userCredential.user.uid).set({
-            username: username
+            username: username,
+            emailForAuth: emailForAuth // Store this for easier reverse lookup
           });
           alert("Pendaftaran berhasil! Silakan login.");
           isLoginMode = true;
@@ -531,7 +430,7 @@
         } else if (error.code === 'auth/email-already-in-use') {
           errorMessage = "Username sudah digunakan.";
         } else if (error.code === 'auth/invalid-email') {
-          errorMessage = "Username tidak valid. Hanya huruf dan angka yang diperbolehkan.";
+          errorMessage = "Format username tidak valid. Gunakan hanya huruf dan angka.";
         } else if (error.code === 'auth/weak-password') {
           errorMessage = "Password harus minimal 6 karakter.";
         }
@@ -541,14 +440,10 @@
       }
     });
 
-    function cancelReply() {
-      replyTo = null;
-      replyPreview.style.display = "none";
-    }
-
-    function renderMessage(key, data) {
+    // --- Message Rendering ---
+    function renderMessage(key, data, isPrivate = false) {
       const div = document.createElement("div");
-      const isOwn = data.user === currentUsername;
+      const isOwn = data.userUid === currentUid; // Use Uid for ownership check
       div.classList.add("msg", isOwn ? "own" : "other");
       div.id = "msg-" + key;
 
@@ -559,10 +454,8 @@
       if (data.deleted) {
         div.textContent = "Pesan ini telah dihapus";
         div.style.fontStyle = "italic";
-        // Jangan langsung append dan scroll di sini, biarkan `value` listener yang meng-handle
-        // chatContainer.appendChild(div);
-        // scrollToBottom();
-        return;
+        chatContainer.appendChild(div);
+        return; // Don't scroll here, let the main listener handle it
       }
 
       if (data.reply) {
@@ -575,7 +468,7 @@
       const contentDiv = document.createElement("div");
 
       if (data.imageURL) {
-        if (!isOwn) {
+        if (!isOwn) { // Display username for others' messages
           const label = document.createElement("strong");
           label.textContent = data.user;
           contentDiv.appendChild(label);
@@ -600,8 +493,8 @@
 
       div.appendChild(contentDiv);
       chatContainer.appendChild(div);
-      // scrollToBottom(); // Jangan scroll di sini, biarkan `value` listener yang meng-handle
-      
+
+      // Swipe to reply and delete (same as before)
       let startX = 0, startY = 0, moved = false;
       div.addEventListener("touchstart", e => {
         startX = e.touches[0].clientX;
@@ -632,7 +525,10 @@
         div.addEventListener("touchstart", () => {
           timeout = setTimeout(() => {
             if (confirm("Hapus pesan ini?")) {
-              db.ref("chats/" + key).update({ deleted: true });
+              const chatRef = isPrivate
+                ? db.ref(`private_chats/${getPrivateChatId(currentUid, currentPrivateChatFriendUid)}/messages/${key}`)
+                : db.ref(`chats/${key}`);
+              chatRef.update({ deleted: true });
             }
           }, 600);
         });
@@ -640,13 +536,163 @@
       }
     }
 
-    menuButton.addEventListener('click', (event) => {
+    // --- Chat Mode Management ---
+    let chatListenerRef = null; // Store current chat listener reference
+
+    function loadPublicChat() {
+        if (chatListenerRef) {
+            chatListenerRef.off(); // Detach previous listener
+        }
+        currentChatMode = 'public';
+        currentPrivateChatFriendUid = null;
+        currentPrivateChatFriendUsername = null;
+        chatTitle.textContent = "Chat Publik";
+        backToPublicChatButton.style.display = 'none';
+        chatContainer.innerHTML = ''; // Clear chat area
+
+        chatListenerRef = db.ref("chats");
+        chatListenerRef.on("value", (snapshot) => {
+            chatContainer.innerHTML = '';
+            snapshot.forEach((childSnapshot) => {
+                renderMessage(childSnapshot.key, childSnapshot.val(), false);
+            });
+            scrollToBottom();
+        });
+    }
+
+    function loadPrivateChat(friendUid, friendUsername) {
+        if (chatListenerRef) {
+            chatListenerRef.off(); // Detach previous listener
+        }
+        currentChatMode = 'private';
+        currentPrivateChatFriendUid = friendUid;
+        currentPrivateChatFriendUsername = friendUsername;
+        chatTitle.textContent = friendUsername;
+        backToPublicChatButton.style.display = 'block';
+        chatContainer.innerHTML = ''; // Clear chat area
+        closeSidebar(); // Close sidebar after selecting friend
+
+        const privateChatId = getPrivateChatId(currentUid, friendUid);
+        chatListenerRef = db.ref(`private_chats/${privateChatId}/messages`);
+        chatListenerRef.on("value", (snapshot) => {
+            chatContainer.innerHTML = '';
+            snapshot.forEach((childSnapshot) => {
+                renderMessage(childSnapshot.key, childSnapshot.val(), true);
+            });
+            scrollToBottom();
+        });
+    }
+
+    // --- Sidebar Functions ---
+    function openSidebar() {
+        sidebar.classList.add('active');
+        sidebarOverlay.style.display = 'block';
+    }
+
+    function closeSidebar() {
+        sidebar.classList.remove('active');
+        sidebarOverlay.style.display = 'none';
+        // Hide logout menu if open when sidebar closes
+        logoutMenu.style.display = 'none';
+    }
+
+    sidebarToggleButton.addEventListener('click', openSidebar);
+    closeSidebarButton.addEventListener('click', closeSidebar);
+    sidebarOverlay.addEventListener('click', closeSidebar); // Close sidebar when overlay is clicked
+
+    // --- Add Friend Logic ---
+    addFriendBtn.addEventListener('click', async () => {
+        const friendUsername = addFriendInput.value.trim();
+        addFriendMessage.textContent = ''; // Clear previous messages
+
+        if (!friendUsername) {
+            addFriendMessage.textContent = 'Masukkan username teman.';
+            return;
+        }
+        if (friendUsername === currentUsername) {
+            addFriendMessage.textContent = 'Tidak bisa menambahkan diri sendiri.';
+            return;
+        }
+
+        try {
+            // Find friend's UID by username
+            const allUsersSnapshot = await db.ref('users').once('value');
+            let friendUid = null;
+            let foundFriendUsername = null; // Store the exact username from DB
+
+            allUsersSnapshot.forEach(userNode => {
+                if (userNode.val().username === friendUsername) {
+                    friendUid = userNode.key;
+                    foundFriendUsername = userNode.val().username;
+                    return true; // Break loop
+                }
+            });
+
+            if (friendUid && friendUid !== currentUid) {
+                // Add friend to current user's friend list
+                await db.ref(`users/${currentUid}/friends/${friendUid}`).set({
+                    username: foundFriendUsername,
+                    uid: friendUid
+                });
+
+                // (Optional) Add current user to friend's friend list for mutual connection
+                // await db.ref(`users/${friendUid}/friends/${currentUid}`).set({
+                //     username: currentUsername,
+                //     uid: currentUid
+                // });
+
+                addFriendInput.value = '';
+                addFriendMessage.textContent = `Berhasil menambahkan ${foundFriendUsername}!`;
+                loadFriendList(); // Reload friend list
+            } else {
+                addFriendMessage.textContent = 'Username tidak ditemukan atau Anda mencoba menambahkan diri sendiri.';
+            }
+        } catch (error) {
+            console.error("Error adding friend:", error);
+            addFriendMessage.textContent = 'Gagal menambahkan teman. Coba lagi.';
+        }
+    });
+
+    // --- Load Friend List ---
+    function loadFriendList() {
+        if (!currentUid) return;
+
+        friendList.innerHTML = ''; // Clear existing list
+        db.ref(`users/${currentUid}/friends`).on('value', (snapshot) => {
+            friendList.innerHTML = ''; // Clear again to prevent duplicates on update
+            snapshot.forEach((friendNode) => {
+                const friendData = friendNode.val();
+                const friendItem = document.createElement('div');
+                friendItem.classList.add('friend-item');
+                friendItem.dataset.friendUid = friendData.uid; // Store UID for easy access
+
+                const avatar = document.createElement('div');
+                avatar.classList.add('friend-avatar');
+                avatar.textContent = friendData.username.charAt(0).toUpperCase();
+
+                const name = document.createElement('div');
+                name.classList.add('friend-name');
+                name.textContent = friendData.username;
+
+                friendItem.appendChild(avatar);
+                friendItem.appendChild(name);
+
+                friendItem.addEventListener('click', () => {
+                    loadPrivateChat(friendData.uid, friendData.username);
+                });
+                friendList.appendChild(friendItem);
+            });
+        });
+    }
+
+    // --- Logout & Options ---
+    optionsButton.addEventListener('click', (event) => {
       logoutMenu.style.display = logoutMenu.style.display === 'flex' ? 'none' : 'flex';
       event.stopPropagation();
     });
 
     document.addEventListener('click', (event) => {
-      if (!logoutMenu.contains(event.target) && event.target !== menuButton) {
+      if (!logoutMenu.contains(event.target) && event.target !== optionsButton) {
         logoutMenu.style.display = 'none';
       }
     });
@@ -661,72 +707,35 @@
       }
     });
 
-    auth.onAuthStateChanged(async user => {
-      if (user) {
-        const userProfileRef = db.ref('users/' + user.uid);
-        userProfileRef.once('value').then(snapshot => {
-          if (snapshot.exists()) {
-            currentUsername = snapshot.val().username;
-            headerUsername.textContent = currentUsername;
-            loginPage.style.display = "none";
-            chatWrapper.style.display = "flex";
-
-            // Panggil adjust padding saat login dan setelah DOM siap
-            adjustChatWrapperPadding();
-            // Panggil juga jika ukuran layar berubah setelah login
-            window.addEventListener('resize', adjustChatWrapperPadding);
-
-            // Ganti listener child_added dan child_changed dengan `value`
-            // `value` akan membaca seluruh data dan dipicu setiap ada perubahan
-            // ini lebih cocok untuk memastikan semua chat dimuat dan discroll
-            db.ref("chats").off(); // Lepas listener lama
-            db.ref("chats").on("value", (snapshot) => {
-                chatContainer.innerHTML = ''; // Kosongkan container sebelum mengisi ulang
-                snapshot.forEach((childSnapshot) => {
-                    renderMessage(childSnapshot.key, childSnapshot.val());
-                });
-                scrollToBottom(); // Gulir ke bawah setelah semua pesan dirender
-            });
-
-          } else {
-            console.error("User profile not found in database. Logging out.");
-            auth.signOut();
-          }
-        }).catch(error => {
-          console.error("Error fetching user profile:", error);
-          auth.signOut();
-        });
-      } else {
-        currentUsername = null;
-        headerUsername.textContent = "";
-        loginPage.style.display = "flex";
-        chatWrapper.style.display = "none";
-        db.ref("chats").off(); // Lepas semua listener chat saat logout
-        window.removeEventListener('resize', adjustChatWrapperPadding); // Hapus listener padding
-      }
-    });
-
+    // --- Send Message Logic ---
     sendBtn.onclick = () => {
       const message = input.value.trim();
-      if (!message || !currentUsername) return;
+      if (!message || !currentUsername || !currentUid) return;
 
       const msgData = {
         user: currentUsername,
+        userUid: currentUid, // Store sender's UID
         message,
         timestamp: Date.now()
       };
       if (replyTo) msgData.reply = replyTo;
 
-      db.ref("chats").push(msgData);
+      if (currentChatMode === 'public') {
+        db.ref("chats").push(msgData);
+      } else if (currentChatMode === 'private' && currentPrivateChatFriendUid) {
+        const privateChatId = getPrivateChatId(currentUid, currentPrivateChatFriendUid);
+        db.ref(`private_chats/${privateChatId}/messages`).push(msgData);
+      }
       input.value = "";
       cancelReply();
     };
 
+    // --- Image Upload Logic ---
     uploadBtn.onclick = () => fileInput.click();
 
     fileInput.onchange = () => {
       const file = fileInput.files[0];
-      if (!file || !currentUsername) return;
+      if (!file || !currentUsername || !currentUid) return;
 
       const reader = new FileReader();
       reader.onload = function () {
@@ -739,11 +748,18 @@
         .then(result => {
           const msgData = {
             user: currentUsername,
+            userUid: currentUid, // Store sender's UID
             imageURL: result.data.url,
             timestamp: Date.now()
           };
           if (replyTo) msgData.reply = replyTo;
-          db.ref("chats").push(msgData);
+
+          if (currentChatMode === 'public') {
+            db.ref("chats").push(msgData);
+          } else if (currentChatMode === 'private' && currentPrivateChatFriendUid) {
+            const privateChatId = getPrivateChatId(currentUid, currentPrivateChatFriendUid);
+            db.ref(`private_chats/${privateChatId}/messages`).push(msgData);
+          }
           cancelReply();
         })
         .catch(err => {
@@ -758,13 +774,73 @@
       if (e.key === "Enter") sendBtn.click();
     });
 
-    // Panggil adjustChatWrapperPadding() saat halaman dimuat pertama kali
-    // Ini penting jika pengguna sudah login dan langsung melihat halaman chat
+    // --- Initialization & Event Listeners ---
+    let initialViewportHeight = window.innerHeight;
+    let isKeyboardOpen = false;
+
+    function onViewportResize() {
+        const currentViewportHeight = window.innerHeight;
+        const diff = initialViewportHeight - currentViewportHeight;
+
+        if (diff > (initialViewportHeight * 0.2)) {
+            if (!isKeyboardOpen) {
+                console.log("Keyboard dibuka");
+                isKeyboardOpen = true;
+                scrollToBottom();
+            }
+        } else if (diff < (initialViewportHeight * 0.2) && isKeyboardOpen) {
+            console.log("Keyboard ditutup");
+            isKeyboardOpen = false;
+            scrollToBottom();
+        }
+    }
+    window.addEventListener('resize', onViewportResize);
+
+    backToPublicChatButton.addEventListener('click', loadPublicChat);
+
+    // Auth State Change Listener
+    auth.onAuthStateChanged(async user => {
+      if (user) {
+        currentUid = user.uid; // Set current user's UID
+        const userProfileRef = db.ref('users/' + currentUid);
+        userProfileRef.once('value').then(snapshot => {
+          if (snapshot.exists()) {
+            currentUsername = snapshot.val().username;
+            // headerUsername.textContent = currentUsername; // Not needed, chatTitle will be "Chat Publik"
+            loginPage.style.display = "none";
+            chatWrapper.style.display = "flex";
+
+            adjustChatWrapperPadding();
+            window.addEventListener('resize', adjustChatWrapperPadding);
+
+            loadPublicChat(); // Load public chat by default
+            loadFriendList(); // Load friend list
+          } else {
+            console.error("User profile not found in database. Logging out.");
+            auth.signOut();
+          }
+        }).catch(error => {
+          console.error("Error fetching user profile:", error);
+          auth.signOut();
+        });
+      } else {
+        currentUsername = null;
+        currentUid = null;
+        loginPage.style.display = "flex";
+        chatWrapper.style.display = "none";
+        if (chatListenerRef) chatListenerRef.off(); // Detach current chat listener
+        window.removeEventListener('resize', adjustChatWrapperPadding);
+        closeSidebar(); // Ensure sidebar is closed on logout
+      }
+    });
+
+    // Initial padding adjustment on page load
     window.addEventListener('load', () => {
-        if (auth.currentUser) { // Hanya panggil jika ada pengguna yang sedang login
+        if (auth.currentUser) {
             adjustChatWrapperPadding();
         }
     });
+
   </script>
 
 </body>
