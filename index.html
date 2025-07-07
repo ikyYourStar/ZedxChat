@@ -3,10 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Chat Realtime Firebase</title>
+  <title>Chat Realtime Firebase + Imgbb</title>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
   <style>
     * { box-sizing: border-box; }
     html, body {
@@ -125,6 +124,7 @@
   </div>
 
   <script>
+    const imgbbKey = "a12e3657b8edd041c13eda8c12ff5925";
     const firebaseConfig = {
       apiKey: "AIzaSyCTjBsKdHmmTELY3wnfGYANEzzDBEF2BIo",
       authDomain: "realtime-df5d0.firebaseapp.com",
@@ -137,7 +137,6 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-    const storage = firebase.storage();
 
     let username = localStorage.getItem("username");
     if (!username) {
@@ -194,7 +193,7 @@
       chatContainer.appendChild(div);
       scrollToBottom();
 
-      // Reply gesture
+      // Geser untuk reply
       let startX = 0, startY = 0, moved = false;
       div.addEventListener("touchstart", e => {
         startX = e.touches[0].clientX;
@@ -219,7 +218,7 @@
         div.style.transform = "translateX(0)";
       });
 
-      // Long press to delete
+      // Tahan untuk hapus
       if (data.user === username) {
         let timeout = null;
         div.addEventListener("touchstart", () => {
@@ -258,23 +257,31 @@
 
     uploadBtn.onclick = () => fileInput.click();
 
-    fileInput.onchange = async () => {
+    fileInput.onchange = () => {
       const file = fileInput.files[0];
       if (!file) return;
 
-      const ref = storage.ref().child("images/" + Date.now() + "-" + file.name);
-      await ref.put(file);
-      const url = await ref.getDownloadURL();
-
-      const msgData = {
-        user: username,
-        imageURL: url,
-        timestamp: Date.now()
+      const reader = new FileReader();
+      reader.onload = function () {
+        const base64 = reader.result.split(',')[1];
+        fetch(`https://api.imgbb.com/1/upload?key=${imgbbKey}`, {
+          method: 'POST',
+          body: new URLSearchParams({ image: base64 })
+        })
+        .then(res => res.json())
+        .then(result => {
+          const msgData = {
+            user: username,
+            imageURL: result.data.url,
+            timestamp: Date.now()
+          };
+          if (replyTo) msgData.reply = replyTo;
+          db.ref("chats").push(msgData);
+          cancelReply();
+        })
+        .catch(err => alert("Gagal upload gambar"));
       };
-      if (replyTo) msgData.reply = replyTo;
-
-      db.ref("chats").push(msgData);
-      cancelReply();
+      reader.readAsDataURL(file);
     };
 
     input.addEventListener("keypress", e => {
