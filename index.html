@@ -21,7 +21,7 @@
     /* Login Page */
     #login-page {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: url('https://raw.githubusercontent.com/ikyYourStar/ZedxChat/refs/heads/main/assets/ced57229-34ea-461b-9ecd-7a1b154cd3.jpeg') no-repeat center center fixed;
+      background: url('https://raw.githubusercontent.com/ikyYourStar/ZedxChat/refs/heads/main/assets/ced57229-34ea-461b-9ecd-7a1b17154cd3.jpeg') no-repeat center center fixed;
       background-size: cover; display: flex; justify-content: center; align-items: center;
       flex-direction: column; z-index: 1000; color: white; text-shadow: 1px 1px 2px black;
     }
@@ -87,9 +87,39 @@
     }
     #add-friend-message { color: #e74c3c; margin-top: 2vw; font-size: 3.5vw; }
 
+    /* New: Friend Requests Section */
+    #friend-requests-section {
+        margin-bottom: 5vw; padding-bottom: 3vw; border-bottom: 1px solid rgba(255,255,255,0.2);
+    }
+    #friend-requests-section h4 { margin: 0 0 3vw 0; font-size: 4.5vw; }
+    #friend-requests-list {
+        /* overflow-y: auto; */ /* Enable scroll if many requests */
+    }
+    .friend-request-item {
+        display: flex; flex-direction: column; padding: 3vw; margin-bottom: 2vw;
+        background: rgba(255,255,255,0.1); border-radius: 1vw;
+    }
+    .friend-request-item .request-info {
+        font-size: 4.5vw; font-weight: bold; margin-bottom: 2vw;
+    }
+    .friend-request-item .request-actions {
+        display: flex; gap: 2vw;
+    }
+    .friend-request-item .request-actions button {
+        flex: 1; padding: 2vw 3vw; border-radius: 1vw; border: none;
+        font-size: 3.8vw; cursor: pointer;
+    }
+    .friend-request-item .request-actions .accept-btn {
+        background: #27ae60; color: white;
+    }
+    .friend-request-item .request-actions .decline-btn {
+        background: #e74c3c; color: white;
+    }
+
+
     #friend-list-section h4 { margin: 0 0 3vw 0; font-size: 4.5vw; }
     #friend-list {
-        flex-grow: 1; /* Agar daftar teman bisa di-scroll jika panjang */
+        flex-grow: 1;
         overflow-y: auto;
     }
     .friend-item {
@@ -117,17 +147,17 @@
     #chat-header {
       background: #f0f2f5; padding: 3vw; display: flex; justify-content: space-between;
       align-items: center; border-bottom: 1px solid #ccc; font-size: 5vw; font-weight: bold;
-      position: fixed; top: 0; left: 0; width: 100%; z-index: 990; /* Z-index lebih rendah dari sidebar */
+      position: fixed; top: 0; left: 0; width: 100%; z-index: 990;
     }
     #chat-header h3 { margin: 0; font-size: 5vw; text-align: center; flex-grow: 1; }
     #header-username {
-      flex-grow: 1; text-align: center; /* Diubah menjadi header-title untuk nama chat */
+      flex-grow: 1; text-align: center;
     }
     #menu-button, #back-to-public-chat, #options-button {
       background: none; border: none; font-size: 6vw; cursor: pointer; padding: 0;
     }
-    #menu-button { margin-right: 2vw; } /* Tombol sidebar */
-    #options-button { margin-left: 2vw; } /* Tombol logout */
+    #menu-button { margin-right: 2vw; }
+    #options-button { margin-left: 2vw; }
 
 
     #logout-menu {
@@ -188,10 +218,16 @@
       #sidebar.active { left: 0; }
       #sidebar-header h3 { font-size: 24px; }
       #close-sidebar { font-size: 32px; }
-      #add-friend-section h4, #friend-list-section h4 { font-size: 18px; }
+      #add-friend-section h4, #friend-list-section h4, #friend-requests-section h4 { font-size: 18px; }
       #add-friend-input { padding: 10px; font-size: 16px; width: calc(100% - 10px); }
       #add-friend-btn { padding: 10px 15px; font-size: 16px; }
       #add-friend-message { font-size: 14px; }
+
+      .friend-request-item { padding: 12px; margin-bottom: 8px; }
+      .friend-request-item .request-info { font-size: 18px; margin-bottom: 8px; }
+      .friend-request-item .request-actions { gap: 8px; }
+      .friend-request-item .request-actions button { padding: 8px 12px; font-size: 15px; }
+
       .friend-item { padding: 12px; margin-bottom: 8px; }
       .friend-item .friend-avatar { width: 40px; height: 40px; font-size: 20px; margin-right: 15px; }
       .friend-item .friend-name { font-size: 18px; }
@@ -255,6 +291,13 @@
             <p id="add-friend-message"></p>
         </div>
 
+        <div id="friend-requests-section">
+            <h4>Permintaan Pertemanan</h4>
+            <div id="friend-requests-list">
+                <p id="no-friend-requests" style="font-size: 3.5vw; opacity: 0.8;">Tidak ada permintaan baru.</p>
+            </div>
+        </div>
+
         <div id="friend-list-section">
             <h4>Daftar Teman</h4>
             <div id="friend-list">
@@ -264,7 +307,11 @@
     <div id="sidebar-overlay"></div>
 
     <div id="chat-header">
-      <button id="sidebar-toggle-button">☰</button> <button id="back-to-public-chat" style="display:none;">←</button> <h3 id="chat-title">Chat Publik</h3> <button id="options-button">⋮</button> <div id="logout-menu">
+      <button id="sidebar-toggle-button">☰</button>
+      <button id="back-to-public-chat" style="display:none;">←</button>
+      <h3 id="chat-title">Chat Publik</h3>
+      <button id="options-button">⋮</button>
+      <div id="logout-menu">
         <button id="logout-button">Logout</button>
       </div>
     </div>
@@ -338,6 +385,8 @@
     const addFriendBtn = document.getElementById('add-friend-btn');
     const addFriendMessage = document.getElementById('add-friend-message');
     const friendList = document.getElementById('friend-list');
+    const friendRequestsList = document.getElementById('friend-requests-list'); // NEW
+    const noFriendRequests = document.getElementById('no-friend-requests'); // NEW
 
     // --- Global State Variables ---
     let isLoginMode = true;
@@ -355,6 +404,7 @@
     }
 
     function getPrivateChatId(uid1, uid2) {
+        // Always sort UIDs to get a consistent chat ID
         return uid1 < uid2 ? `${uid1}_${uid2}` : `${uid2}_${uid1}`;
     }
 
@@ -439,9 +489,8 @@
     });
 
     // --- Message Rendering ---
-    function renderMessage(key, data, isPrivate = false) {
+    function renderMessage(key, data) { // Removed isPrivate parameter, now logic is based on currentChatMode
       const div = document.createElement("div");
-      // Kunci perbaikan: Memastikan `userUid` dari data pesan dibandingkan dengan `currentUid`
       const isOwn = data.userUid === currentUid;
       div.classList.add("msg", isOwn ? "own" : "other");
       div.id = "msg-" + key;
@@ -523,9 +572,9 @@
         div.addEventListener("touchstart", () => {
           timeout = setTimeout(() => {
             if (confirm("Hapus pesan ini?")) {
-              const chatRef = isPrivate
-                ? db.ref(`private_chats/${getPrivateChatId(currentUid, currentPrivateChatFriendUid)}/messages/${key}`)
-                : db.ref(`chats/${key}`);
+              const chatRef = (currentChatMode === 'public')
+                ? db.ref(`chats/${key}`)
+                : db.ref(`private_chats/${getPrivateChatId(currentUid, currentPrivateChatFriendUid)}/messages/${key}`);
               chatRef.update({ deleted: true });
             }
           }, 600);
@@ -552,7 +601,7 @@
         chatListenerRef.on("value", (snapshot) => {
             chatContainer.innerHTML = '';
             snapshot.forEach((childSnapshot) => {
-                renderMessage(childSnapshot.key, childSnapshot.val(), false);
+                renderMessage(childSnapshot.key, childSnapshot.val());
             });
             scrollToBottom();
         });
@@ -575,8 +624,7 @@
         chatListenerRef.on("value", (snapshot) => {
             chatContainer.innerHTML = '';
             snapshot.forEach((childSnapshot) => {
-                // Kunci perbaikan: Pastikan `isPrivate` true saat memanggil renderMessage
-                renderMessage(childSnapshot.key, childSnapshot.val(), true);
+                renderMessage(childSnapshot.key, childSnapshot.val());
             });
             scrollToBottom();
         });
@@ -626,21 +674,45 @@
             });
 
             if (friendUid && friendUid !== currentUid) {
-                // Add friend to current user's friend list
-                await db.ref(`users/${currentUid}/friends/${friendUid}`).set({
-                    username: foundFriendUsername,
-                    uid: friendUid
+                // Check if already friends
+                const alreadyFriends = (await db.ref(`users/${currentUid}/friends/${friendUid}`).once('value')).exists();
+                if (alreadyFriends) {
+                    addFriendMessage.textContent = `${foundFriendUsername} sudah ada di daftar teman Anda.`;
+                    return;
+                }
+
+                // Check if a request is already sent
+                const requestAlreadySent = (await db.ref(`users/${currentUid}/friend_requests_sent/${friendUid}`).once('value')).exists();
+                if (requestAlreadySent) {
+                    addFriendMessage.textContent = `Permintaan sudah terkirim ke ${foundFriendUsername}.`;
+                    return;
+                }
+
+                // Check if there's a pending request from the other user
+                const requestFromFriendExists = (await db.ref(`users/${currentUid}/friend_requests_received/${friendUid}`).once('value')).exists();
+                if (requestFromFriendExists) {
+                    addFriendMessage.textContent = `Anda sudah menerima permintaan dari ${foundFriendUsername}. Silakan terima di bagian Permintaan Pertemanan.`;
+                    return;
+                }
+
+
+                // Send friend request to the target user
+                await db.ref(`users/${friendUid}/friend_requests_received/${currentUid}`).set({
+                    username: currentUsername,
+                    uid: currentUid,
+                    timestamp: Date.now()
                 });
 
-                // Kunci perbaikan: Tambahkan current user ke friend's friend list (Mutual)
-                await db.ref(`users/${friendUid}/friends/${currentUid}`).set({
-                    username: currentUsername,
-                    uid: currentUid
+                // Record that this user sent a request
+                await db.ref(`users/${currentUid}/friend_requests_sent/${friendUid}`).set({
+                    username: foundFriendUsername,
+                    uid: friendUid,
+                    timestamp: Date.now()
                 });
 
                 addFriendInput.value = '';
-                addFriendMessage.textContent = `Berhasil menambahkan ${foundFriendUsername}!`;
-                loadFriendList(); // Reload friend list for both users if they are online
+                addFriendMessage.textContent = `Permintaan pertemanan terkirim ke ${foundFriendUsername}.`;
+                // No need to loadFriendList here as they are not yet friends
             } else {
                 addFriendMessage.textContent = 'Username tidak ditemukan atau Anda mencoba menambahkan diri sendiri.';
             }
@@ -649,6 +721,99 @@
             addFriendMessage.textContent = 'Gagal menambahkan teman. Coba lagi.';
         }
     });
+
+    // --- Load Friend Requests ---
+    function loadFriendRequests() {
+        if (!currentUid) return;
+
+        friendRequestsList.innerHTML = ''; // Clear previous requests
+        db.ref(`users/${currentUid}/friend_requests_received`).on('value', (snapshot) => {
+            friendRequestsList.innerHTML = '';
+            if (!snapshot.exists()) {
+                noFriendRequests.style.display = 'block';
+                return;
+            } else {
+                noFriendRequests.style.display = 'none';
+            }
+
+            snapshot.forEach((requestNode) => {
+                const requestData = requestNode.val();
+                const senderUid = requestNode.key;
+
+                const requestItem = document.createElement('div');
+                requestItem.classList.add('friend-request-item');
+
+                const info = document.createElement('div');
+                info.classList.add('request-info');
+                info.textContent = `${requestData.username} ingin berteman dengan Anda.`;
+                requestItem.appendChild(info);
+
+                const actions = document.createElement('div');
+                actions.classList.add('request-actions');
+
+                const acceptBtn = document.createElement('button');
+                acceptBtn.classList.add('accept-btn');
+                acceptBtn.textContent = 'Terima';
+                acceptBtn.addEventListener('click', () => acceptFriendRequest(senderUid, requestData.username));
+                actions.appendChild(acceptBtn);
+
+                const declineBtn = document.createElement('button');
+                declineBtn.classList.add('decline-btn');
+                declineBtn.textContent = 'Tolak';
+                declineBtn.addEventListener('click', () => declineFriendRequest(senderUid));
+                actions.appendChild(declineBtn);
+
+                requestItem.appendChild(actions);
+                friendRequestsList.appendChild(requestItem);
+            });
+        });
+    }
+
+    async function acceptFriendRequest(senderUid, senderUsername) {
+        try {
+            // Add sender to current user's friend list
+            await db.ref(`users/${currentUid}/friends/${senderUid}`).set({
+                username: senderUsername,
+                uid: senderUid
+            });
+
+            // Add current user to sender's friend list
+            await db.ref(`users/${senderUid}/friends/${currentUid}`).set({
+                username: currentUsername,
+                uid: currentUid
+            });
+
+            // Remove request from current user's received requests
+            await db.ref(`users/${currentUid}/friend_requests_received/${senderUid}`).remove();
+
+            // Remove request from sender's sent requests
+            await db.ref(`users/${senderUid}/friend_requests_sent/${currentUid}`).remove();
+
+            alert(`Anda sekarang berteman dengan ${senderUsername}!`);
+            loadFriendList(); // Refresh friend list
+            loadFriendRequests(); // Refresh requests list
+        } catch (error) {
+            console.error("Error accepting friend request:", error);
+            alert("Gagal menerima permintaan pertemanan. Coba lagi.");
+        }
+    }
+
+    async function declineFriendRequest(senderUid) {
+        try {
+            // Remove request from current user's received requests
+            await db.ref(`users/${currentUid}/friend_requests_received/${senderUid}`).remove();
+
+            // Remove request from sender's sent requests
+            await db.ref(`users/${senderUid}/friend_requests_sent/${currentUid}`).remove();
+
+            alert("Permintaan pertemanan ditolak.");
+            loadFriendRequests(); // Refresh requests list
+        } catch (error) {
+            console.error("Error declining friend request:", error);
+            alert("Gagal menolak permintaan pertemanan. Coba lagi.");
+        }
+    }
+
 
     // --- Load Friend List ---
     function loadFriendList() {
@@ -705,7 +870,7 @@
     });
 
     // --- Send Message Logic ---
-    sendBtn.onclick = () => {
+    sendBtn.onclick = async () => { // Changed to async to await participant setting
       const message = input.value.trim();
       if (!message || !currentUsername || !currentUid) return;
 
@@ -723,11 +888,15 @@
         const privateChatId = getPrivateChatId(currentUid, currentPrivateChatFriendUid);
         const privateChatRef = db.ref(`private_chats/${privateChatId}`);
 
-        // Set participants if not already set (for new private chat)
-        privateChatRef.child('participants').child(currentUid).set(true);
-        privateChatRef.child('participants').child(currentPrivateChatFriendUid).set(true);
+        // IMPORTANT: Set participants FIRST to satisfy Firebase Rules
+        // Use update instead of set to avoid overwriting existing data if any
+        await privateChatRef.child('participants').update({
+            [currentUid]: true,
+            [currentPrivateChatFriendUid]: true
+        });
 
-        privateChatRef.child('messages').push(msgData);
+        // Then push the message
+        db.ref(`private_chats/${privateChatId}/messages`).push(msgData);
       }
       input.value = "";
       cancelReply();
@@ -748,7 +917,7 @@
           body: new URLSearchParams({ image: base64 })
         })
         .then(res => res.json())
-        .then(result => {
+        .then(async result => { // Changed to async here too
           const msgData = {
             user: currentUsername,
             userUid: currentUid,
@@ -763,11 +932,13 @@
             const privateChatId = getPrivateChatId(currentUid, currentPrivateChatFriendUid);
             const privateChatRef = db.ref(`private_chats/${privateChatId}`);
 
-            // Set participants if not already set
-            privateChatRef.child('participants').child(currentUid).set(true);
-            privateChatRef.child('participants').child(currentPrivateChatFriendUid).set(true);
+            // IMPORTANT: Set participants FIRST to satisfy Firebase Rules
+            await privateChatRef.child('participants').update({
+                [currentUid]: true,
+                [currentPrivateChatFriendUid]: true
+            });
 
-            privateChatRef.child('messages').push(msgData);
+            db.ref(`private_chats/${privateChatId}/messages`).push(msgData);
           }
           cancelReply();
         })
@@ -823,6 +994,7 @@
 
             loadPublicChat();
             loadFriendList(); // Ensure friend list is loaded/updated
+            loadFriendRequests(); // Load friend requests when user logs in
           } else {
             console.error("User profile not found in database. Logging out.");
             auth.signOut();
