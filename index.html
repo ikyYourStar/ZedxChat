@@ -105,6 +105,19 @@
       cursor: pointer;
     }
 
+    .delete-btn {
+      position: absolute;
+      top: -2vw;
+      right: -2vw;
+      background: red;
+      color: white;
+      font-size: 3.5vw;
+      border: none;
+      border-radius: 5vw;
+      padding: 1vw 2vw;
+      display: none;
+    }
+
     @media (min-width: 768px) {
       .msg { font-size: 16px; }
       .reply { font-size: 13px; }
@@ -169,9 +182,31 @@
     }
 
     db.ref("chats").on("child_added", snapshot => {
-      const data = snapshot.val();
+      renderMessage(snapshot.key, snapshot.val());
+    });
+
+    db.ref("chats").on("child_changed", snapshot => {
+      const msgElement = document.getElementById("msg-" + snapshot.key);
+      if (msgElement) {
+        msgElement.innerHTML = "";
+        const data = snapshot.val();
+        msgElement.textContent = data.deleted ? "Pesan ini telah dihapus" : data.user + ": " + data.message;
+        msgElement.style.fontStyle = data.deleted ? "italic" : "normal";
+      }
+    });
+
+    function renderMessage(key, data) {
       const div = document.createElement("div");
       div.classList.add("msg", data.user === username ? "own" : "other");
+      div.id = "msg-" + key;
+
+      if (data.deleted) {
+        div.textContent = "Pesan ini telah dihapus";
+        div.style.fontStyle = "italic";
+        chatContainer.appendChild(div);
+        scrollToBottom();
+        return;
+      }
 
       if (data.reply) {
         const replyDiv = document.createElement("div");
@@ -184,43 +219,49 @@
       chatContainer.appendChild(div);
       scrollToBottom();
 
-      // Swipe to reply gesture
+      // Swipe to reply
       let startX = 0, startY = 0, moved = false;
-
       div.addEventListener("touchstart", e => {
         startX = e.touches[0].clientX;
         startY = e.touches[0].clientY;
         moved = false;
       });
-
       div.addEventListener("touchmove", e => {
         const currentX = e.touches[0].clientX;
         const currentY = e.touches[0].clientY;
         const deltaX = currentX - startX;
         const deltaY = currentY - startY;
-
         if (Math.abs(deltaY) > Math.abs(deltaX)) return;
-
         if (deltaX > 0) {
           moved = true;
-          const translateX = Math.min(deltaX, 80); // batas 80px
+          const translateX = Math.min(deltaX, 80);
           div.style.transform = `translateX(${translateX}px)`;
         }
       });
-
       div.addEventListener("touchend", e => {
         const endX = e.changedTouches[0].clientX;
         const deltaX = endX - startX;
-
         if (moved && deltaX > 60) {
           replyTo = { user: data.user, message: data.message };
           replyPreview.style.display = "flex";
           replyText.textContent = "Balas: " + replyTo.user + ": " + replyTo.message;
         }
-
         div.style.transform = "translateX(0)";
       });
-    });
+
+      // Long press to delete
+      if (data.user === username) {
+        let timeout = null;
+        div.addEventListener("touchstart", () => {
+          timeout = setTimeout(() => {
+            if (confirm("Hapus pesan ini?")) {
+              db.ref("chats/" + key).update({ deleted: true });
+            }
+          }, 600); // tahan 600ms
+        });
+        div.addEventListener("touchend", () => clearTimeout(timeout));
+      }
+    }
 
     sendBtn.onclick = () => {
       const message = input.value.trim();
