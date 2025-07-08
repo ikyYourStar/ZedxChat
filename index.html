@@ -179,6 +179,12 @@
     .msg {
       max-width: 75%; padding: 3vw; margin: 2vw 0; border-radius: 2vw; word-wrap: break-word;
       font-size: 4vw; position: relative; transition: transform 0.2s ease; will-change: transform;
+      /* CSS untuk mencegah seleksi teks */
+      -webkit-user-select: none; /* Safari */
+      -moz-user-select: none; /* Firefox */
+      -ms-user-select: none; /* IE 10+ */
+      user-select: none; /* Standard syntax */
+      -webkit-touch-callout: none; /* iOS Safari */
     }
     .own { background: #dcf8c6; margin-left: auto; text-align: left; }
     .own * { text-align: left !important; }
@@ -730,50 +736,83 @@
       // Add reactions container
       updateMessageReactions(div, data.reactions);
 
+      // --- Long press/tap & hold to show interaction overlay ---
+      // Variabel untuk melacak status touch
+      let touchStartX = 0;
+      let touchStartY = 0;
+      let touchTimeStart = 0;
+      let longPressTimer = null;
+      let isLongPress = false;
+      let isSwiping = false;
 
-      // Long press/tap & hold to show interaction overlay
-      let pressTimer;
       div.addEventListener("touchstart", (e) => {
         if (e.target.tagName === 'IMG') return; // Jangan trigger jika menekan gambar
-        const messageEl = e.currentTarget; // Element pesan
-        pressTimer = setTimeout(() => {
+
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        touchTimeStart = new Date().getTime();
+        isLongPress = false;
+        isSwiping = false;
+
+        const messageEl = e.currentTarget;
+
+        // Mulai timer untuk long press
+        longPressTimer = setTimeout(() => {
+          isLongPress = true;
+          e.preventDefault(); // Cegah default (seleksi teks) hanya jika long press terdeteksi
           showInteractionPopover(messageEl);
         }, 500); // 500ms for long press
-      });
+      }, { passive: false }); // Gunakan { passive: false } agar preventDefault() berfungsi
 
-      div.addEventListener("touchend", () => {
-        clearTimeout(pressTimer);
+      div.addEventListener("touchmove", (e) => {
+        const touchCurrentX = e.touches[0].clientX;
+        const touchCurrentY = e.touches[0].clientY;
+        const diffX = touchCurrentX - touchStartX;
+        const diffY = touchCurrentY - touchStartY;
+
+        // Deteksi apakah sedang swiping (gerakan signifikan)
+        if (Math.abs(diffX) > 10 || Math.abs(diffY) > 10) { // Toleransi kecil untuk jitter
+          clearTimeout(longPressTimer); // Batalkan long press jika ada gerakan
+          if (Math.abs(diffY) < Math.abs(diffX) && Math.abs(diffX) > 30) { // Gerakan horizontal yang cukup
+              isSwiping = true;
+              e.preventDefault(); // Cegah scrolling vertikal jika ini swipe horizontal
+              // Swipe to reply logic (dulu ada di touchend, sekarang lebih interaktif)
+              if (diffX > 0 && diffX < 100) {
+                div.style.transform = `translateX(${diffX}px)`;
+              }
+          } else {
+              // Jika gerakan vertikal dominan, biarkan scroll terjadi
+              div.style.transform = "translateX(0)";
+          }
+        }
+      }, { passive: false }); // Gunakan { passive: false } agar preventDefault() berfungsi
+
+      div.addEventListener("touchend", (e) => {
+        clearTimeout(longPressTimer);
+        div.style.transform = "translateX(0)"; // Reset posisi pesan
+
+        if (!isLongPress && !isSwiping) {
+            // Ini adalah tap singkat, bukan long press atau swipe.
+            // Lakukan sesuatu jika ada aksi tap singkat yang diinginkan,
+            // atau biarkan saja (untuk mengizinkan klik link di dalam pesan dll.)
+        } else if (isSwiping) {
+            const finalDiffX = e.changedTouches[0].clientX - touchStartX;
+            if (finalDiffX > 60) { // Cukup geser untuk reply
+                replyTo = { user: data.user, message: data.message || 'Gambar' };
+                replyText.textContent = "Balas: " + replyTo.user + ": " + replyTo.message;
+                replyPreview.style.display = "flex";
+            }
+        }
+        // Jika isLongPress adalah true, showInteractionPopover sudah dipanggil di touchstart timer.
+        isLongPress = false;
+        isSwiping = false;
       });
 
       div.addEventListener("touchcancel", () => {
-        clearTimeout(pressTimer);
-      });
-
-      // Swipe to reply (existing logic)
-      let startX = 0, startY = 0, moved = false;
-      div.addEventListener("touchstart", e => {
-        startX = e.touches[0].clientX;
-        startY = e.touches[0].clientY;
-        moved = false;
-      });
-      div.addEventListener("touchmove", e => {
-        const dx = e.touches[0].clientX - startX;
-        const dy = e.touches[0].clientY - startY;
-        if (Math.abs(dy) > Math.abs(dx)) return;
-        if (dx > 0 && dx < 100) {
-          moved = true;
-          div.style.transform = `translateX(${dx}px)`;
-        }
-      });
-      div.addEventListener("touchend", e => {
-        const dx = e.changedTouches[0].clientX - startX;
-        if (moved && dx > 60) {
-          replyTo = { user: data.user, message: data.message || 'Gambar' };
-          replyText.textContent = "Balas: " + replyTo.user + ": " + replyTo.message;
-          replyPreview.style.display = "flex";
-        }
+        clearTimeout(longPressTimer);
         div.style.transform = "translateX(0)";
-        moved = false;
+        isLongPress = false;
+        isSwiping = false;
       });
     }
 
@@ -801,9 +840,16 @@
         let hasReactionsToShow = false;
 
         for (const emoji of validEmojis) {
-            if (reactionsData[emoji] && reactionsData[emoji].count > 0) {
+            // Check if there's a reaction for this emoji and if current user reacted
+            const hasUserReactedWithThisEmoji = reactionsData[emoji] && reactionsData[emoji][currentUid] === true;
+            const reactionCount = reactionsData[emoji] ? reactionsData[emoji].count : 0;
+
+            if (reactionCount > 0) {
                 const reactionItem = document.createElement('div');
                 reactionItem.className = 'reaction-item';
+                if (hasUserReactedWithThisEmoji) {
+                    reactionItem.style.backgroundColor = 'rgba(255,255,255,0.3)'; // Highlight if user reacted
+                }
 
                 const emojiSpan = document.createElement('span');
                 emojiSpan.className = 'reaction-emoji';
@@ -811,7 +857,7 @@
 
                 const countSpan = document.createElement('span');
                 countSpan.className = 'reaction-count';
-                countSpan.textContent = reactionsData[emoji].count;
+                countSpan.textContent = reactionCount;
 
                 reactionItem.appendChild(emojiSpan);
                 reactionItem.appendChild(countSpan);
@@ -848,34 +894,30 @@
             const updatedData = childSnapshot.val();
             // Cek apakah pesan sudah dihapus secara lokal untuk user ini
             if (isDeletedForMe(messageKey)) {
-                // Jika ya, pastikan elemennya dihapus dari DOM jika sebelumnya ada
                 const existingEl = document.getElementById("msg-" + messageKey);
                 if (existingEl) existingEl.remove();
-                return; // Jangan render ulang
+                return;
             }
 
             const existingMessageElement = document.getElementById("msg-" + messageKey);
 
             if (existingMessageElement) {
-                // If the message exists, and it's being marked as deleted remotely
                 if (updatedData.deleted && existingMessageElement.textContent !== "Pesan ini telah dihapus") {
                     existingMessageElement.textContent = "Pesan ini telah dihapus";
                     existingMessageElement.style.fontStyle = "italic";
-                    existingMessageElement.innerHTML = existingMessageElement.textContent; // Clear existing content
+                    existingMessageElement.innerHTML = existingMessageElement.textContent;
                     const existingReactions = existingMessageElement.querySelector('.reactions-container');
                     if(existingReactions) existingReactions.remove();
-                } else if (!updatedData.deleted) { // If not deleted, update reactions
+                } else if (!updatedData.deleted) {
                     updateMessageReactions(existingMessageElement, updatedData.reactions);
                 }
             } else if (!updatedData.deleted) {
-                // If it doesn't exist and is not deleted, render it
                 renderMessage(messageKey, updatedData);
             }
         });
 
         chatListenerRef.on("child_removed", (oldChildSnapshot) => {
             const messageKey = oldChildSnapshot.key;
-            // Pastikan juga dihapus dari daftar "deleted for me" jika ada
             deletedForMeMessages = deletedForMeMessages.filter(key => key !== messageKey);
             saveDeletedForMeMessages();
 
@@ -893,17 +935,19 @@
     // --- Message Interaction Popover Logic ---
     function showInteractionPopover(messageEl) {
         const messageKey = messageEl.dataset.messageKey;
-        const isOwnMessage = messageEl.dataset.isOwnMessage === 'true'; // Convert string to boolean
+        const isOwnMessage = messageEl.dataset.isOwnMessage === 'true';
 
         interactingMessageKey = messageKey;
         interactingMessageIsOwn = isOwnMessage;
 
-        // Tentukan teks dan fungsi tombol hapus
-        if (isOwnMessage) {
+        if (isOwnMessage || isAdmin) { // Tampilkan opsi hapus untuk admin juga
             deleteMessageBtn.textContent = "Hapus untuk Semua";
+            deleteMessageBtn.style.display = 'block';
         } else {
             deleteMessageBtn.textContent = "Hapus untuk Saya";
+            deleteMessageBtn.style.display = 'block';
         }
+
 
         // Tentukan posisi popover
         const rect = messageEl.getBoundingClientRect();
@@ -922,7 +966,7 @@
     }
 
     messageInteractionOverlay.addEventListener('click', (e) => {
-        if (e.target === messageInteractionOverlay) { // Hanya jika klik pada overlay, bukan popover
+        if (e.target === messageInteractionOverlay) {
             hideInteractionPopover();
         }
     });
@@ -930,9 +974,9 @@
 
     // Delete message handler
     deleteMessageBtn.addEventListener('click', async () => {
-        if (!interactingMessageKey) return;
+        if (!interactingMessageKey || !currentUid) return;
 
-        if (interactingMessageIsOwn) {
+        if (interactingMessageIsOwn || isAdmin) { // Jika pesan saya sendiri ATAU saya admin
             // Hapus untuk semua (dari database)
             if (confirm("Yakin ingin menghapus pesan ini untuk semua orang?")) {
                 db.ref(`chats/${interactingMessageKey}`).update({ deleted: true })
@@ -951,7 +995,6 @@
                 if (!deletedForMeMessages.includes(interactingMessageKey)) {
                     deletedForMeMessages.push(interactingMessageKey);
                     saveDeletedForMeMessages();
-                    // Hapus elemen dari DOM
                     const elToRemove = document.getElementById("msg-" + interactingMessageKey);
                     if (elToRemove) elToRemove.remove();
                     console.log("Pesan berhasil dihapus secara lokal.");
@@ -964,38 +1007,66 @@
     // React emoji handler
     reactEmojiButtons.forEach(button => {
         button.addEventListener('click', async () => {
-            const emoji = button.dataset.emoji;
-            if (!interactingMessageKey || !currentUid || !emoji) return;
+            const selectedEmoji = button.dataset.emoji;
+            if (!interactingMessageKey || !currentUid || !selectedEmoji) return;
 
             const messageRef = db.ref(`chats/${interactingMessageKey}`);
-            messageRef.transaction((currentMessage) => {
-                if (currentMessage) {
-                    if (!currentMessage.reactions) {
-                        currentMessage.reactions = {};
-                    }
-                    if (!currentMessage.reactions[emoji]) {
-                        currentMessage.reactions[emoji] = { count: 0 };
-                    }
-                    if (!currentMessage.reactions[emoji][currentUid]) { // User hasn't reacted with this emoji yet
-                        currentMessage.reactions[emoji].count = (currentMessage.reactions[emoji].count || 0) + 1;
-                        currentMessage.reactions[emoji][currentUid] = true;
-                    } else { // User already reacted, unreact
-                        currentMessage.reactions[emoji].count = Math.max(0, (currentMessage.reactions[emoji].count || 0) - 1);
-                        delete currentMessage.reactions[emoji][currentUid];
-                        // If count becomes 0, remove the emoji entry
-                        if (currentMessage.reactions[emoji].count === 0) {
-                            delete currentMessage.reactions[emoji];
+            const userLastReactionRef = db.ref(`users/${currentUid}/messageLastReaction/${interactingMessageKey}`);
+
+            // 1. Dapatkan emoji terakhir yang diberikan user pada pesan ini
+            userLastReactionRef.once('value').then(lastReactionSnapshot => {
+                const lastEmoji = lastReactionSnapshot.val();
+
+                // 2. Lakukan transaksi untuk memperbarui reaksi pesan
+                messageRef.transaction((currentMessage) => {
+                    if (currentMessage) {
+                        if (!currentMessage.reactions) {
+                            currentMessage.reactions = {};
+                        }
+
+                        // Jika ada reaksi sebelumnya dari user ini di pesan ini DAN berbeda dengan yang baru
+                        if (lastEmoji && lastEmoji !== selectedEmoji) {
+                            // Kurangi count dari emoji lama
+                            if (currentMessage.reactions[lastEmoji]) {
+                                currentMessage.reactions[lastEmoji].count = Math.max(0, (currentMessage.reactions[lastEmoji].count || 0) - 1);
+                                delete currentMessage.reactions[lastEmoji][currentUid];
+                                if (currentMessage.reactions[lastEmoji].count === 0) {
+                                    delete currentMessage.reactions[lastEmoji];
+                                }
+                            }
+                        }
+
+                        // Jika emoji yang baru sama dengan emoji yang lama, berarti user ingin unreact
+                        if (lastEmoji === selectedEmoji) {
+                            if (currentMessage.reactions[selectedEmoji]) {
+                                currentMessage.reactions[selectedEmoji].count = Math.max(0, (currentMessage.reactions[selectedEmoji].count || 0) - 1);
+                                delete currentMessage.reactions[selectedEmoji][currentUid];
+                                if (currentMessage.reactions[selectedEmoji].count === 0) {
+                                    delete currentMessage.reactions[selectedEmoji];
+                                }
+                            }
+                            // Hapus juga dari userLastReaction
+                            userLastReactionRef.remove();
+                        } else {
+                            // Tambahkan atau tingkatkan count untuk emoji baru
+                            if (!currentMessage.reactions[selectedEmoji]) {
+                                currentMessage.reactions[selectedEmoji] = { count: 0 };
+                            }
+                            currentMessage.reactions[selectedEmoji].count = (currentMessage.reactions[selectedEmoji].count || 0) + 1;
+                            currentMessage.reactions[selectedEmoji][currentUid] = true;
+                            // Set emoji baru sebagai reaksi terakhir user
+                            userLastReactionRef.set(selectedEmoji);
                         }
                     }
-                }
-                return currentMessage;
-            })
-            .then(() => {
-                console.log(`Reaksi '${emoji}' berhasil diupdate.`);
-                hideInteractionPopover(); // Tutup popover setelah reaksi
-            })
-            .catch(error => {
-                console.error("Error updating reaction:", error);
+                    return currentMessage;
+                })
+                .then(() => {
+                    console.log(`Reaksi '${selectedEmoji}' berhasil diupdate.`);
+                    hideInteractionPopover();
+                })
+                .catch(error => {
+                    console.error("Error updating reaction:", error);
+                });
             });
         });
     });
