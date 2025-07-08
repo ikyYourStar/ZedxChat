@@ -15,6 +15,7 @@
       font-family: Arial, sans-serif;
       background: url('https://raw.githubusercontent.com/ikyYourStar/ZedxChat/refs/heads/main/assets/Tak%20berjudul134_20250707192207.png') no-repeat center center fixed;
       background-size: cover;
+      overflow: hidden; /* Mencegah body scroll saat overlay muncul */
     }
     body { display: flex; flex-direction: column; }
 
@@ -188,6 +189,44 @@
     .own .time { text-align: left; }
     .other .time { text-align: left; }
 
+    /* Reaction Styles */
+    .reactions-container {
+      position: absolute;
+      bottom: -3.5vw; /* Posisi di bawah pesan */
+      padding: 0.8vw 1.5vw;
+      border-radius: 4vw;
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      font-size: 3.5vw;
+      display: flex;
+      gap: 1vw;
+      align-items: center;
+      transition: opacity 0.2s ease;
+    }
+    .own .reactions-container {
+      right: 0;
+    }
+    .other .reactions-container {
+      left: 0;
+    }
+    .reaction-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5vw;
+        padding: 0.5vw 1vw;
+        background: rgba(255,255,255,0.1);
+        border-radius: 2vw;
+    }
+    .reaction-emoji {
+        font-size: 3.8vw; /* Ukuran emoji reaksi */
+        line-height: 1;
+    }
+    .reaction-count {
+        font-size: 2.8vw;
+        line-height: 1;
+    }
+
+
     /* Reply & Input Area (Fixed) */
     #reply-preview {
       background: rgba(0,0,0,0.6); color: white; padding: 2vw; font-size: 3.5vw;
@@ -208,6 +247,58 @@
       border-radius: 1vw; font-size: 4vw; cursor: pointer;
     }
     #uploadBtn { background: none; border: none; font-size: 6vw; cursor: pointer; }
+
+
+    /* Message Interaction Overlay */
+    #message-interaction-overlay {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.5); /* Overlay transparan */
+        z-index: 1000; /* Di atas chat, di bawah popover */
+        display: none;
+    }
+    #message-interaction-popover {
+        position: absolute;
+        background: white;
+        border-radius: 2vw;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        z-index: 1001; /* Di atas overlay */
+        display: none;
+        flex-direction: column;
+        overflow: hidden; /* Pastikan border-radius diterapkan */
+        transform: translate(-50%, -100%); /* Geser ke atas dari posisi tengah-bawah */
+        padding: 2vw 0;
+    }
+    #message-interaction-popover button {
+        background: none;
+        border: none;
+        padding: 3vw 5vw;
+        font-size: 4.5vw;
+        text-align: left;
+        width: 100%;
+        cursor: pointer;
+        color: #333;
+        white-space: nowrap; /* Mencegah teks terpotong */
+    }
+    #message-interaction-popover button:hover {
+        background: #f0f0f0;
+    }
+    #message-interaction-popover .emoji-react-row {
+        display: flex;
+        justify-content: space-around;
+        padding: 2vw 5vw;
+        border-bottom: 1px solid #eee; /* Pembatas antara react dan delete */
+    }
+    #message-interaction-popover .emoji-react-row button {
+        padding: 0; /* Override padding button default */
+        font-size: 6vw; /* Ukuran emoji di popover */
+        background: none;
+        border: none;
+        cursor: pointer;
+        transition: transform 0.1s ease;
+    }
+    #message-interaction-popover .emoji-react-row button:active {
+        transform: scale(1.2); /* Animasi saat diklik */
+    }
 
 
     /* Media Queries for Desktop */
@@ -247,6 +338,36 @@
       #send { font-size: 16px; }
       #uploadBtn { font-size: 24px; }
       .time { font-size: 12px; }
+
+      .reactions-container {
+        bottom: -15px; /* Adjust for desktop */
+        padding: 4px 8px;
+        border-radius: 16px;
+        font-size: 14px;
+      }
+      .reaction-item {
+        padding: 2px 5px;
+        border-radius: 8px;
+        gap: 2px;
+      }
+      .reaction-emoji {
+        font-size: 16px;
+      }
+      .reaction-count {
+        font-size: 12px;
+      }
+
+      #message-interaction-popover {
+        border-radius: 8px;
+        padding: 8px 0;
+      }
+      #message-interaction-popover button {
+        padding: 12px 20px;
+        font-size: 18px;
+      }
+      #message-interaction-popover .emoji-react-row button {
+        font-size: 24px;
+      }
 
       #login-form h2 { font-size: 24px; }
       #login-form input { font-size: 16px; padding: 12px; margin-bottom: 12px; width: calc(100% - 24px); }
@@ -302,6 +423,19 @@
 
     <div id="chat-container"></div>
 
+    <div id="message-interaction-overlay">
+      <div id="message-interaction-popover">
+        <div class="emoji-react-row">
+          <button class="react-emoji-btn" data-emoji="😸">😸</button>
+          <button class="react-emoji-btn" data-emoji="😹">😹</button>
+          <button class="react-emoji-btn" data-emoji="🙀">🙀</button>
+          <button class="react-emoji-btn" data-emoji="😿">😿</button>
+          <button class="react-emoji-btn" data-emoji="😾">😾</button>
+        </div>
+        <button id="delete-message-btn">Hapus Pesan</button>
+      </div>
+    </div>
+
     <div id="reply-preview">
       <span id="reply-text"></span>
       <button onclick="cancelReply()" style="background:none;border:none;color:white;font-size:5vw;">×</button>
@@ -329,13 +463,12 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-    const auth = firebase.auth(); // Inisialisasi Firebase Auth
+    const auth = firebase.auth();
 
     const imgbbKey = "a12e3657b8edd041c13eda8c12ff5925";
 
     // --- UI Elements ---
-    const loadingScreen = document.getElementById("loading-screen"); // New
-    // Login
+    const loadingScreen = document.getElementById("loading-screen");
     const loginPage = document.getElementById("login-page");
     const usernameInput = document.getElementById("username-input");
     const passwordInput = document.getElementById("password-input");
@@ -344,8 +477,6 @@
     const formTitle = document.getElementById("form-title");
     const loginError = document.getElementById("login-error");
     const chatWrapper = document.getElementById("chat-wrapper");
-
-    // Chat
     const chatHeader = document.getElementById('chat-header');
     const sidebarToggleButton = document.getElementById('sidebar-toggle-button');
     const chatTitle = document.getElementById('chat-title');
@@ -360,27 +491,36 @@
     const uploadBtn = document.getElementById("uploadBtn");
     const replyPreview = document.getElementById("reply-preview");
     const replyText = document.getElementById("reply-text");
-
-    // Sidebar
     const sidebar = document.getElementById('sidebar');
     const closeSidebarButton = document.getElementById('close-sidebar');
     const sidebarOverlay = document.getElementById('sidebar-overlay');
-
-    // Profile Elements
     const profileAvatar = document.getElementById('profile-avatar');
     const profileUsername = document.getElementById('profile-username');
     const profileUid = document.getElementById('profile-uid');
 
+    // New Interaction Overlay Elements
+    const messageInteractionOverlay = document.getElementById('message-interaction-overlay');
+    const messageInteractionPopover = document.getElementById('message-interaction-popover');
+    const deleteMessageBtn = document.getElementById('delete-message-btn');
+    const reactEmojiButtons = document.querySelectorAll('.react-emoji-btn');
+
 
     // --- Global State Variables ---
     let isLoginMode = true;
-    let currentUsername = null; // Akan diisi dari Firebase Auth
-    let currentUid = null;     // Akan diisi dari Firebase Auth
+    let currentUsername = null;
+    let currentUid = null;
     let replyTo = null;
-    let isAdmin = false; // Status admin untuk fitur penghapusan pesan
+    let isAdmin = false;
 
     const ADMIN_USERNAME = 'kyy';
     const ADMIN_PASSWORD = 'Aku cinta19';
+
+    // Variabel untuk menyimpan pesan yang sedang diinteraksi
+    let interactingMessageKey = null;
+    let interactingMessageIsOwn = false; // Untuk menentukan opsi hapus
+
+    // Array untuk menyimpan key pesan yang dihapus secara lokal
+    let deletedForMeMessages = JSON.parse(localStorage.getItem('deletedForMeMessages')) || [];
 
     // --- Helper Functions ---
     function usernameToEmail(username) {
@@ -409,6 +549,16 @@
         replyPreview.style.setProperty('--input-area-height', `${inputAreaHeight}px`);
     }
 
+    // Function to save deleted messages to local storage
+    function saveDeletedForMeMessages() {
+        localStorage.setItem('deletedForMeMessages', JSON.stringify(deletedForMeMessages));
+    }
+
+    // Function to check if a message is deleted for current user
+    function isDeletedForMe(messageKey) {
+        return deletedForMeMessages.includes(messageKey);
+    }
+
     // --- Authentication Logic ---
     toggleModeButton.addEventListener("click", () => {
       isLoginMode = !isLoginMode;
@@ -421,8 +571,8 @@
         authButton.textContent = "Daftar";
         toggleModeButton.textContent = "Sudah punya akun? Login di sini.";
       }
-      usernameInput.value = ''; // Clear username input
-      passwordInput.value = ''; // Clear password input
+      usernameInput.value = '';
+      passwordInput.value = '';
       loginError.style.display = "none";
     });
 
@@ -496,6 +646,13 @@
 
     // --- Message Rendering ---
     function renderMessage(key, data) {
+      // Jika pesan ini dihapus untuk saya, jangan render
+      if (isDeletedForMe(key)) {
+        const existingEl = document.getElementById("msg-" + key);
+        if (existingEl) existingEl.remove();
+        return;
+      }
+
       let div = document.getElementById("msg-" + key);
       if (div) {
         if (data.deleted) {
@@ -503,7 +660,13 @@
             div.textContent = "Pesan ini telah dihapus";
             div.style.fontStyle = "italic";
             div.innerHTML = div.textContent;
+            // Hapus reactions jika pesan dihapus permanen
+            const existingReactions = div.querySelector('.reactions-container');
+            if(existingReactions) existingReactions.remove();
           }
+        } else {
+            // Update reactions if message changed
+            updateMessageReactions(div, data.reactions);
         }
         return;
       }
@@ -513,6 +676,7 @@
       div.classList.add("msg", isOwn ? "own" : "other");
       div.id = "msg-" + key;
       div.dataset.messageKey = key;
+      div.dataset.isOwnMessage = isOwn; // Simpan status kepemilikan
 
       const time = new Date(data.timestamp || Date.now());
       const timeStr = time.getHours().toString().padStart(2, "0") + ":" +
@@ -563,6 +727,29 @@
       chatContainer.appendChild(div);
       scrollToBottom();
 
+      // Add reactions container
+      updateMessageReactions(div, data.reactions);
+
+
+      // Long press/tap & hold to show interaction overlay
+      let pressTimer;
+      div.addEventListener("touchstart", (e) => {
+        if (e.target.tagName === 'IMG') return; // Jangan trigger jika menekan gambar
+        const messageEl = e.currentTarget; // Element pesan
+        pressTimer = setTimeout(() => {
+          showInteractionPopover(messageEl);
+        }, 500); // 500ms for long press
+      });
+
+      div.addEventListener("touchend", () => {
+        clearTimeout(pressTimer);
+      });
+
+      div.addEventListener("touchcancel", () => {
+        clearTimeout(pressTimer);
+      });
+
+      // Swipe to reply (existing logic)
       let startX = 0, startY = 0, moved = false;
       div.addEventListener("touchstart", e => {
         startX = e.touches[0].clientX;
@@ -588,25 +775,56 @@
         div.style.transform = "translateX(0)";
         moved = false;
       });
-
-      let timeout = null;
-      div.addEventListener("touchstart", (e) => {
-          if (e.target.tagName === 'IMG') return;
-          timeout = setTimeout(() => {
-              const messageKey = div.dataset.messageKey;
-              if (messageKey) {
-                  if (isAdmin || isOwn) {
-                      if (confirm("Hapus pesan ini?")) {
-                          db.ref(`chats/${messageKey}`).update({ deleted: true })
-                                  .catch(error => console.error("Error deleting message:", error));
-                      }
-                  }
-              }
-          }, 600);
-      });
-      div.addEventListener("touchend", () => clearTimeout(timeout));
-      div.addEventListener("touchcancel", () => clearTimeout(timeout));
     }
+
+    // Function to update/render reactions for a message element
+    function updateMessageReactions(messageEl, reactionsData) {
+        let reactionsContainer = messageEl.querySelector('.reactions-container');
+
+        // Remove existing container if no reactions or message deleted
+        if (!reactionsData || Object.keys(reactionsData).length === 0) {
+            if (reactionsContainer) {
+                reactionsContainer.remove();
+            }
+            return;
+        }
+
+        if (!reactionsContainer) {
+            reactionsContainer = document.createElement('div');
+            reactionsContainer.className = 'reactions-container';
+            messageEl.appendChild(reactionsContainer);
+        } else {
+            reactionsContainer.innerHTML = ''; // Clear existing reactions
+        }
+
+        const validEmojis = ['😸', '😹', '🙀', '😿', '😾'];
+        let hasReactionsToShow = false;
+
+        for (const emoji of validEmojis) {
+            if (reactionsData[emoji] && reactionsData[emoji].count > 0) {
+                const reactionItem = document.createElement('div');
+                reactionItem.className = 'reaction-item';
+
+                const emojiSpan = document.createElement('span');
+                emojiSpan.className = 'reaction-emoji';
+                emojiSpan.textContent = emoji;
+
+                const countSpan = document.createElement('span');
+                countSpan.className = 'reaction-count';
+                countSpan.textContent = reactionsData[emoji].count;
+
+                reactionItem.appendChild(emojiSpan);
+                reactionItem.appendChild(countSpan);
+                reactionsContainer.appendChild(reactionItem);
+                hasReactionsToShow = true;
+            }
+        }
+
+        if (!hasReactionsToShow) {
+            if (reactionsContainer) reactionsContainer.remove();
+        }
+    }
+
 
     // --- Chat Listener Setup ---
     let chatListenerRef = null;
@@ -628,16 +846,39 @@
         chatListenerRef.on("child_changed", (childSnapshot) => {
             const messageKey = childSnapshot.key;
             const updatedData = childSnapshot.val();
+            // Cek apakah pesan sudah dihapus secara lokal untuk user ini
+            if (isDeletedForMe(messageKey)) {
+                // Jika ya, pastikan elemennya dihapus dari DOM jika sebelumnya ada
+                const existingEl = document.getElementById("msg-" + messageKey);
+                if (existingEl) existingEl.remove();
+                return; // Jangan render ulang
+            }
+
             const existingMessageElement = document.getElementById("msg-" + messageKey);
 
             if (existingMessageElement) {
-                existingMessageElement.remove();
+                // If the message exists, and it's being marked as deleted remotely
+                if (updatedData.deleted && existingMessageElement.textContent !== "Pesan ini telah dihapus") {
+                    existingMessageElement.textContent = "Pesan ini telah dihapus";
+                    existingMessageElement.style.fontStyle = "italic";
+                    existingMessageElement.innerHTML = existingMessageElement.textContent; // Clear existing content
+                    const existingReactions = existingMessageElement.querySelector('.reactions-container');
+                    if(existingReactions) existingReactions.remove();
+                } else if (!updatedData.deleted) { // If not deleted, update reactions
+                    updateMessageReactions(existingMessageElement, updatedData.reactions);
+                }
+            } else if (!updatedData.deleted) {
+                // If it doesn't exist and is not deleted, render it
+                renderMessage(messageKey, updatedData);
             }
-            renderMessage(messageKey, updatedData);
         });
 
         chatListenerRef.on("child_removed", (oldChildSnapshot) => {
             const messageKey = oldChildSnapshot.key;
+            // Pastikan juga dihapus dari daftar "deleted for me" jika ada
+            deletedForMeMessages = deletedForMeMessages.filter(key => key !== messageKey);
+            saveDeletedForMeMessages();
+
             const messageElement = document.getElementById("msg-" + messageKey);
             if (messageElement) {
                 messageElement.remove();
@@ -648,6 +889,116 @@
             scrollToBottom();
         });
     }
+
+    // --- Message Interaction Popover Logic ---
+    function showInteractionPopover(messageEl) {
+        const messageKey = messageEl.dataset.messageKey;
+        const isOwnMessage = messageEl.dataset.isOwnMessage === 'true'; // Convert string to boolean
+
+        interactingMessageKey = messageKey;
+        interactingMessageIsOwn = isOwnMessage;
+
+        // Tentukan teks dan fungsi tombol hapus
+        if (isOwnMessage) {
+            deleteMessageBtn.textContent = "Hapus untuk Semua";
+        } else {
+            deleteMessageBtn.textContent = "Hapus untuk Saya";
+        }
+
+        // Tentukan posisi popover
+        const rect = messageEl.getBoundingClientRect();
+        messageInteractionPopover.style.left = `${rect.left + rect.width / 2}px`;
+        messageInteractionPopover.style.top = `${rect.top}px`;
+
+        messageInteractionOverlay.style.display = 'block';
+        messageInteractionPopover.style.display = 'flex';
+    }
+
+    function hideInteractionPopover() {
+        messageInteractionOverlay.style.display = 'none';
+        messageInteractionPopover.style.display = 'none';
+        interactingMessageKey = null;
+        interactingMessageIsOwn = false;
+    }
+
+    messageInteractionOverlay.addEventListener('click', (e) => {
+        if (e.target === messageInteractionOverlay) { // Hanya jika klik pada overlay, bukan popover
+            hideInteractionPopover();
+        }
+    });
+
+
+    // Delete message handler
+    deleteMessageBtn.addEventListener('click', async () => {
+        if (!interactingMessageKey) return;
+
+        if (interactingMessageIsOwn) {
+            // Hapus untuk semua (dari database)
+            if (confirm("Yakin ingin menghapus pesan ini untuk semua orang?")) {
+                db.ref(`chats/${interactingMessageKey}`).update({ deleted: true })
+                    .then(() => {
+                        console.log("Pesan berhasil dihapus dari database.");
+                        hideInteractionPopover();
+                    })
+                    .catch(error => {
+                        console.error("Error menghapus pesan:", error);
+                        alert("Gagal menghapus pesan. Coba lagi.");
+                    });
+            }
+        } else {
+            // Hapus untuk saya saja (lokal)
+            if (confirm("Yakin ingin menghapus pesan ini hanya untuk Anda?")) {
+                if (!deletedForMeMessages.includes(interactingMessageKey)) {
+                    deletedForMeMessages.push(interactingMessageKey);
+                    saveDeletedForMeMessages();
+                    // Hapus elemen dari DOM
+                    const elToRemove = document.getElementById("msg-" + interactingMessageKey);
+                    if (elToRemove) elToRemove.remove();
+                    console.log("Pesan berhasil dihapus secara lokal.");
+                }
+                hideInteractionPopover();
+            }
+        }
+    });
+
+    // React emoji handler
+    reactEmojiButtons.forEach(button => {
+        button.addEventListener('click', async () => {
+            const emoji = button.dataset.emoji;
+            if (!interactingMessageKey || !currentUid || !emoji) return;
+
+            const messageRef = db.ref(`chats/${interactingMessageKey}`);
+            messageRef.transaction((currentMessage) => {
+                if (currentMessage) {
+                    if (!currentMessage.reactions) {
+                        currentMessage.reactions = {};
+                    }
+                    if (!currentMessage.reactions[emoji]) {
+                        currentMessage.reactions[emoji] = { count: 0 };
+                    }
+                    if (!currentMessage.reactions[emoji][currentUid]) { // User hasn't reacted with this emoji yet
+                        currentMessage.reactions[emoji].count = (currentMessage.reactions[emoji].count || 0) + 1;
+                        currentMessage.reactions[emoji][currentUid] = true;
+                    } else { // User already reacted, unreact
+                        currentMessage.reactions[emoji].count = Math.max(0, (currentMessage.reactions[emoji].count || 0) - 1);
+                        delete currentMessage.reactions[emoji][currentUid];
+                        // If count becomes 0, remove the emoji entry
+                        if (currentMessage.reactions[emoji].count === 0) {
+                            delete currentMessage.reactions[emoji];
+                        }
+                    }
+                }
+                return currentMessage;
+            })
+            .then(() => {
+                console.log(`Reaksi '${emoji}' berhasil diupdate.`);
+                hideInteractionPopover(); // Tutup popover setelah reaksi
+            })
+            .catch(error => {
+                console.error("Error updating reaction:", error);
+            });
+        });
+    });
 
 
     // --- Sidebar Functions ---
@@ -786,7 +1137,6 @@
 
 
     // Auth State Change Listener (PENTING untuk mengelola login/logout dan data user)
-    // Ini akan dipanggil saat pertama kali halaman dimuat, dan setiap kali status auth berubah.
     auth.onAuthStateChanged(async user => {
       loadingScreen.style.display = "none"; // Sembunyikan loading screen setelah status auth diketahui
 
@@ -805,12 +1155,12 @@
             }
 
             loginPage.style.display = "none";
-            chatWrapper.style.display = "flex"; // Tampilkan chat setelah login
+            chatWrapper.style.display = "flex";
 
             adjustChatWrapperPadding();
             window.addEventListener('resize', adjustChatWrapperPadding);
 
-            setupChatListeners();
+            setupChatListeners(); // Mulai dengarkan chat
             updateProfileDisplay();
           } else {
             console.error("User profile not found in database. Logging out.");
@@ -824,8 +1174,8 @@
         currentUsername = null;
         currentUid = null;
         isAdmin = false;
-        loginPage.style.display = "flex"; // Tampilkan halaman login
-        chatWrapper.style.display = "none"; // Sembunyikan chat
+        loginPage.style.display = "flex";
+        chatWrapper.style.display = "none";
         if (chatListenerRef) {
             chatListenerRef.off("child_added");
             chatListenerRef.off("child_changed");
@@ -840,8 +1190,7 @@
 
     // Initial padding adjustment on page load
     window.addEventListener('load', () => {
-        // adjustChatWrapperPadding() akan dipanggil oleh onAuthStateChanged setelah status user diketahui
-        // tidak perlu panggil di sini
+        // No explicit call needed here, onAuthStateChanged handles initial display
     });
   </script>
 
