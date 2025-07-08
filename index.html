@@ -347,6 +347,9 @@
     const db = firebase.database();
     const auth = firebase.auth();
 
+    // Inisialisasi Firebase Functions SDK
+    // const functions = firebase.functions(); // Hanya jika Anda menggunakan client SDK untuk Callable functions
+
     const imgbbKey = "a12e3657b8edd041c13eda8c12ff5925";
 
     // --- UI Elements ---
@@ -385,18 +388,27 @@
     const addFriendBtn = document.getElementById('add-friend-btn');
     const addFriendMessage = document.getElementById('add-friend-message');
     const friendList = document.getElementById('friend-list');
-    const friendRequestsList = document.getElementById('friend-requests-list'); // NEW
-    const noFriendRequests = document.getElementById('no-friend-requests'); // NEW
+    const friendRequestsList = document.getElementById('friend-requests-list');
+    const noFriendRequests = document.getElementById('no-friend-requests');
 
     // --- Global State Variables ---
     let isLoginMode = true;
     let currentUsername = null;
     let currentUid = null;
     let replyTo = null;
+    let isAdmin = false; // Admin status
 
     let currentChatMode = 'public'; // 'public' or 'private'
     let currentPrivateChatFriendUid = null;
     let currentPrivateChatFriendUsername = null;
+
+    const ADMIN_USERNAME = 'kyy';
+    const ADMIN_PASSWORD = 'Aku cinta19';
+
+    // **PENTING: Ganti URL ini dengan URL Cloud Function Anda setelah deploy!**
+    // Anda bisa mendapatkan URL ini setelah deploy fungsi, contohnya:
+    // https://asia-southeast1-your-project-id.cloudfunctions.net/addFriend
+    const BASE_FUNCTIONS_URL = "https://asia-southeast1-realtime-df5d0.cloudfunctions.net"; // Ganti dengan Project ID Anda
 
     // --- Helper Functions ---
     function usernameToEmail(username) {
@@ -456,12 +468,31 @@
 
       try {
         if (isLoginMode) {
-          await auth.signInWithEmailAndPassword(emailForAuth, password);
-        } else {
+          // Special login for Admin
+          if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+              const userCredential = await auth.signInWithEmailAndPassword(emailForAuth, password);
+              // Set isAdmin flag in database if not exists (for first time login)
+              // Note: isAdmin is set manually in DB for 'kyy' after first login/registration
+              // This update is more for initial setup if not yet marked as admin
+              await db.ref('users/' + userCredential.user.uid).update({
+                  username: username,
+                  emailForAuth: emailForAuth,
+                  // isAdmin: true // This should be managed manually in DB for security
+              });
+          } else {
+              await auth.signInWithEmailAndPassword(emailForAuth, password);
+          }
+        } else { // Register Mode
+          if (username.toLowerCase() === ADMIN_USERNAME.toLowerCase()) { // Prevent registering as "kyy"
+            loginError.textContent = "Username 'kyy' tidak dapat digunakan.";
+            loginError.style.display = "block";
+            return;
+          }
           const userCredential = await auth.createUserWithEmailAndPassword(emailForAuth, password);
           await db.ref('users/' + userCredential.user.uid).set({
             username: username,
-            emailForAuth: emailForAuth
+            emailForAuth: emailForAuth,
+            isAdmin: false // Default to false for new users
           });
           alert("Pendaftaran berhasil! Silakan login.");
           isLoginMode = true;
@@ -472,9 +503,9 @@
       } catch (error) {
         let errorMessage = "Terjadi kesalahan. Silakan coba lagi.";
         if (error.code === 'auth/user-not-found') {
-          errorMessage = "Username tidak ditemukan.";
+          errorMessage = "Username atau password salah.";
         } else if (error.code === 'auth/wrong-password') {
-          errorMessage = "Password salah.";
+          errorMessage = "Username atau password salah.";
         } else if (error.code === 'auth/email-already-in-use') {
           errorMessage = "Username sudah digunakan.";
         } else if (error.code === 'auth/invalid-email') {
@@ -489,11 +520,12 @@
     });
 
     // --- Message Rendering ---
-    function renderMessage(key, data) { // Removed isPrivate parameter, now logic is based on currentChatMode
+    function renderMessage(key, data) {
       const div = document.createElement("div");
       const isOwn = data.userUid === currentUid;
       div.classList.add("msg", isOwn ? "own" : "other");
       div.id = "msg-" + key;
+      div.dataset.messageKey = key; // Store key for deletion
 
       const time = new Date(data.timestamp || Date.now());
       const timeStr = time.getHours().toString().padStart(2, "0") + ":" +
@@ -546,11 +578,12 @@
       div.addEventListener("touchstart", e => {
         startX = e.touches[0].clientX;
         startY = e.touches[0].clientY;
+        moved = false; // Reset moved status
       });
       div.addEventListener("touchmove", e => {
         const dx = e.touches[0].clientX - startX;
         const dy = e.touches[0].clientY - startY;
-        if (Math.abs(dy) > Math.abs(dx)) return;
+        if (Math.abs(dy) > Math.abs(dx)) return; // Only consider horizontal swipe
         if (dx > 0 && dx < 100) {
           moved = true;
           div.style.transform = `translateX(${dx}px)`;
@@ -559,6 +592,7 @@
       div.addEventListener("touchend", e => {
         const dx = e.changedTouches[0].clientX - startX;
         if (moved && dx > 60) {
+          // Reply logic
           replyTo = { user: data.user, message: data.message || 'Gambar' };
           replyText.textContent = "Balas: " + replyTo.user + ": " + replyTo.message;
           replyPreview.style.display = "flex";
@@ -567,20 +601,42 @@
         moved = false;
       });
 
-      if (isOwn) {
-        let timeout = null;
-        div.addEventListener("touchstart", () => {
+      // Long press for delete
+      let timeout = null;
+      div.addEventListener("touchstart", (e) => {
+          if (e.target.tagName === 'IMG') return; // Don't trigger on image
           timeout = setTimeout(() => {
-            if (confirm("Hapus pesan ini?")) {
-              const chatRef = (currentChatMode === 'public')
-                ? db.ref(`chats/${key}`)
-                : db.ref(`private_chats/${getPrivateChatId(currentUid, currentPrivateChatFriendUid)}/messages/${key}`);
-              chatRef.update({ deleted: true });
-            }
-          }, 600);
-        });
-        div.addEventListener("touchend", () => clearTimeout(timeout));
-      }
+              // Deletion logic
+              const messageKey = div.dataset.messageKey;
+              if (messageKey) {
+                  // Admin can delete any message, owner can delete their own
+                  if (isAdmin || isOwn) {
+                      if (confirm("Hapus pesan ini?")) {
+                          let chatRef;
+                          if (currentChatMode === 'public') {
+                              chatRef = db.ref(`chats/${messageKey}`);
+                          } else if (currentChatMode === 'private' && currentPrivateChatFriendUid) {
+                              const privateChatId = getPrivateChatId(currentUid, currentPrivateChatFriendUid);
+                              chatRef = db.ref(`private_chats/${privateChatId}/messages/${messageKey}`);
+                          }
+                          if (chatRef) {
+                              chatRef.update({ deleted: true })
+                                  .catch(error => console.error("Error deleting message:", error));
+                          }
+                      }
+                  } else {
+                      // Optionally, show a message for non-owners/non-admins trying to delete
+                      // alert("Anda hanya bisa menghapus pesan Anda sendiri.");
+                  }
+              }
+          }, 600); // 600ms for long press
+      });
+      div.addEventListener("touchend", () => {
+          clearTimeout(timeout);
+      });
+      div.addEventListener("touchcancel", () => { // Handle accidental cancels
+          clearTimeout(timeout);
+      });
     }
 
     // --- Chat Mode Management ---
@@ -646,7 +702,7 @@
     closeSidebarButton.addEventListener('click', closeSidebar);
     sidebarOverlay.addEventListener('click', closeSidebar);
 
-    // --- Add Friend Logic ---
+    // --- Add Friend Logic (DIPINDAHKAN KE CLOUD FUNCTION) ---
     addFriendBtn.addEventListener('click', async () => {
         const friendUsername = addFriendInput.value.trim();
         addFriendMessage.textContent = '';
@@ -659,66 +715,35 @@
             addFriendMessage.textContent = 'Tidak bisa menambahkan diri sendiri.';
             return;
         }
+        if (!currentUid) {
+            addFriendMessage.textContent = 'Anda harus login untuk menambahkan teman.';
+            return;
+        }
 
         try {
-            const allUsersSnapshot = await db.ref('users').once('value');
-            let friendUid = null;
-            let foundFriendUsername = null;
-
-            allUsersSnapshot.forEach(userNode => {
-                if (userNode.val().username === friendUsername) {
-                    friendUid = userNode.key;
-                    foundFriendUsername = userNode.val().username;
-                    return true;
-                }
+            // Memanggil Cloud Function untuk mengirim permintaan pertemanan
+            const idToken = await auth.currentUser.getIdToken(); // Dapatkan ID Token
+            const response = await fetch(`${BASE_FUNCTIONS_URL}/sendFriendRequest`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${idToken}` // Kirim ID Token
+                },
+                body: JSON.stringify({ targetUsername: friendUsername })
             });
 
-            if (friendUid && friendUid !== currentUid) {
-                // Check if already friends
-                const alreadyFriends = (await db.ref(`users/${currentUid}/friends/${friendUid}`).once('value')).exists();
-                if (alreadyFriends) {
-                    addFriendMessage.textContent = `${foundFriendUsername} sudah ada di daftar teman Anda.`;
-                    return;
-                }
+            const result = await response.json();
 
-                // Check if a request is already sent
-                const requestAlreadySent = (await db.ref(`users/${currentUid}/friend_requests_sent/${friendUid}`).once('value')).exists();
-                if (requestAlreadySent) {
-                    addFriendMessage.textContent = `Permintaan sudah terkirim ke ${foundFriendUsername}.`;
-                    return;
-                }
-
-                // Check if there's a pending request from the other user
-                const requestFromFriendExists = (await db.ref(`users/${currentUid}/friend_requests_received/${friendUid}`).once('value')).exists();
-                if (requestFromFriendExists) {
-                    addFriendMessage.textContent = `Anda sudah menerima permintaan dari ${foundFriendUsername}. Silakan terima di bagian Permintaan Pertemanan.`;
-                    return;
-                }
-
-
-                // Send friend request to the target user
-                await db.ref(`users/${friendUid}/friend_requests_received/${currentUid}`).set({
-                    username: currentUsername,
-                    uid: currentUid,
-                    timestamp: Date.now()
-                });
-
-                // Record that this user sent a request
-                await db.ref(`users/${currentUid}/friend_requests_sent/${friendUid}`).set({
-                    username: foundFriendUsername,
-                    uid: friendUid,
-                    timestamp: Date.now()
-                });
-
+            if (response.ok) {
                 addFriendInput.value = '';
-                addFriendMessage.textContent = `Permintaan pertemanan terkirim ke ${foundFriendUsername}.`;
-                // No need to loadFriendList here as they are not yet friends
+                addFriendMessage.textContent = result.message;
             } else {
-                addFriendMessage.textContent = 'Username tidak ditemukan atau Anda mencoba menambahkan diri sendiri.';
+                addFriendMessage.textContent = result.message || 'Gagal mengirim permintaan pertemanan.';
+                console.error('Error from Cloud Function:', result.error);
             }
         } catch (error) {
-            console.error("Error adding friend:", error);
-            addFriendMessage.textContent = 'Gagal menambahkan teman. Coba lagi.';
+            console.error("Error sending friend request:", error);
+            addFriendMessage.textContent = 'Terjadi kesalahan jaringan. Coba lagi.';
         }
     });
 
@@ -729,7 +754,7 @@
         friendRequestsList.innerHTML = ''; // Clear previous requests
         db.ref(`users/${currentUid}/friend_requests_received`).on('value', (snapshot) => {
             friendRequestsList.innerHTML = '';
-            if (!snapshot.exists()) {
+            if (!snapshot.exists() || snapshot.numChildren() === 0) { // Check for children count
                 noFriendRequests.style.display = 'block';
                 return;
             } else {
@@ -754,13 +779,13 @@
                 const acceptBtn = document.createElement('button');
                 acceptBtn.classList.add('accept-btn');
                 acceptBtn.textContent = 'Terima';
-                acceptBtn.addEventListener('click', () => acceptFriendRequest(senderUid, requestData.username));
+                acceptBtn.addEventListener('click', () => acceptFriendRequest(senderUid)); // Hanya perlu senderUid
                 actions.appendChild(acceptBtn);
 
                 const declineBtn = document.createElement('button');
                 declineBtn.classList.add('decline-btn');
                 declineBtn.textContent = 'Tolak';
-                declineBtn.addEventListener('click', () => declineFriendRequest(senderUid));
+                declineBtn.addEventListener('click', () => declineFriendRequest(senderUid)); // Hanya perlu senderUid
                 actions.appendChild(declineBtn);
 
                 requestItem.appendChild(actions);
@@ -769,48 +794,68 @@
         });
     }
 
-    async function acceptFriendRequest(senderUid, senderUsername) {
+    // --- Accept Friend Request Logic (DIPINDAHKAN KE CLOUD FUNCTION) ---
+    async function acceptFriendRequest(senderUid) {
+        if (!currentUid) {
+            alert('Anda harus login untuk menerima permintaan.');
+            return;
+        }
         try {
-            // Add sender to current user's friend list
-            await db.ref(`users/${currentUid}/friends/${senderUid}`).set({
-                username: senderUsername,
-                uid: senderUid
+            const idToken = await auth.currentUser.getIdToken();
+            const response = await fetch(`${BASE_FUNCTIONS_URL}/acceptFriendRequest`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${idToken}`
+                },
+                body: JSON.stringify({ senderUid: senderUid })
             });
 
-            // Add current user to sender's friend list
-            await db.ref(`users/${senderUid}/friends/${currentUid}`).set({
-                username: currentUsername,
-                uid: currentUid
-            });
+            const result = await response.json();
 
-            // Remove request from current user's received requests
-            await db.ref(`users/${currentUid}/friend_requests_received/${senderUid}`).remove();
-
-            // Remove request from sender's sent requests
-            await db.ref(`users/${senderUid}/friend_requests_sent/${currentUid}`).remove();
-
-            alert(`Anda sekarang berteman dengan ${senderUsername}!`);
-            loadFriendList(); // Refresh friend list
-            loadFriendRequests(); // Refresh requests list
+            if (response.ok) {
+                alert(result.message);
+                loadFriendList();
+                loadFriendRequests();
+            } else {
+                alert(result.message || 'Gagal menerima permintaan pertemanan.');
+                console.error('Error from Cloud Function:', result.error);
+            }
         } catch (error) {
             console.error("Error accepting friend request:", error);
-            alert("Gagal menerima permintaan pertemanan. Coba lagi.");
+            alert("Terjadi kesalahan jaringan. Coba lagi.");
         }
     }
 
+    // --- Decline Friend Request Logic (DIPINDAHKAN KE CLOUD FUNCTION) ---
     async function declineFriendRequest(senderUid) {
+        if (!currentUid) {
+            alert('Anda harus login untuk menolak permintaan.');
+            return;
+        }
         try {
-            // Remove request from current user's received requests
-            await db.ref(`users/${currentUid}/friend_requests_received/${senderUid}`).remove();
+            const idToken = await auth.currentUser.getIdToken();
+            const response = await fetch(`${BASE_FUNCTIONS_URL}/declineFriendRequest`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${idToken}`
+                },
+                body: JSON.stringify({ senderUid: senderUid })
+            });
 
-            // Remove request from sender's sent requests
-            await db.ref(`users/${senderUid}/friend_requests_sent/${currentUid}`).remove();
+            const result = await response.json();
 
-            alert("Permintaan pertemanan ditolak.");
-            loadFriendRequests(); // Refresh requests list
+            if (response.ok) {
+                alert(result.message);
+                loadFriendRequests();
+            } else {
+                alert(result.message || 'Gagal menolak permintaan pertemanan.');
+                console.error('Error from Cloud Function:', result.error);
+            }
         } catch (error) {
             console.error("Error declining friend request:", error);
-            alert("Gagal menolak permintaan pertemanan. Coba lagi.");
+            alert("Terjadi kesalahan jaringan. Coba lagi.");
         }
     }
 
@@ -822,6 +867,10 @@
         friendList.innerHTML = '';
         db.ref(`users/${currentUid}/friends`).on('value', (snapshot) => {
             friendList.innerHTML = '';
+            if (!snapshot.exists()) {
+                // Opsional: tampilkan pesan "belum ada teman"
+                return;
+            }
             snapshot.forEach((friendNode) => {
                 const friendData = friendNode.val();
                 const friendItem = document.createElement('div');
@@ -870,7 +919,7 @@
     });
 
     // --- Send Message Logic ---
-    sendBtn.onclick = async () => { // Changed to async to await participant setting
+    sendBtn.onclick = async () => {
       const message = input.value.trim();
       if (!message || !currentUsername || !currentUid) return;
 
@@ -888,14 +937,12 @@
         const privateChatId = getPrivateChatId(currentUid, currentPrivateChatFriendUid);
         const privateChatRef = db.ref(`private_chats/${privateChatId}`);
 
-        // IMPORTANT: Set participants FIRST to satisfy Firebase Rules
-        // Use update instead of set to avoid overwriting existing data if any
+        // Ini tetap di sisi klien karena hanya update status partisipan, bukan logic utama pertemanan
         await privateChatRef.child('participants').update({
             [currentUid]: true,
             [currentPrivateChatFriendUid]: true
         });
 
-        // Then push the message
         db.ref(`private_chats/${privateChatId}/messages`).push(msgData);
       }
       input.value = "";
@@ -917,7 +964,7 @@
           body: new URLSearchParams({ image: base64 })
         })
         .then(res => res.json())
-        .then(async result => { // Changed to async here too
+        .then(async result => {
           const msgData = {
             user: currentUsername,
             userUid: currentUid,
@@ -932,7 +979,6 @@
             const privateChatId = getPrivateChatId(currentUid, currentPrivateChatFriendUid);
             const privateChatRef = db.ref(`private_chats/${privateChatId}`);
 
-            // IMPORTANT: Set participants FIRST to satisfy Firebase Rules
             await privateChatRef.child('participants').update({
                 [currentUid]: true,
                 [currentPrivateChatFriendUid]: true
@@ -985,7 +1031,10 @@
         const userProfileRef = db.ref('users/' + currentUid);
         userProfileRef.once('value').then(snapshot => {
           if (snapshot.exists()) {
-            currentUsername = snapshot.val().username;
+            const userData = snapshot.val();
+            currentUsername = userData.username;
+            isAdmin = userData.isAdmin || false; // Set isAdmin status
+
             loginPage.style.display = "none";
             chatWrapper.style.display = "flex";
 
@@ -993,8 +1042,8 @@
             window.addEventListener('resize', adjustChatWrapperPadding);
 
             loadPublicChat();
-            loadFriendList(); // Ensure friend list is loaded/updated
-            loadFriendRequests(); // Load friend requests when user logs in
+            loadFriendList();
+            loadFriendRequests();
           } else {
             console.error("User profile not found in database. Logging out.");
             auth.signOut();
@@ -1006,6 +1055,7 @@
       } else {
         currentUsername = null;
         currentUid = null;
+        isAdmin = false; // Reset admin status on logout
         loginPage.style.display = "flex";
         chatWrapper.style.display = "none";
         if (chatListenerRef) chatListenerRef.off();
