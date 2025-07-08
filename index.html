@@ -6,7 +6,8 @@
   <title>Chat Realtime</title>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script> <style>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <style>
     /* Reset & Base Styles */
     * { box-sizing: border-box; }
     html, body {
@@ -17,11 +18,38 @@
     }
     body { display: flex; flex-direction: column; }
 
+    /* Loading Screen */
+    #loading-screen {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: #2c3e50; /* Warna gelap */
+      color: white; display: flex; justify-content: center; align-items: center;
+      font-size: 8vw; z-index: 10000; /* Pastikan di paling atas */
+      flex-direction: column;
+    }
+    #loading-screen .spinner {
+        border: 8px solid rgba(255, 255, 255, 0.3);
+        border-top: 8px solid #4caf50;
+        border-radius: 50%;
+        width: 60px;
+        height: 60px;
+        animation: spin 1s linear infinite;
+        margin-bottom: 20px;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    #loading-screen p {
+        font-size: 4vw;
+        margin: 0;
+    }
+
     /* Login Page */
     #login-page {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: url('https://raw.githubusercontent.com/ikyYourStar/ZedxChat/refs/heads/main/assets/ced57229-34ea-461b-9ecd-7a1b17154cd3.jpeg') no-repeat center center fixed;
-      background-size: cover; display: flex; justify-content: center; align-items: center;
+      background-size: cover; display: none; /* Default hidden */
+      justify-content: center; align-items: center;
       flex-direction: column; z-index: 1000; color: white; text-shadow: 1px 1px 2px black;
     }
     #login-form {
@@ -184,6 +212,9 @@
 
     /* Media Queries for Desktop */
     @media (min-width: 768px) {
+      #loading-screen { font-size: 32px; }
+      #loading-screen p { font-size: 16px; }
+
       #sidebar { left: -300px; width: 300px; padding: 20px 15px; }
       #sidebar.active { left: 0; }
       #sidebar-header h3 { font-size: 24px; }
@@ -227,6 +258,11 @@
   </style>
 </head>
 <body>
+
+  <div id="loading-screen">
+    <div class="spinner"></div>
+    <p>Memuat...</p>
+  </div>
 
   <div id="login-page">
     <div id="login-form">
@@ -298,6 +334,7 @@
     const imgbbKey = "a12e3657b8edd041c13eda8c12ff5925";
 
     // --- UI Elements ---
+    const loadingScreen = document.getElementById("loading-screen"); // New
     // Login
     const loginPage = document.getElementById("login-page");
     const usernameInput = document.getElementById("username-input");
@@ -347,11 +384,8 @@
 
     // --- Helper Functions ---
     function usernameToEmail(username) {
-        // Firebase Auth membutuhkan format email, jadi kita konversi username
-        // Hapus karakter non-alphanumeric untuk membuat email yang valid
-        // username yang tidak valid (e.g. "Anonim") akan dihandle secara spesifik
         if (username.toLowerCase() === 'anonim') {
-            return `invalid-anonim@chatkita.com`; // Mengembalikan email tidak valid untuk 'Anonim'
+            return `invalid-anonim@chatkita.com`;
         }
         return `${username.toLowerCase().replace(/[^a-z0-9]/g, '')}@chatkita.com`;
     }
@@ -372,7 +406,6 @@
         const inputAreaHeight = inputArea.offsetHeight;
         chatWrapper.style.paddingTop = `${headerHeight}px`;
         chatWrapper.style.paddingBottom = `${inputAreaHeight}px`;
-        // Atur custom property CSS untuk posisi reply-preview
         replyPreview.style.setProperty('--input-area-height', `${inputAreaHeight}px`);
     }
 
@@ -396,15 +429,14 @@
     authButton.addEventListener("click", async () => {
       const username = usernameInput.value.trim();
       const password = passwordInput.value;
-      const emailForAuth = usernameToEmail(username); // Konversi username ke format email untuk Firebase Auth
-      loginError.style.display = "none"; // Sembunyikan error sebelumnya
+      const emailForAuth = usernameToEmail(username);
+      loginError.style.display = "none";
 
       if (!username || !password) {
         loginError.textContent = "Username dan password harus diisi.";
         loginError.style.display = "block";
         return;
       }
-      // Khusus untuk username 'Anonim' yang tidak boleh dipakai saat daftar
       if (emailForAuth === `invalid-anonim@chatkita.com`) {
         loginError.textContent = "Username 'Anonim' tidak dapat digunakan untuk pendaftaran.";
         loginError.style.display = "block";
@@ -413,37 +445,29 @@
 
       try {
         if (isLoginMode) {
-          // Logika Login
-          // Cek khusus untuk admin 'kyy'
           if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
               const userCredential = await auth.signInWithEmailAndPassword(emailForAuth, password);
-              // Pastikan isAdmin terupdate di database untuk kyy
-              // Untuk produksi, status admin sebaiknya diatur di konsol Firebase atau Cloud Functions
               await db.ref('users/' + userCredential.user.uid).update({
-                  username: username, // Mengupdate username jika diperlukan
+                  username: username,
                   emailForAuth: emailForAuth,
-                  isAdmin: true // Set isAdmin secara eksplisit
+                  isAdmin: true
               });
           } else {
               await auth.signInWithEmailAndPassword(emailForAuth, password);
           }
         } else {
-          // Logika Registrasi
-          // Jangan biarkan user register dengan username admin
           if (username.toLowerCase() === ADMIN_USERNAME.toLowerCase()) {
             loginError.textContent = "Username 'kyy' tidak dapat digunakan.";
             loginError.style.display = "block";
             return;
           }
           const userCredential = await auth.createUserWithEmailAndPassword(emailForAuth, password);
-          // Simpan username dan email di Realtime Database
           await db.ref('users/' + userCredential.user.uid).set({
-            username: username, // Simpan username yang dipilih user
+            username: username,
             emailForAuth: emailForAuth,
-            isAdmin: false // Default bukan admin
+            isAdmin: false
           });
           alert("Pendaftaran berhasil! Silakan login.");
-          // Kembali ke mode login setelah daftar
           isLoginMode = true;
           formTitle.textContent = "Login";
           authButton.textContent = "Login";
@@ -472,26 +496,23 @@
 
     // --- Message Rendering ---
     function renderMessage(key, data) {
-      // Cek apakah pesan sudah ada di DOM
       let div = document.getElementById("msg-" + key);
       if (div) {
-        // Jika pesan sudah ada, perbarui jika diperlukan (misal: pesan dihapus)
         if (data.deleted) {
           if (div.textContent !== "Pesan ini telah dihapus") {
             div.textContent = "Pesan ini telah dihapus";
             div.style.fontStyle = "italic";
-            div.innerHTML = div.textContent; // Hapus konten lama
+            div.innerHTML = div.textContent;
           }
         }
-        return; // Pesan sudah dirender, keluar dari fungsi
+        return;
       }
 
-      // Jika pesan belum ada, buat elemen baru
       div = document.createElement("div");
-      const isOwn = data.userUid === currentUid; // Gunakan userUid untuk cek kepemilikan
+      const isOwn = data.userUid === currentUid;
       div.classList.add("msg", isOwn ? "own" : "other");
       div.id = "msg-" + key;
-      div.dataset.messageKey = key; // Simpan key untuk operasi lain
+      div.dataset.messageKey = key;
 
       const time = new Date(data.timestamp || Date.now());
       const timeStr = time.getHours().toString().padStart(2, "0") + ":" +
@@ -501,7 +522,7 @@
         div.textContent = "Pesan ini telah dihapus";
         div.style.fontStyle = "italic";
         chatContainer.appendChild(div);
-        scrollToBottom(); // Scroll setelah ditambahkan
+        scrollToBottom();
         return;
       }
 
@@ -540,9 +561,8 @@
 
       div.appendChild(contentDiv);
       chatContainer.appendChild(div);
-      scrollToBottom(); // Scroll setelah ditambahkan
+      scrollToBottom();
 
-      // Geser untuk reply
       let startX = 0, startY = 0, moved = false;
       div.addEventListener("touchstart", e => {
         startX = e.touches[0].clientX;
@@ -569,43 +589,35 @@
         moved = false;
       });
 
-      // Long press untuk hapus
       let timeout = null;
       div.addEventListener("touchstart", (e) => {
-          if (e.target.tagName === 'IMG') return; // Jangan trigger jika menekan gambar
+          if (e.target.tagName === 'IMG') return;
           timeout = setTimeout(() => {
               const messageKey = div.dataset.messageKey;
               if (messageKey) {
-                  // Admin atau pemilik pesan bisa menghapus
                   if (isAdmin || isOwn) {
                       if (confirm("Hapus pesan ini?")) {
                           db.ref(`chats/${messageKey}`).update({ deleted: true })
                                   .catch(error => console.error("Error deleting message:", error));
                       }
-                  } else {
-                      // Opsional: tampilkan pesan bahwa tidak bisa menghapus
                   }
               }
-          }, 600); // 600ms untuk long press
+          }, 600);
       });
-      div.addEventListener("touchend", () => {
-          clearTimeout(timeout);
-      });
-      div.addEventListener("touchcancel", () => {
-          clearTimeout(timeout);
-      });
+      div.addEventListener("touchend", () => clearTimeout(timeout));
+      div.addEventListener("touchcancel", () => clearTimeout(timeout));
     }
 
     // --- Chat Listener Setup ---
     let chatListenerRef = null;
 
     function setupChatListeners() {
-        if (chatListenerRef) { // Hapus listener lama jika ada
+        if (chatListenerRef) {
             chatListenerRef.off("child_added");
             chatListenerRef.off("child_changed");
             chatListenerRef.off("child_removed");
         }
-        chatContainer.innerHTML = ''; // Kosongkan chat container saat listener baru disetup
+        chatContainer.innerHTML = '';
 
         chatListenerRef = db.ref("chats");
 
@@ -619,10 +631,9 @@
             const existingMessageElement = document.getElementById("msg-" + messageKey);
 
             if (existingMessageElement) {
-                // Hapus elemen lama dan render ulang untuk memastikan semua perubahan terlihat
                 existingMessageElement.remove();
             }
-            renderMessage(messageKey, updatedData); // Render ulang pesan yang berubah
+            renderMessage(messageKey, updatedData);
         });
 
         chatListenerRef.on("child_removed", (oldChildSnapshot) => {
@@ -633,7 +644,6 @@
             }
         });
 
-        // Pastikan scroll ke bawah setelah semua pesan awal dimuat
         chatListenerRef.once('value').then(() => {
             scrollToBottom();
         });
@@ -644,13 +654,13 @@
     function openSidebar() {
         sidebar.classList.add('active');
         sidebarOverlay.style.display = 'block';
-        updateProfileDisplay(); // Update profil saat sidebar dibuka
+        updateProfileDisplay();
     }
 
     function closeSidebar() {
         sidebar.classList.remove('active');
         sidebarOverlay.style.display = 'none';
-        logoutMenu.style.display = 'none'; // Sembunyikan menu logout jika terbuka
+        logoutMenu.style.display = 'none';
     }
 
     sidebarToggleButton.addEventListener('click', openSidebar);
@@ -662,7 +672,7 @@
         if (currentUid && currentUsername) {
             profileUsername.textContent = currentUsername;
             profileUid.textContent = `UID: ${currentUid}`;
-            profileAvatar.textContent = currentUsername.charAt(0).toUpperCase(); // Huruf pertama username
+            profileAvatar.textContent = currentUsername.charAt(0).toUpperCase();
         } else {
             profileUsername.textContent = "Tidak Login";
             profileUid.textContent = "";
@@ -674,11 +684,10 @@
     // --- Logout & Options ---
     optionsButton.addEventListener('click', (event) => {
       logoutMenu.style.display = logoutMenu.style.display === 'flex' ? 'none' : 'flex';
-      event.stopPropagation(); // Mencegah klik menyebar ke document dan menutup menu
+      event.stopPropagation();
     });
 
     document.addEventListener('click', (event) => {
-      // Tutup menu logout jika klik di luar tombol opsi atau menu itu sendiri
       if (!logoutMenu.contains(event.target) && event.target !== optionsButton) {
         logoutMenu.style.display = 'none';
       }
@@ -697,11 +706,11 @@
     // --- Send Message Logic ---
     sendBtn.onclick = async () => {
       const message = input.value.trim();
-      if (!message || !currentUsername || !currentUid) return; // Pastikan user login
+      if (!message || !currentUsername || !currentUid) return;
 
       const msgData = {
         user: currentUsername,
-        userUid: currentUid, // Simpan UID pengirim
+        userUid: currentUid,
         message,
         timestamp: Date.now()
       };
@@ -710,7 +719,7 @@
       db.ref("chats").push(msgData);
       input.value = "";
       cancelReply();
-      scrollToBottom(); // Scroll to bottom immediately after sending
+      scrollToBottom();
     };
 
     // --- Image Upload Logic ---
@@ -718,7 +727,7 @@
 
     fileInput.onchange = () => {
       const file = fileInput.files[0];
-      if (!file || !currentUsername || !currentUid) return; // Pastikan user login
+      if (!file || !currentUsername || !currentUid) return;
 
       const reader = new FileReader();
       reader.onload = function () {
@@ -731,7 +740,7 @@
         .then(async result => {
           const msgData = {
             user: currentUsername,
-            userUid: currentUid, // Simpan UID pengirim
+            userUid: currentUid,
             imageURL: result.data.url,
             timestamp: Date.now()
           };
@@ -739,7 +748,7 @@
 
           db.ref("chats").push(msgData);
           cancelReply();
-          scrollToBottom(); // Scroll to bottom immediately after sending
+          scrollToBottom();
         })
         .catch(err => {
           alert("Gagal upload gambar");
@@ -754,7 +763,6 @@
     });
 
     // --- Initialization & Event Listeners ---
-    // Atur padding chat-wrapper saat ukuran berubah (keyboard muncul/tutup)
     let initialViewportHeight = window.innerHeight;
     let isKeyboardOpen = false;
 
@@ -762,7 +770,7 @@
         const currentViewportHeight = window.innerHeight;
         const diff = initialViewportHeight - currentViewportHeight;
 
-        if (diff > (initialViewportHeight * 0.2)) { // Perubahan lebih dari 20% dianggap keyboard
+        if (diff > (initialViewportHeight * 0.2)) {
             if (!isKeyboardOpen) {
                 console.log("Keyboard dibuka");
                 isKeyboardOpen = true;
@@ -778,66 +786,62 @@
 
 
     // Auth State Change Listener (PENTING untuk mengelola login/logout dan data user)
+    // Ini akan dipanggil saat pertama kali halaman dimuat, dan setiap kali status auth berubah.
     auth.onAuthStateChanged(async user => {
+      loadingScreen.style.display = "none"; // Sembunyikan loading screen setelah status auth diketahui
+
       if (user) {
         currentUid = user.uid;
-        // Ambil data user dari Realtime Database (username, isAdmin)
         const userProfileRef = db.ref('users/' + currentUid);
         userProfileRef.once('value').then(snapshot => {
           if (snapshot.exists()) {
             const userData = snapshot.val();
             currentUsername = userData.username;
-            isAdmin = userData.isAdmin || false; // Set status admin
+            isAdmin = userData.isAdmin || false;
 
-            // Perbarui username menjadi "Anonim" jika masih format email default dari Firebase Auth
-            // atau jika username memang kosong (misal: user baru daftar tanpa set username)
             if (!userData.username || userData.username.includes('@chatkita.com')) {
                 currentUsername = "Anonim";
-                // Update juga di database agar konsisten
                 db.ref('users/' + currentUid).update({ username: "Anonim" });
             }
 
             loginPage.style.display = "none";
             chatWrapper.style.display = "flex"; // Tampilkan chat setelah login
 
-            adjustChatWrapperPadding(); // Sesuaikan padding awal
-            window.addEventListener('resize', adjustChatWrapperPadding); // Listen perubahan ukuran
+            adjustChatWrapperPadding();
+            window.addEventListener('resize', adjustChatWrapperPadding);
 
-            setupChatListeners(); // Mulai dengarkan chat
-            updateProfileDisplay(); // Update display profil di sidebar
+            setupChatListeners();
+            updateProfileDisplay();
           } else {
-            // Jika data user tidak ditemukan di database (misal: user hanya terdaftar di Auth tapi tidak di DB)
             console.error("User profile not found in database. Logging out.");
-            auth.signOut(); // Logout user
+            auth.signOut();
           }
         }).catch(error => {
           console.error("Error fetching user profile:", error);
-          auth.signOut(); // Logout jika ada error saat mengambil profil
+          auth.signOut();
         });
       } else {
-        // User logout atau belum login
         currentUsername = null;
         currentUid = null;
-        isAdmin = false; // Reset status admin
+        isAdmin = false;
         loginPage.style.display = "flex"; // Tampilkan halaman login
         chatWrapper.style.display = "none"; // Sembunyikan chat
-        if (chatListenerRef) { // Hapus listener chat saat logout
+        if (chatListenerRef) {
             chatListenerRef.off("child_added");
             chatListenerRef.off("child_changed");
             chatListenerRef.off("child_removed");
             chatListenerRef = null;
         }
-        window.removeEventListener('resize', adjustChatWrapperPadding); // Hapus listener resize
-        closeSidebar(); // Pastikan sidebar tertutup
-        updateProfileDisplay(); // Hapus display profil
+        window.removeEventListener('resize', adjustChatWrapperPadding);
+        closeSidebar();
+        updateProfileDisplay();
       }
     });
 
     // Initial padding adjustment on page load
     window.addEventListener('load', () => {
-        if (auth.currentUser) { // Hanya jika user sudah login saat load
-            adjustChatWrapperPadding();
-        }
+        // adjustChatWrapperPadding() akan dipanggil oleh onAuthStateChanged setelah status user diketahui
+        // tidak perlu panggil di sini
     });
   </script>
 
