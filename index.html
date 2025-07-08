@@ -6,8 +6,7 @@
   <title>Chat Realtime</title>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-  <style>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script> <style>
     /* Reset & Base Styles */
     * { box-sizing: border-box; }
     html, body {
@@ -46,7 +45,7 @@
 
     /* Chat Wrapper (Main Layout) */
     #chat-wrapper {
-      flex: 1; display: flex; flex-direction: column; display: none;
+      flex: 1; display: flex; flex-direction: column; display: none; /* Default hidden */
       padding-top: 0; padding-bottom: 0; overflow: hidden;
       position: relative; /* Penting untuk z-index sidebar */
     }
@@ -73,68 +72,41 @@
     #close-sidebar {
         background: none; border: none; color: white; font-size: 8vw; cursor: pointer;
     }
-    #add-friend-section {
-        margin-bottom: 5vw; padding-bottom: 3vw; border-bottom: 1px solid rgba(255,255,255,0.2);
-    }
-    #add-friend-section h4 { margin: 0 0 3vw 0; font-size: 4.5vw; }
-    #add-friend-input {
-        width: calc(100% - 2vw); padding: 2.5vw; margin-right: 1vw; border-radius: 1vw;
-        border: none; font-size: 4vw;
-    }
-    #add-friend-btn {
-        padding: 2.5vw 4vw; background: #3498db; color: white; border: none;
-        border-radius: 1vw; font-size: 4vw; cursor: pointer;
-    }
-    #add-friend-message { color: #e74c3c; margin-top: 2vw; font-size: 3.5vw; }
 
-    /* New: Friend Requests Section */
-    #friend-requests-section {
-        margin-bottom: 5vw; padding-bottom: 3vw; border-bottom: 1px solid rgba(255,255,255,0.2);
+    /* Profile Section in Sidebar */
+    #profile-section {
+        margin-bottom: 5vw;
+        padding: 3vw;
+        background: rgba(255,255,255,0.1);
+        border-radius: 1vw;
+        text-align: center;
     }
-    #friend-requests-section h4 { margin: 0 0 3vw 0; font-size: 4.5vw; }
-    #friend-requests-list {
-        /* overflow-y: auto; */ /* Enable scroll if many requests */
+    #profile-section h4 {
+        margin: 0 0 3vw 0;
+        font-size: 4.5vw;
     }
-    .friend-request-item {
-        display: flex; flex-direction: column; padding: 3vw; margin-bottom: 2vw;
-        background: rgba(255,255,255,0.1); border-radius: 1vw;
+    #profile-avatar {
+        width: 20vw;
+        height: 20vw;
+        border-radius: 50%;
+        background: #ddd;
+        margin: 0 auto 3vw auto;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 10vw;
+        font-weight: bold;
+        color: #333;
     }
-    .friend-request-item .request-info {
-        font-size: 4.5vw; font-weight: bold; margin-bottom: 2vw;
+    #profile-username {
+        font-size: 5vw;
+        font-weight: bold;
+        margin-bottom: 1vw;
     }
-    .friend-request-item .request-actions {
-        display: flex; gap: 2vw;
-    }
-    .friend-request-item .request-actions button {
-        flex: 1; padding: 2vw 3vw; border-radius: 1vw; border: none;
-        font-size: 3.8vw; cursor: pointer;
-    }
-    .friend-request-item .request-actions .accept-btn {
-        background: #27ae60; color: white;
-    }
-    .friend-request-item .request-actions .decline-btn {
-        background: #e74c3c; color: white;
-    }
-
-
-    #friend-list-section h4 { margin: 0 0 3vw 0; font-size: 4.5vw; }
-    #friend-list {
-        flex-grow: 1;
-        overflow-y: auto;
-    }
-    .friend-item {
-        display: flex; align-items: center; padding: 3vw; margin-bottom: 2vw;
-        background: rgba(255,255,255,0.1); border-radius: 1vw; cursor: pointer;
-        transition: background 0.2s ease;
-    }
-    .friend-item:hover { background: rgba(255,255,255,0.2); }
-    .friend-item .friend-avatar {
-        width: 10vw; height: 10vw; border-radius: 50%; background: #ddd;
-        margin-right: 3vw; display: flex; justify-content: center; align-items: center;
-        font-size: 5vw; font-weight: bold; color: #333;
-    }
-    .friend-item .friend-name {
-        font-size: 4.5vw; font-weight: bold;
+    #profile-uid {
+        font-size: 3.5vw;
+        opacity: 0.8;
+        word-break: break-all; /* Allow long UID to wrap */
     }
 
     /* Overlay untuk menutup sidebar saat di klik di luar */
@@ -143,6 +115,7 @@
         background: rgba(0,0,0,0.5); z-index: 999; display: none;
     }
 
+
     /* Chat Header */
     #chat-header {
       background: #f0f2f5; padding: 3vw; display: flex; justify-content: space-between;
@@ -150,10 +123,7 @@
       position: fixed; top: 0; left: 0; width: 100%; z-index: 990;
     }
     #chat-header h3 { margin: 0; font-size: 5vw; text-align: center; flex-grow: 1; }
-    #header-username {
-      flex-grow: 1; text-align: center;
-    }
-    #menu-button, #back-to-public-chat, #options-button {
+    #menu-button, #options-button {
       background: none; border: none; font-size: 6vw; cursor: pointer; padding: 0;
     }
     #menu-button { margin-right: 2vw; }
@@ -218,26 +188,19 @@
       #sidebar.active { left: 0; }
       #sidebar-header h3 { font-size: 24px; }
       #close-sidebar { font-size: 32px; }
-      #add-friend-section h4, #friend-list-section h4, #friend-requests-section h4 { font-size: 18px; }
-      #add-friend-input { padding: 10px; font-size: 16px; width: calc(100% - 10px); }
-      #add-friend-btn { padding: 10px 15px; font-size: 16px; }
-      #add-friend-message { font-size: 14px; }
 
-      .friend-request-item { padding: 12px; margin-bottom: 8px; }
-      .friend-request-item .request-info { font-size: 18px; margin-bottom: 8px; }
-      .friend-request-item .request-actions { gap: 8px; }
-      .friend-request-item .request-actions button { padding: 8px 12px; font-size: 15px; }
-
-      .friend-item { padding: 12px; margin-bottom: 8px; }
-      .friend-item .friend-avatar { width: 40px; height: 40px; font-size: 20px; margin-right: 15px; }
-      .friend-item .friend-name { font-size: 18px; }
+      #profile-section { padding: 15px; }
+      #profile-section h4 { font-size: 18px; }
+      #profile-avatar { width: 80px; height: 80px; font-size: 40px; margin-bottom: 15px; }
+      #profile-username { font-size: 20px; }
+      #profile-uid { font-size: 14px; }
 
 
       #chat-header {
         padding: 15px; font-size: 20px;
       }
       #chat-header h3 { font-size: 20px; }
-      #menu-button, #back-to-public-chat, #options-button { font-size: 24px; }
+      #menu-button, #options-button { font-size: 24px; }
       #menu-button { margin-right: 10px; }
       #options-button { margin-left: 10px; }
 
@@ -284,31 +247,16 @@
             <button id="close-sidebar">×</button>
         </div>
 
-        <div id="add-friend-section">
-            <h4>Tambah Teman</h4>
-            <input type="text" id="add-friend-input" placeholder="Username teman" />
-            <button id="add-friend-btn">Tambah</button>
-            <p id="add-friend-message"></p>
-        </div>
-
-        <div id="friend-requests-section">
-            <h4>Permintaan Pertemanan</h4>
-            <div id="friend-requests-list">
-                <p id="no-friend-requests" style="font-size: 3.5vw; opacity: 0.8;">Tidak ada permintaan baru.</p>
-            </div>
-        </div>
-
-        <div id="friend-list-section">
-            <h4>Daftar Teman</h4>
-            <div id="friend-list">
-                </div>
+        <div id="profile-section">
+            <h4>Profil Saya</h4>
+            <div id="profile-avatar">?</div> <div id="profile-username"></div>
+            <div id="profile-uid"></div>
         </div>
     </div>
     <div id="sidebar-overlay"></div>
 
     <div id="chat-header">
       <button id="sidebar-toggle-button">☰</button>
-      <button id="back-to-public-chat" style="display:none;">←</button>
       <h3 id="chat-title">Chat Publik</h3>
       <button id="options-button">⋮</button>
       <div id="logout-menu">
@@ -345,10 +293,7 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-    const auth = firebase.auth();
-
-    // Inisialisasi Firebase Functions SDK
-    // const functions = firebase.functions(); // Hanya jika Anda menggunakan client SDK untuk Callable functions
+    const auth = firebase.auth(); // Inisialisasi Firebase Auth
 
     const imgbbKey = "a12e3657b8edd041c13eda8c12ff5925";
 
@@ -366,7 +311,6 @@
     // Chat
     const chatHeader = document.getElementById('chat-header');
     const sidebarToggleButton = document.getElementById('sidebar-toggle-button');
-    const backToPublicChatButton = document.getElementById('back-to-public-chat');
     const chatTitle = document.getElementById('chat-title');
     const optionsButton = document.getElementById("options-button");
     const logoutMenu = document.getElementById("logout-menu");
@@ -384,40 +328,32 @@
     const sidebar = document.getElementById('sidebar');
     const closeSidebarButton = document.getElementById('close-sidebar');
     const sidebarOverlay = document.getElementById('sidebar-overlay');
-    const addFriendInput = document.getElementById('add-friend-input');
-    const addFriendBtn = document.getElementById('add-friend-btn');
-    const addFriendMessage = document.getElementById('add-friend-message');
-    const friendList = document.getElementById('friend-list');
-    const friendRequestsList = document.getElementById('friend-requests-list');
-    const noFriendRequests = document.getElementById('no-friend-requests');
+
+    // Profile Elements
+    const profileAvatar = document.getElementById('profile-avatar');
+    const profileUsername = document.getElementById('profile-username');
+    const profileUid = document.getElementById('profile-uid');
+
 
     // --- Global State Variables ---
     let isLoginMode = true;
-    let currentUsername = null;
-    let currentUid = null;
+    let currentUsername = null; // Akan diisi dari Firebase Auth
+    let currentUid = null;     // Akan diisi dari Firebase Auth
     let replyTo = null;
-    let isAdmin = false; // Admin status
-
-    let currentChatMode = 'public'; // 'public' or 'private'
-    let currentPrivateChatFriendUid = null;
-    let currentPrivateChatFriendUsername = null;
+    let isAdmin = false; // Status admin untuk fitur penghapusan pesan
 
     const ADMIN_USERNAME = 'kyy';
     const ADMIN_PASSWORD = 'Aku cinta19';
 
-    // **PENTING: Ganti URL ini dengan URL Cloud Function Anda setelah deploy!**
-    // Anda bisa mendapatkan URL ini setelah deploy fungsi, contohnya:
-    // https://asia-southeast1-your-project-id.cloudfunctions.net/addFriend
-    const BASE_FUNCTIONS_URL = "https://asia-southeast1-realtime-df5d0.cloudfunctions.net"; // Ganti dengan Project ID Anda
-
     // --- Helper Functions ---
     function usernameToEmail(username) {
+        // Firebase Auth membutuhkan format email, jadi kita konversi username
+        // Hapus karakter non-alphanumeric untuk membuat email yang valid
+        // username yang tidak valid (e.g. "Anonim") akan dihandle secara spesifik
+        if (username.toLowerCase() === 'anonim') {
+            return `invalid-anonim@chatkita.com`; // Mengembalikan email tidak valid untuk 'Anonim'
+        }
         return `${username.toLowerCase().replace(/[^a-z0-9]/g, '')}@chatkita.com`;
-    }
-
-    function getPrivateChatId(uid1, uid2) {
-        // Always sort UIDs to get a consistent chat ID
-        return uid1 < uid2 ? `${uid1}_${uid2}` : `${uid2}_${uid1}`;
     }
 
     function scrollToBottom() {
@@ -436,6 +372,7 @@
         const inputAreaHeight = inputArea.offsetHeight;
         chatWrapper.style.paddingTop = `${headerHeight}px`;
         chatWrapper.style.paddingBottom = `${inputAreaHeight}px`;
+        // Atur custom property CSS untuk posisi reply-preview
         replyPreview.style.setProperty('--input-area-height', `${inputAreaHeight}px`);
     }
 
@@ -451,54 +388,68 @@
         authButton.textContent = "Daftar";
         toggleModeButton.textContent = "Sudah punya akun? Login di sini.";
       }
+      usernameInput.value = ''; // Clear username input
+      passwordInput.value = ''; // Clear password input
       loginError.style.display = "none";
     });
 
     authButton.addEventListener("click", async () => {
       const username = usernameInput.value.trim();
       const password = passwordInput.value;
-      const emailForAuth = usernameToEmail(username);
-      loginError.style.display = "none";
+      const emailForAuth = usernameToEmail(username); // Konversi username ke format email untuk Firebase Auth
+      loginError.style.display = "none"; // Sembunyikan error sebelumnya
 
       if (!username || !password) {
         loginError.textContent = "Username dan password harus diisi.";
         loginError.style.display = "block";
         return;
       }
+      // Khusus untuk username 'Anonim' yang tidak boleh dipakai saat daftar
+      if (emailForAuth === `invalid-anonim@chatkita.com`) {
+        loginError.textContent = "Username 'Anonim' tidak dapat digunakan untuk pendaftaran.";
+        loginError.style.display = "block";
+        return;
+      }
 
       try {
         if (isLoginMode) {
-          // Special login for Admin
+          // Logika Login
+          // Cek khusus untuk admin 'kyy'
           if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
               const userCredential = await auth.signInWithEmailAndPassword(emailForAuth, password);
-              // Set isAdmin flag in database if not exists (for first time login)
-              // Note: isAdmin is set manually in DB for 'kyy' after first login/registration
-              // This update is more for initial setup if not yet marked as admin
+              // Pastikan isAdmin terupdate di database untuk kyy
+              // Untuk produksi, status admin sebaiknya diatur di konsol Firebase atau Cloud Functions
               await db.ref('users/' + userCredential.user.uid).update({
-                  username: username,
+                  username: username, // Mengupdate username jika diperlukan
                   emailForAuth: emailForAuth,
-                  // isAdmin: true // This should be managed manually in DB for security
+                  isAdmin: true // Set isAdmin secara eksplisit
               });
           } else {
               await auth.signInWithEmailAndPassword(emailForAuth, password);
           }
-        } else { // Register Mode
-          if (username.toLowerCase() === ADMIN_USERNAME.toLowerCase()) { // Prevent registering as "kyy"
+        } else {
+          // Logika Registrasi
+          // Jangan biarkan user register dengan username admin
+          if (username.toLowerCase() === ADMIN_USERNAME.toLowerCase()) {
             loginError.textContent = "Username 'kyy' tidak dapat digunakan.";
             loginError.style.display = "block";
             return;
           }
           const userCredential = await auth.createUserWithEmailAndPassword(emailForAuth, password);
+          // Simpan username dan email di Realtime Database
           await db.ref('users/' + userCredential.user.uid).set({
-            username: username,
+            username: username, // Simpan username yang dipilih user
             emailForAuth: emailForAuth,
-            isAdmin: false // Default to false for new users
+            isAdmin: false // Default bukan admin
           });
           alert("Pendaftaran berhasil! Silakan login.");
+          // Kembali ke mode login setelah daftar
           isLoginMode = true;
           formTitle.textContent = "Login";
           authButton.textContent = "Login";
           toggleModeButton.textContent = "Belum punya akun? Daftar di sini.";
+          usernameInput.value = '';
+          passwordInput.value = '';
         }
       } catch (error) {
         let errorMessage = "Terjadi kesalahan. Silakan coba lagi.";
@@ -521,11 +472,26 @@
 
     // --- Message Rendering ---
     function renderMessage(key, data) {
-      const div = document.createElement("div");
-      const isOwn = data.userUid === currentUid;
+      // Cek apakah pesan sudah ada di DOM
+      let div = document.getElementById("msg-" + key);
+      if (div) {
+        // Jika pesan sudah ada, perbarui jika diperlukan (misal: pesan dihapus)
+        if (data.deleted) {
+          if (div.textContent !== "Pesan ini telah dihapus") {
+            div.textContent = "Pesan ini telah dihapus";
+            div.style.fontStyle = "italic";
+            div.innerHTML = div.textContent; // Hapus konten lama
+          }
+        }
+        return; // Pesan sudah dirender, keluar dari fungsi
+      }
+
+      // Jika pesan belum ada, buat elemen baru
+      div = document.createElement("div");
+      const isOwn = data.userUid === currentUid; // Gunakan userUid untuk cek kepemilikan
       div.classList.add("msg", isOwn ? "own" : "other");
       div.id = "msg-" + key;
-      div.dataset.messageKey = key; // Store key for deletion
+      div.dataset.messageKey = key; // Simpan key untuk operasi lain
 
       const time = new Date(data.timestamp || Date.now());
       const timeStr = time.getHours().toString().padStart(2, "0") + ":" +
@@ -535,6 +501,7 @@
         div.textContent = "Pesan ini telah dihapus";
         div.style.fontStyle = "italic";
         chatContainer.appendChild(div);
+        scrollToBottom(); // Scroll setelah ditambahkan
         return;
       }
 
@@ -573,17 +540,19 @@
 
       div.appendChild(contentDiv);
       chatContainer.appendChild(div);
+      scrollToBottom(); // Scroll setelah ditambahkan
 
+      // Geser untuk reply
       let startX = 0, startY = 0, moved = false;
       div.addEventListener("touchstart", e => {
         startX = e.touches[0].clientX;
         startY = e.touches[0].clientY;
-        moved = false; // Reset moved status
+        moved = false;
       });
       div.addEventListener("touchmove", e => {
         const dx = e.touches[0].clientX - startX;
         const dy = e.touches[0].clientY - startY;
-        if (Math.abs(dy) > Math.abs(dx)) return; // Only consider horizontal swipe
+        if (Math.abs(dy) > Math.abs(dx)) return;
         if (dx > 0 && dx < 100) {
           moved = true;
           div.style.transform = `translateX(${dx}px)`;
@@ -592,7 +561,6 @@
       div.addEventListener("touchend", e => {
         const dx = e.changedTouches[0].clientX - startX;
         if (moved && dx > 60) {
-          // Reply logic
           replyTo = { user: data.user, message: data.message || 'Gambar' };
           replyText.textContent = "Balas: " + replyTo.user + ": " + replyTo.message;
           replyPreview.style.display = "flex";
@@ -601,308 +569,116 @@
         moved = false;
       });
 
-      // Long press for delete
+      // Long press untuk hapus
       let timeout = null;
       div.addEventListener("touchstart", (e) => {
-          if (e.target.tagName === 'IMG') return; // Don't trigger on image
+          if (e.target.tagName === 'IMG') return; // Jangan trigger jika menekan gambar
           timeout = setTimeout(() => {
-              // Deletion logic
               const messageKey = div.dataset.messageKey;
               if (messageKey) {
-                  // Admin can delete any message, owner can delete their own
+                  // Admin atau pemilik pesan bisa menghapus
                   if (isAdmin || isOwn) {
                       if (confirm("Hapus pesan ini?")) {
-                          let chatRef;
-                          if (currentChatMode === 'public') {
-                              chatRef = db.ref(`chats/${messageKey}`);
-                          } else if (currentChatMode === 'private' && currentPrivateChatFriendUid) {
-                              const privateChatId = getPrivateChatId(currentUid, currentPrivateChatFriendUid);
-                              chatRef = db.ref(`private_chats/${privateChatId}/messages/${messageKey}`);
-                          }
-                          if (chatRef) {
-                              chatRef.update({ deleted: true })
+                          db.ref(`chats/${messageKey}`).update({ deleted: true })
                                   .catch(error => console.error("Error deleting message:", error));
-                          }
                       }
                   } else {
-                      // Optionally, show a message for non-owners/non-admins trying to delete
-                      // alert("Anda hanya bisa menghapus pesan Anda sendiri.");
+                      // Opsional: tampilkan pesan bahwa tidak bisa menghapus
                   }
               }
-          }, 600); // 600ms for long press
+          }, 600); // 600ms untuk long press
       });
       div.addEventListener("touchend", () => {
           clearTimeout(timeout);
       });
-      div.addEventListener("touchcancel", () => { // Handle accidental cancels
+      div.addEventListener("touchcancel", () => {
           clearTimeout(timeout);
       });
     }
 
-    // --- Chat Mode Management ---
+    // --- Chat Listener Setup ---
     let chatListenerRef = null;
 
-    function loadPublicChat() {
-        if (chatListenerRef) {
-            chatListenerRef.off();
+    function setupChatListeners() {
+        if (chatListenerRef) { // Hapus listener lama jika ada
+            chatListenerRef.off("child_added");
+            chatListenerRef.off("child_changed");
+            chatListenerRef.off("child_removed");
         }
-        currentChatMode = 'public';
-        currentPrivateChatFriendUid = null;
-        currentPrivateChatFriendUsername = null;
-        chatTitle.textContent = "Chat Publik";
-        backToPublicChatButton.style.display = 'none';
-        chatContainer.innerHTML = '';
+        chatContainer.innerHTML = ''; // Kosongkan chat container saat listener baru disetup
 
         chatListenerRef = db.ref("chats");
-        chatListenerRef.on("value", (snapshot) => {
-            chatContainer.innerHTML = '';
-            snapshot.forEach((childSnapshot) => {
-                renderMessage(childSnapshot.key, childSnapshot.val());
-            });
+
+        chatListenerRef.on("child_added", (childSnapshot) => {
+            renderMessage(childSnapshot.key, childSnapshot.val());
+        });
+
+        chatListenerRef.on("child_changed", (childSnapshot) => {
+            const messageKey = childSnapshot.key;
+            const updatedData = childSnapshot.val();
+            const existingMessageElement = document.getElementById("msg-" + messageKey);
+
+            if (existingMessageElement) {
+                // Hapus elemen lama dan render ulang untuk memastikan semua perubahan terlihat
+                existingMessageElement.remove();
+            }
+            renderMessage(messageKey, updatedData); // Render ulang pesan yang berubah
+        });
+
+        chatListenerRef.on("child_removed", (oldChildSnapshot) => {
+            const messageKey = oldChildSnapshot.key;
+            const messageElement = document.getElementById("msg-" + messageKey);
+            if (messageElement) {
+                messageElement.remove();
+            }
+        });
+
+        // Pastikan scroll ke bawah setelah semua pesan awal dimuat
+        chatListenerRef.once('value').then(() => {
             scrollToBottom();
         });
     }
 
-    function loadPrivateChat(friendUid, friendUsername) {
-        if (chatListenerRef) {
-            chatListenerRef.off();
-        }
-        currentChatMode = 'private';
-        currentPrivateChatFriendUid = friendUid;
-        currentPrivateChatFriendUsername = friendUsername;
-        chatTitle.textContent = friendUsername;
-        backToPublicChatButton.style.display = 'block';
-        chatContainer.innerHTML = '';
-        closeSidebar();
-
-        const privateChatId = getPrivateChatId(currentUid, friendUid);
-        chatListenerRef = db.ref(`private_chats/${privateChatId}/messages`);
-        chatListenerRef.on("value", (snapshot) => {
-            chatContainer.innerHTML = '';
-            snapshot.forEach((childSnapshot) => {
-                renderMessage(childSnapshot.key, childSnapshot.val());
-            });
-            scrollToBottom();
-        });
-    }
 
     // --- Sidebar Functions ---
     function openSidebar() {
         sidebar.classList.add('active');
         sidebarOverlay.style.display = 'block';
+        updateProfileDisplay(); // Update profil saat sidebar dibuka
     }
 
     function closeSidebar() {
         sidebar.classList.remove('active');
         sidebarOverlay.style.display = 'none';
-        logoutMenu.style.display = 'none';
+        logoutMenu.style.display = 'none'; // Sembunyikan menu logout jika terbuka
     }
 
     sidebarToggleButton.addEventListener('click', openSidebar);
     closeSidebarButton.addEventListener('click', closeSidebar);
     sidebarOverlay.addEventListener('click', closeSidebar);
 
-    // --- Add Friend Logic (DIPINDAHKAN KE CLOUD FUNCTION) ---
-    addFriendBtn.addEventListener('click', async () => {
-        const friendUsername = addFriendInput.value.trim();
-        addFriendMessage.textContent = '';
-
-        if (!friendUsername) {
-            addFriendMessage.textContent = 'Masukkan username teman.';
-            return;
-        }
-        if (friendUsername === currentUsername) {
-            addFriendMessage.textContent = 'Tidak bisa menambahkan diri sendiri.';
-            return;
-        }
-        if (!currentUid) {
-            addFriendMessage.textContent = 'Anda harus login untuk menambahkan teman.';
-            return;
-        }
-
-        try {
-            // Memanggil Cloud Function untuk mengirim permintaan pertemanan
-            const idToken = await auth.currentUser.getIdToken(); // Dapatkan ID Token
-            const response = await fetch(`${BASE_FUNCTIONS_URL}/sendFriendRequest`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${idToken}` // Kirim ID Token
-                },
-                body: JSON.stringify({ targetUsername: friendUsername })
-            });
-
-            const result = await response.json();
-
-            if (response.ok) {
-                addFriendInput.value = '';
-                addFriendMessage.textContent = result.message;
-            } else {
-                addFriendMessage.textContent = result.message || 'Gagal mengirim permintaan pertemanan.';
-                console.error('Error from Cloud Function:', result.error);
-            }
-        } catch (error) {
-            console.error("Error sending friend request:", error);
-            addFriendMessage.textContent = 'Terjadi kesalahan jaringan. Coba lagi.';
-        }
-    });
-
-    // --- Load Friend Requests ---
-    function loadFriendRequests() {
-        if (!currentUid) return;
-
-        friendRequestsList.innerHTML = ''; // Clear previous requests
-        db.ref(`users/${currentUid}/friend_requests_received`).on('value', (snapshot) => {
-            friendRequestsList.innerHTML = '';
-            if (!snapshot.exists() || snapshot.numChildren() === 0) { // Check for children count
-                noFriendRequests.style.display = 'block';
-                return;
-            } else {
-                noFriendRequests.style.display = 'none';
-            }
-
-            snapshot.forEach((requestNode) => {
-                const requestData = requestNode.val();
-                const senderUid = requestNode.key;
-
-                const requestItem = document.createElement('div');
-                requestItem.classList.add('friend-request-item');
-
-                const info = document.createElement('div');
-                info.classList.add('request-info');
-                info.textContent = `${requestData.username} ingin berteman dengan Anda.`;
-                requestItem.appendChild(info);
-
-                const actions = document.createElement('div');
-                actions.classList.add('request-actions');
-
-                const acceptBtn = document.createElement('button');
-                acceptBtn.classList.add('accept-btn');
-                acceptBtn.textContent = 'Terima';
-                acceptBtn.addEventListener('click', () => acceptFriendRequest(senderUid)); // Hanya perlu senderUid
-                actions.appendChild(acceptBtn);
-
-                const declineBtn = document.createElement('button');
-                declineBtn.classList.add('decline-btn');
-                declineBtn.textContent = 'Tolak';
-                declineBtn.addEventListener('click', () => declineFriendRequest(senderUid)); // Hanya perlu senderUid
-                actions.appendChild(declineBtn);
-
-                requestItem.appendChild(actions);
-                friendRequestsList.appendChild(requestItem);
-            });
-        });
-    }
-
-    // --- Accept Friend Request Logic (DIPINDAHKAN KE CLOUD FUNCTION) ---
-    async function acceptFriendRequest(senderUid) {
-        if (!currentUid) {
-            alert('Anda harus login untuk menerima permintaan.');
-            return;
-        }
-        try {
-            const idToken = await auth.currentUser.getIdToken();
-            const response = await fetch(`${BASE_FUNCTIONS_URL}/acceptFriendRequest`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${idToken}`
-                },
-                body: JSON.stringify({ senderUid: senderUid })
-            });
-
-            const result = await response.json();
-
-            if (response.ok) {
-                alert(result.message);
-                loadFriendList();
-                loadFriendRequests();
-            } else {
-                alert(result.message || 'Gagal menerima permintaan pertemanan.');
-                console.error('Error from Cloud Function:', result.error);
-            }
-        } catch (error) {
-            console.error("Error accepting friend request:", error);
-            alert("Terjadi kesalahan jaringan. Coba lagi.");
+    // --- Profile Display Logic ---
+    function updateProfileDisplay() {
+        if (currentUid && currentUsername) {
+            profileUsername.textContent = currentUsername;
+            profileUid.textContent = `UID: ${currentUid}`;
+            profileAvatar.textContent = currentUsername.charAt(0).toUpperCase(); // Huruf pertama username
+        } else {
+            profileUsername.textContent = "Tidak Login";
+            profileUid.textContent = "";
+            profileAvatar.textContent = "?";
         }
     }
 
-    // --- Decline Friend Request Logic (DIPINDAHKAN KE CLOUD FUNCTION) ---
-    async function declineFriendRequest(senderUid) {
-        if (!currentUid) {
-            alert('Anda harus login untuk menolak permintaan.');
-            return;
-        }
-        try {
-            const idToken = await auth.currentUser.getIdToken();
-            const response = await fetch(`${BASE_FUNCTIONS_URL}/declineFriendRequest`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${idToken}`
-                },
-                body: JSON.stringify({ senderUid: senderUid })
-            });
-
-            const result = await response.json();
-
-            if (response.ok) {
-                alert(result.message);
-                loadFriendRequests();
-            } else {
-                alert(result.message || 'Gagal menolak permintaan pertemanan.');
-                console.error('Error from Cloud Function:', result.error);
-            }
-        } catch (error) {
-            console.error("Error declining friend request:", error);
-            alert("Terjadi kesalahan jaringan. Coba lagi.");
-        }
-    }
-
-
-    // --- Load Friend List ---
-    function loadFriendList() {
-        if (!currentUid) return;
-
-        friendList.innerHTML = '';
-        db.ref(`users/${currentUid}/friends`).on('value', (snapshot) => {
-            friendList.innerHTML = '';
-            if (!snapshot.exists()) {
-                // Opsional: tampilkan pesan "belum ada teman"
-                return;
-            }
-            snapshot.forEach((friendNode) => {
-                const friendData = friendNode.val();
-                const friendItem = document.createElement('div');
-                friendItem.classList.add('friend-item');
-                friendItem.dataset.friendUid = friendData.uid;
-
-                const avatar = document.createElement('div');
-                avatar.classList.add('friend-avatar');
-                avatar.textContent = friendData.username.charAt(0).toUpperCase();
-
-                const name = document.createElement('div');
-                name.classList.add('friend-name');
-                name.textContent = friendData.username;
-
-                friendItem.appendChild(avatar);
-                friendItem.appendChild(name);
-
-                friendItem.addEventListener('click', () => {
-                    loadPrivateChat(friendData.uid, friendData.username);
-                });
-                friendList.appendChild(friendItem);
-            });
-        });
-    }
 
     // --- Logout & Options ---
     optionsButton.addEventListener('click', (event) => {
       logoutMenu.style.display = logoutMenu.style.display === 'flex' ? 'none' : 'flex';
-      event.stopPropagation();
+      event.stopPropagation(); // Mencegah klik menyebar ke document dan menutup menu
     });
 
     document.addEventListener('click', (event) => {
+      // Tutup menu logout jika klik di luar tombol opsi atau menu itu sendiri
       if (!logoutMenu.contains(event.target) && event.target !== optionsButton) {
         logoutMenu.style.display = 'none';
       }
@@ -921,32 +697,20 @@
     // --- Send Message Logic ---
     sendBtn.onclick = async () => {
       const message = input.value.trim();
-      if (!message || !currentUsername || !currentUid) return;
+      if (!message || !currentUsername || !currentUid) return; // Pastikan user login
 
       const msgData = {
         user: currentUsername,
-        userUid: currentUid,
+        userUid: currentUid, // Simpan UID pengirim
         message,
         timestamp: Date.now()
       };
       if (replyTo) msgData.reply = replyTo;
 
-      if (currentChatMode === 'public') {
-        db.ref("chats").push(msgData);
-      } else if (currentChatMode === 'private' && currentPrivateChatFriendUid) {
-        const privateChatId = getPrivateChatId(currentUid, currentPrivateChatFriendUid);
-        const privateChatRef = db.ref(`private_chats/${privateChatId}`);
-
-        // Ini tetap di sisi klien karena hanya update status partisipan, bukan logic utama pertemanan
-        await privateChatRef.child('participants').update({
-            [currentUid]: true,
-            [currentPrivateChatFriendUid]: true
-        });
-
-        db.ref(`private_chats/${privateChatId}/messages`).push(msgData);
-      }
+      db.ref("chats").push(msgData);
       input.value = "";
       cancelReply();
+      scrollToBottom(); // Scroll to bottom immediately after sending
     };
 
     // --- Image Upload Logic ---
@@ -954,7 +718,7 @@
 
     fileInput.onchange = () => {
       const file = fileInput.files[0];
-      if (!file || !currentUsername || !currentUid) return;
+      if (!file || !currentUsername || !currentUid) return; // Pastikan user login
 
       const reader = new FileReader();
       reader.onload = function () {
@@ -967,26 +731,15 @@
         .then(async result => {
           const msgData = {
             user: currentUsername,
-            userUid: currentUid,
+            userUid: currentUid, // Simpan UID pengirim
             imageURL: result.data.url,
             timestamp: Date.now()
           };
           if (replyTo) msgData.reply = replyTo;
 
-          if (currentChatMode === 'public') {
-            db.ref("chats").push(msgData);
-          } else if (currentChatMode === 'private' && currentPrivateChatFriendUid) {
-            const privateChatId = getPrivateChatId(currentUid, currentPrivateChatFriendUid);
-            const privateChatRef = db.ref(`private_chats/${privateChatId}`);
-
-            await privateChatRef.child('participants').update({
-                [currentUid]: true,
-                [currentPrivateChatFriendUid]: true
-            });
-
-            db.ref(`private_chats/${privateChatId}/messages`).push(msgData);
-          }
+          db.ref("chats").push(msgData);
           cancelReply();
+          scrollToBottom(); // Scroll to bottom immediately after sending
         })
         .catch(err => {
           alert("Gagal upload gambar");
@@ -1001,6 +754,7 @@
     });
 
     // --- Initialization & Event Listeners ---
+    // Atur padding chat-wrapper saat ukuran berubah (keyboard muncul/tutup)
     let initialViewportHeight = window.innerHeight;
     let isKeyboardOpen = false;
 
@@ -1008,7 +762,7 @@
         const currentViewportHeight = window.innerHeight;
         const diff = initialViewportHeight - currentViewportHeight;
 
-        if (diff > (initialViewportHeight * 0.2)) {
+        if (diff > (initialViewportHeight * 0.2)) { // Perubahan lebih dari 20% dianggap keyboard
             if (!isKeyboardOpen) {
                 console.log("Keyboard dibuka");
                 isKeyboardOpen = true;
@@ -1022,55 +776,69 @@
     }
     window.addEventListener('resize', onViewportResize);
 
-    backToPublicChatButton.addEventListener('click', loadPublicChat);
 
-    // Auth State Change Listener
+    // Auth State Change Listener (PENTING untuk mengelola login/logout dan data user)
     auth.onAuthStateChanged(async user => {
       if (user) {
         currentUid = user.uid;
+        // Ambil data user dari Realtime Database (username, isAdmin)
         const userProfileRef = db.ref('users/' + currentUid);
         userProfileRef.once('value').then(snapshot => {
           if (snapshot.exists()) {
             const userData = snapshot.val();
             currentUsername = userData.username;
-            isAdmin = userData.isAdmin || false; // Set isAdmin status
+            isAdmin = userData.isAdmin || false; // Set status admin
+
+            // Perbarui username menjadi "Anonim" jika masih format email default dari Firebase Auth
+            // atau jika username memang kosong (misal: user baru daftar tanpa set username)
+            if (!userData.username || userData.username.includes('@chatkita.com')) {
+                currentUsername = "Anonim";
+                // Update juga di database agar konsisten
+                db.ref('users/' + currentUid).update({ username: "Anonim" });
+            }
 
             loginPage.style.display = "none";
-            chatWrapper.style.display = "flex";
+            chatWrapper.style.display = "flex"; // Tampilkan chat setelah login
 
-            adjustChatWrapperPadding();
-            window.addEventListener('resize', adjustChatWrapperPadding);
+            adjustChatWrapperPadding(); // Sesuaikan padding awal
+            window.addEventListener('resize', adjustChatWrapperPadding); // Listen perubahan ukuran
 
-            loadPublicChat();
-            loadFriendList();
-            loadFriendRequests();
+            setupChatListeners(); // Mulai dengarkan chat
+            updateProfileDisplay(); // Update display profil di sidebar
           } else {
+            // Jika data user tidak ditemukan di database (misal: user hanya terdaftar di Auth tapi tidak di DB)
             console.error("User profile not found in database. Logging out.");
-            auth.signOut();
+            auth.signOut(); // Logout user
           }
         }).catch(error => {
           console.error("Error fetching user profile:", error);
-          auth.signOut();
+          auth.signOut(); // Logout jika ada error saat mengambil profil
         });
       } else {
+        // User logout atau belum login
         currentUsername = null;
         currentUid = null;
-        isAdmin = false; // Reset admin status on logout
-        loginPage.style.display = "flex";
-        chatWrapper.style.display = "none";
-        if (chatListenerRef) chatListenerRef.off();
-        window.removeEventListener('resize', adjustChatWrapperPadding);
-        closeSidebar();
+        isAdmin = false; // Reset status admin
+        loginPage.style.display = "flex"; // Tampilkan halaman login
+        chatWrapper.style.display = "none"; // Sembunyikan chat
+        if (chatListenerRef) { // Hapus listener chat saat logout
+            chatListenerRef.off("child_added");
+            chatListenerRef.off("child_changed");
+            chatListenerRef.off("child_removed");
+            chatListenerRef = null;
+        }
+        window.removeEventListener('resize', adjustChatWrapperPadding); // Hapus listener resize
+        closeSidebar(); // Pastikan sidebar tertutup
+        updateProfileDisplay(); // Hapus display profil
       }
     });
 
     // Initial padding adjustment on page load
     window.addEventListener('load', () => {
-        if (auth.currentUser) {
+        if (auth.currentUser) { // Hanya jika user sudah login saat load
             adjustChatWrapperPadding();
         }
     });
-
   </script>
 
 </body>
