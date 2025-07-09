@@ -6,457 +6,154 @@
   <title>Chat Realtime</title>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <style>
-    /* Reset & Base Styles */
     * { box-sizing: border-box; }
     html, body {
       margin: 0; padding: 0; height: 100%;
       font-family: Arial, sans-serif;
       background: url('https://raw.githubusercontent.com/ikyYourStar/ZedxChat/refs/heads/main/assets/Tak%20berjudul134_20250707192207.png') no-repeat center center fixed;
       background-size: cover;
-      overflow: hidden; /* Mencegah body scroll saat overlay muncul */
     }
     body { display: flex; flex-direction: column; }
 
-    /* Loading Screen */
-    #loading-screen {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: #2c3e50; /* Warna gelap */
-      color: white; display: flex; justify-content: center; align-items: center;
-      font-size: 8vw; z-index: 10000; /* Pastikan di paling atas */
-      flex-direction: column;
-    }
-    #loading-screen .spinner {
-        border: 8px solid rgba(255, 255, 255, 0.3);
-        border-top: 8px solid #4caf50;
-        border-radius: 50%;
-        width: 60px;
-        height: 60px;
-        animation: spin 1s linear infinite;
-        margin-bottom: 20px;
-    }
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-    #loading-screen p {
-        font-size: 4vw;
-        margin: 0;
-    }
-
-    /* Login Page */
-    #login-page {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: url('https://raw.githubusercontent.com/ikyYourStar/ZedxChat/refs/heads/main/assets/ced57229-34ea-461b-9ecd-7a1b17154cd3.jpeg') no-repeat center center fixed;
-      background-size: cover; display: none; /* Default hidden */
-      justify-content: center; align-items: center;
-      flex-direction: column; z-index: 1000; color: white; text-shadow: 1px 1px 2px black;
-    }
-    #login-form {
-      background: rgba(0, 0, 0, 0.7); padding: 5vw; border-radius: 2vw; text-align: center;
-      width: 80%; max-width: 400px;
-    }
-    #login-form h2 { margin-bottom: 4vw; font-size: 6vw; }
-    #login-form input {
-      width: calc(100% - 4vw); padding: 3vw; margin-bottom: 3vw; border-radius: 1vw;
-      border: none; font-size: 4vw;
-    }
-    #login-form button {
-      width: 100%; padding: 3vw; background: #4caf50; color: white; border: none;
-      border-radius: 1vw; font-size: 4.5vw; cursor: pointer; margin-top: 2vw;
-    }
-    #login-form #toggle-mode {
-      background: none; color: #add8e6; border: none; font-size: 3.5vw;
-      cursor: pointer; margin-top: 3vw; padding: 0; text-decoration: underline;
-    }
-    #login-error { color: #ffdddd; margin-top: 2vw; font-size: 3.5vw; display: none; }
-
-    /* Chat Wrapper (Main Layout) */
-    #chat-wrapper {
-      flex: 1; display: flex; flex-direction: column; display: none; /* Default hidden */
-      padding-top: 0; padding-bottom: 0; overflow: hidden;
-      position: relative; /* Penting untuk z-index sidebar */
-    }
-
-    /* Sidebar/Overlay Menu */
-    #sidebar {
-      position: fixed; top: 0; left: -80vw; /* Dimulai di luar layar */
-      width: 80vw; height: 100%; background: #2c3e50; /* Warna gelap */
-      z-index: 1000; transition: left 0.3s ease; /* Animasi geser */
-      box-shadow: 2px 0 5px rgba(0,0,0,0.5);
-      padding: 5vw 3vw; color: white;
-      display: flex; flex-direction: column;
-    }
-    #sidebar.active {
-      left: 0; /* Geser ke dalam layar */
-    }
-    #sidebar-header {
-        display: flex; justify-content: space-between; align-items: center;
-        margin-bottom: 5vw; padding-bottom: 3vw; border-bottom: 1px solid rgba(255,255,255,0.2);
-    }
-    #sidebar-header h3 {
-        margin: 0; font-size: 6vw;
-    }
-    #close-sidebar {
-        background: none; border: none; color: white; font-size: 8vw; cursor: pointer;
-    }
-
-    /* Profile Section in Sidebar */
-    #profile-section {
-        margin-bottom: 5vw;
-        padding: 3vw;
-        background: rgba(255,255,255,0.1);
-        border-radius: 1vw;
-        text-align: center;
-    }
-    #profile-section h4 {
-        margin: 0 0 3vw 0;
-        font-size: 4.5vw;
-    }
-    #profile-avatar {
-        width: 20vw;
-        height: 20vw;
-        border-radius: 50%;
-        background: #ddd;
-        margin: 0 auto 3vw auto;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        font-size: 10vw;
-        font-weight: bold;
-        color: #333;
-    }
-    #profile-username {
-        font-size: 5vw;
-        font-weight: bold;
-        margin-bottom: 1vw;
-    }
-    #profile-uid {
-        font-size: 3.5vw;
-        opacity: 0.8;
-        word-break: break-all; /* Allow long UID to wrap */
-    }
-
-    /* Overlay untuk menutup sidebar saat di klik di luar */
-    #sidebar-overlay {
-        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0,0,0,0.5); z-index: 999; display: none;
-    }
-
-
-    /* Chat Header */
-    #chat-header {
-      background: #f0f2f5; padding: 3vw; display: flex; justify-content: space-between;
-      align-items: center; border-bottom: 1px solid #ccc; font-size: 5vw; font-weight: bold;
-      position: fixed; top: 0; left: 0; width: 100%; z-index: 990;
-    }
-    #chat-header h3 { margin: 0; font-size: 5vw; text-align: center; flex-grow: 1; }
-    #menu-button, #options-button {
-      background: none; border: none; font-size: 6vw; cursor: pointer; padding: 0;
-    }
-    #menu-button { margin-right: 2vw; }
-    #options-button { margin-left: 2vw; }
-
-
-    #logout-menu {
-      position: absolute; top: 100%; right: 0; background: white; border: 1px solid #ddd;
-      border-radius: 1vw; box-shadow: 0 2px 5px rgba(0,0,0,0.2); display: none;
-      flex-direction: column; min-width: 25vw; z-index: 1001;
-    }
-    #logout-menu button {
-      background: none; border: none; padding: 3vw; text-align: left; font-size: 4vw;
-      width: 100%; cursor: pointer; color: #333;
-    }
-    #logout-menu button:hover { background: #f0f0f0; }
-
-    /* Chat Container (Scrollable Area) */
     #chat-container {
-      flex: 1; overflow-y: auto; padding: 3vw;
+      flex: 1;
+      overflow-y: auto;
+      padding: 3vw;
     }
 
-    /* Message Styles */
     .msg {
-      max-width: 75%; padding: 3vw; margin: 2vw 0; border-radius: 2vw; word-wrap: break-word;
-      font-size: 4vw; position: relative; transition: transform 0.2s ease; will-change: transform;
-      /* CSS untuk mencegah seleksi teks */
-      -webkit-user-select: none; /* Safari */
-      -moz-user-select: none; /* Firefox */
-      -ms-user-select: none; /* IE 10+ */
-      user-select: none; /* Standard syntax */
-      -webkit-touch-callout: none; /* iOS Safari */
-    }
-    .own { background: #dcf8c6; margin-left: auto; text-align: left; }
-    .own * { text-align: left !important; }
-    .other { background: #e5e5ea; margin-right: auto; text-align: left; }
-    .reply { font-size: 3.2vw; opacity: 0.6; margin-bottom: 1vw; }
-    .msg img { max-width: 100%; border-radius: 1vw; margin-top: 1vw; }
-    .time { font-size: 3vw; opacity: 0.5; display: block; margin-top: 1vw; }
-    .own .time { text-align: left; }
-    .other .time { text-align: left; }
-
-    /* Reaction Styles */
-    .reactions-container {
-      position: absolute;
-      bottom: -3.5vw; /* Posisi di bawah pesan */
-      padding: 0.8vw 1.5vw;
-      border-radius: 4vw;
-      background: rgba(0, 0, 0, 0.7);
-      color: white;
-      font-size: 3.5vw;
-      display: flex;
-      gap: 1vw;
-      align-items: center;
-      transition: opacity 0.2s ease;
-    }
-    .own .reactions-container {
-      right: 0;
-    }
-    .other .reactions-container {
-      left: 0;
-    }
-    .reaction-item {
-        display: flex;
-        align-items: center;
-        gap: 0.5vw;
-        padding: 0.5vw 1vw;
-        background: rgba(255,255,255,0.1);
-        border-radius: 2vw;
-    }
-    .reaction-emoji {
-        font-size: 3.8vw; /* Ukuran emoji reaksi */
-        line-height: 1;
-    }
-    .reaction-count {
-        font-size: 2.8vw;
-        line-height: 1;
+      max-width: 75%;
+      padding: 3vw;
+      margin: 2vw 0;
+      border-radius: 2vw;
+      word-wrap: break-word;
+      font-size: 4vw;
+      position: relative;
+      transition: transform 0.2s ease;
+      will-change: transform;
     }
 
+    .own {
+      background: #dcf8c6;
+      margin-left: auto;
+      text-align: right;
+    }
 
-    /* Reply & Input Area (Fixed) */
+    .own * {
+      text-align: right !important;
+    }
+
+    .other {
+      background: #e5e5ea;
+      margin-right: auto;
+      text-align: left;
+    }
+
+    .reply {
+      font-size: 3.2vw;
+      opacity: 0.6;
+      margin-bottom: 1vw;
+    }
+
     #reply-preview {
-      background: rgba(0,0,0,0.6); color: white; padding: 2vw; font-size: 3.5vw;
-      display: none; justify-content: space-between; align-items: center;
-      position: fixed; bottom: var(--input-area-height, 15vw); left: 0; width: 100%; z-index: 998;
+      background: rgba(0,0,0,0.6);
+      color: white;
+      padding: 2vw;
+      font-size: 3.5vw;
+      display: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
-    #reply-preview span { flex: 1; }
+
+    #reply-preview span {
+      flex: 1;
+    }
 
     #input-area {
-      display: flex; gap: 2vw; padding: 2vw; background: #fff; border-top: 1px solid #ccc;
-      align-items: center; position: fixed; bottom: 0; left: 0; width: 100%; z-index: 999;
+      display: flex;
+      gap: 2vw;
+      padding: 2vw;
+      background: #fff;
+      border-top: 1px solid #ccc;
+      align-items: center;
     }
+
     #input {
-      flex: 1; padding: 2.5vw; font-size: 4vw; border: 1px solid #ccc; border-radius: 1vw;
+      flex: 1;
+      padding: 2.5vw;
+      font-size: 4vw;
+      border: 1px solid #ccc;
+      border-radius: 1vw;
     }
+
     #send {
-      padding: 2.5vw 4vw; background: #4caf50; color: white; border: none;
-      border-radius: 1vw; font-size: 4vw; cursor: pointer;
-    }
-    #uploadBtn { background: none; border: none; font-size: 6vw; cursor: pointer; }
-
-
-    /* Message Interaction Overlay */
-    #message-interaction-overlay {
-        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0,0,0,0.5); /* Overlay transparan */
-        z-index: 1000; /* Di atas chat, di bawah popover */
-        display: none;
-    }
-    #message-interaction-popover {
-        position: absolute;
-        background: white;
-        border-radius: 2vw;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-        z-index: 1001; /* Di atas overlay */
-        display: none;
-        flex-direction: column;
-        overflow: hidden; /* Pastikan border-radius diterapkan */
-        transform: translate(-50%, -100%); /* Geser ke atas dari posisi tengah-bawah */
-        padding: 2vw 0;
-    }
-    #message-interaction-popover button {
-        background: none;
-        border: none;
-        padding: 3vw 5vw;
-        font-size: 4.5vw;
-        text-align: left;
-        width: 100%;
-        cursor: pointer;
-        color: #333;
-        white-space: nowrap; /* Mencegah teks terpotong */
-    }
-    #message-interaction-popover button:hover {
-        background: #f0f0f0;
-    }
-    #message-interaction-popover .emoji-react-row {
-        display: flex;
-        justify-content: space-around;
-        padding: 2vw 5vw;
-        border-bottom: 1px solid #eee; /* Pembatas antara react dan delete */
-    }
-    #message-interaction-popover .emoji-react-row button {
-        padding: 0; /* Override padding button default */
-        font-size: 6vw; /* Ukuran emoji di popover */
-        background: none;
-        border: none;
-        cursor: pointer;
-        transition: transform 0.1s ease;
-    }
-    #message-interaction-popover .emoji-react-row button:active {
-        transform: scale(1.2); /* Animasi saat diklik */
+      padding: 2.5vw 4vw;
+      background: #4caf50;
+      color: white;
+      font-size: 4vw;
+      border: none;
+      border-radius: 1vw;
+      cursor: pointer;
     }
 
+    #uploadBtn {
+      background: none;
+      border: none;
+      font-size: 6vw;
+      cursor: pointer;
+    }
 
-    /* Media Queries for Desktop */
+    .msg img {
+      max-width: 100%;
+      border-radius: 1vw;
+      margin-top: 1vw;
+    }
+
+    .time {
+      font-size: 3vw;
+      opacity: 0.5;
+      display: block;
+      margin-top: 1vw;
+    }
+
+    .own .time {
+      text-align: right;
+    }
+
+    .other .time {
+      text-align: left;
+    }
+
     @media (min-width: 768px) {
-      #loading-screen { font-size: 32px; }
-      #loading-screen p { font-size: 16px; }
-
-      #sidebar { left: -300px; width: 300px; padding: 20px 15px; }
-      #sidebar.active { left: 0; }
-      #sidebar-header h3 { font-size: 24px; }
-      #close-sidebar { font-size: 32px; }
-
-      #profile-section { padding: 15px; }
-      #profile-section h4 { font-size: 18px; }
-      #profile-avatar { width: 80px; height: 80px; font-size: 40px; margin-bottom: 15px; }
-      #profile-username { font-size: 20px; }
-      #profile-uid { font-size: 14px; }
-
-
-      #chat-header {
-        padding: 15px; font-size: 20px;
-      }
-      #chat-header h3 { font-size: 20px; }
-      #menu-button, #options-button { font-size: 24px; }
-      #menu-button { margin-right: 10px; }
-      #options-button { margin-left: 10px; }
-
-
-      #logout-menu { border-radius: 4px; min-width: 100px; }
-      #logout-menu button { padding: 12px; font-size: 16px; }
-      #input-area { padding: 10px; }
-      #reply-preview { bottom: var(--input-area-height, 60px); padding: 10px; font-size: 14px; }
-
       .msg { font-size: 16px; }
       .reply { font-size: 13px; }
       #input { font-size: 16px; }
       #send { font-size: 16px; }
       #uploadBtn { font-size: 24px; }
       .time { font-size: 12px; }
-
-      .reactions-container {
-        bottom: -15px; /* Adjust for desktop */
-        padding: 4px 8px;
-        border-radius: 16px;
-        font-size: 14px;
-      }
-      .reaction-item {
-        padding: 2px 5px;
-        border-radius: 8px;
-        gap: 2px;
-      }
-      .reaction-emoji {
-        font-size: 16px;
-      }
-      .reaction-count {
-        font-size: 12px;
-      }
-
-      #message-interaction-popover {
-        border-radius: 8px;
-        padding: 8px 0;
-      }
-      #message-interaction-popover button {
-        padding: 12px 20px;
-        font-size: 18px;
-      }
-      #message-interaction-popover .emoji-react-row button {
-        font-size: 24px;
-      }
-
-      #login-form h2 { font-size: 24px; }
-      #login-form input { font-size: 16px; padding: 12px; margin-bottom: 12px; width: calc(100% - 24px); }
-      #login-form button { font-size: 18px; padding: 12px; margin-top: 8px; }
-      #login-form #toggle-mode { font-size: 14px; margin-top: 12px; }
-      #login-error { font-size: 14px; margin-top: 8px; }
-      #login-form { padding: 20px; border-radius: 8px; }
     }
   </style>
 </head>
 <body>
 
-  <div id="loading-screen">
-    <div class="spinner"></div>
-    <p>Memuat...</p>
+  <div id="chat-container"></div>
+
+  <div id="reply-preview">
+    <span id="reply-text"></span>
+    <button onclick="cancelReply()" style="background:none;border:none;color:white;font-size:5vw;">×</button>
   </div>
 
-  <div id="login-page">
-    <div id="login-form">
-      <h2 id="form-title">Login</h2>
-      <input type="text" id="username-input" placeholder="Username" required />
-      <input type="password" id="password-input" placeholder="Password" required />
-      <button id="auth-button">Login</button>
-      <p id="login-error"></p>
-      <button id="toggle-mode">Belum punya akun? Daftar di sini.</button>
-    </div>
-  </div>
-
-  <div id="chat-wrapper">
-
-    <div id="sidebar">
-        <div id="sidebar-header">
-            <h3>Menu</h3>
-            <button id="close-sidebar">×</button>
-        </div>
-
-        <div id="profile-section">
-            <h4>Profil Saya</h4>
-            <div id="profile-avatar">?</div> <div id="profile-username"></div>
-            <div id="profile-uid"></div>
-        </div>
-    </div>
-    <div id="sidebar-overlay"></div>
-
-    <div id="chat-header">
-      <button id="sidebar-toggle-button">☰</button>
-      <h3 id="chat-title">Chat Publik</h3>
-      <button id="options-button">⋮</button>
-      <div id="logout-menu">
-        <button id="logout-button">Logout</button>
-      </div>
-    </div>
-
-    <div id="chat-container"></div>
-
-    <div id="message-interaction-overlay">
-      <div id="message-interaction-popover">
-        <div class="emoji-react-row">
-          <button class="react-emoji-btn" data-emoji="😸">😸</button>
-          <button class="react-emoji-btn" data-emoji="😹">😹</button>
-          <button class="react-emoji-btn" data-emoji="🙀">🙀</button>
-          <button class="react-emoji-btn" data-emoji="😿">😿</button>
-          <button class="react-emoji-btn" data-emoji="😾">😾</button>
-        </div>
-        <button id="delete-message-btn">Hapus Pesan</button>
-      </div>
-    </div>
-
-    <div id="reply-preview">
-      <span id="reply-text"></span>
-      <button onclick="cancelReply()" style="background:none;border:none;color:white;font-size:5vw;">×</button>
-    </div>
-
-    <div id="input-area">
-      <button id="uploadBtn">📎</button>
-      <input type="file" id="fileInput" accept="image/*" style="display:none;" />
-      <input type="text" id="input" placeholder="Ketik pesan..." />
-      <button id="send">Kirim</button>
-    </div>
+  <div id="input-area">
+    <button id="uploadBtn">📎</button>
+    <input type="file" id="fileInput" accept="image/*" style="display:none;" />
+    <input type="text" id="input" placeholder="Ketik pesan..." />
+    <button id="send">Kirim</button>
   </div>
 
   <script>
-    // Firebase Config (your actual config)
+    const imgbbKey = "a12e3657b8edd041c13eda8c12ff5925";
     const firebaseConfig = {
       apiKey: "AIzaSyCTjBsKdHmmTELY3wnfGYANEzzDBEF2BIo",
       authDomain: "realtime-df5d0.firebaseapp.com",
@@ -469,77 +166,26 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-    const auth = firebase.auth();
 
-    const imgbbKey = "a12e3657b8edd041c13eda8c12ff5925";
+    let username = localStorage.getItem("username");
+    if (!username) {
+      username = prompt("Masukkan nama kamu:") || "Anonim";
+      localStorage.setItem("username", username);
+    }
 
-    // --- UI Elements ---
-    const loadingScreen = document.getElementById("loading-screen");
-    const loginPage = document.getElementById("login-page");
-    const usernameInput = document.getElementById("username-input");
-    const passwordInput = document.getElementById("password-input");
-    const authButton = document.getElementById("auth-button");
-    const toggleModeButton = document.getElementById("toggle-mode");
-    const formTitle = document.getElementById("form-title");
-    const loginError = document.getElementById("login-error");
-    const chatWrapper = document.getElementById("chat-wrapper");
-    const chatHeader = document.getElementById('chat-header');
-    const sidebarToggleButton = document.getElementById('sidebar-toggle-button');
-    const chatTitle = document.getElementById('chat-title');
-    const optionsButton = document.getElementById("options-button");
-    const logoutMenu = document.getElementById("logout-menu");
-    const logoutButton = document.getElementById("logout-button");
     const chatContainer = document.getElementById("chat-container");
-    const inputArea = document.getElementById('input-area');
     const input = document.getElementById("input");
     const sendBtn = document.getElementById("send");
     const fileInput = document.getElementById("fileInput");
     const uploadBtn = document.getElementById("uploadBtn");
     const replyPreview = document.getElementById("reply-preview");
     const replyText = document.getElementById("reply-text");
-    const sidebar = document.getElementById('sidebar');
-    const closeSidebarButton = document.getElementById('close-sidebar');
-    const sidebarOverlay = document.getElementById('sidebar-overlay');
-    const profileAvatar = document.getElementById('profile-avatar');
-    const profileUsername = document.getElementById('profile-username');
-    const profileUid = document.getElementById('profile-uid');
-
-    // New Interaction Overlay Elements
-    const messageInteractionOverlay = document.getElementById('message-interaction-overlay');
-    const messageInteractionPopover = document.getElementById('message-interaction-popover');
-    const deleteMessageBtn = document.getElementById('delete-message-btn');
-    const reactEmojiButtons = document.querySelectorAll('.react-emoji-btn');
-
-
-    // --- Global State Variables ---
-    let isLoginMode = true;
-    let currentUsername = null;
-    let currentUid = null;
     let replyTo = null;
-    let isAdmin = false;
-
-    const ADMIN_USERNAME = 'kyy';
-    const ADMIN_PASSWORD = 'Aku cinta19';
-
-    // Variabel untuk menyimpan pesan yang sedang diinteraksi
-    let interactingMessageKey = null;
-    let interactingMessageIsOwn = false; // Untuk menentukan opsi hapus
-
-    // Array untuk menyimpan key pesan yang dihapus secara lokal
-    let deletedForMeMessages = JSON.parse(localStorage.getItem('deletedForMeMessages')) || [];
-
-    // --- Helper Functions ---
-    function usernameToEmail(username) {
-        if (username.toLowerCase() === 'anonim') {
-            return `invalid-anonim@chatkita.com`;
-        }
-        return `${username.toLowerCase().replace(/[^a-z0-9]/g, '')}@chatkita.com`;
-    }
 
     function scrollToBottom() {
-      requestAnimationFrame(() => {
+      setTimeout(() => {
         chatContainer.scrollTop = chatContainer.scrollHeight;
-      });
+      }, 100);
     }
 
     function cancelReply() {
@@ -547,146 +193,15 @@
       replyPreview.style.display = "none";
     }
 
-    function adjustChatWrapperPadding() {
-        const headerHeight = chatHeader.offsetHeight;
-        const inputAreaHeight = inputArea.offsetHeight;
-        chatWrapper.style.paddingTop = `${headerHeight}px`;
-        chatWrapper.style.paddingBottom = `${inputAreaHeight}px`;
-        replyPreview.style.setProperty('--input-area-height', `${inputAreaHeight}px`);
-    }
-
-    // Function to save deleted messages to local storage
-    function saveDeletedForMeMessages() {
-        localStorage.setItem('deletedForMeMessages', JSON.stringify(deletedForMeMessages));
-    }
-
-    // Function to check if a message is deleted for current user
-    function isDeletedForMe(messageKey) {
-        return deletedForMeMessages.includes(messageKey);
-    }
-
-    // --- Authentication Logic ---
-    toggleModeButton.addEventListener("click", () => {
-      isLoginMode = !isLoginMode;
-      if (isLoginMode) {
-        formTitle.textContent = "Login";
-        authButton.textContent = "Login";
-        toggleModeButton.textContent = "Belum punya akun? Daftar di sini.";
-      } else {
-        formTitle.textContent = "Daftar";
-        authButton.textContent = "Daftar";
-        toggleModeButton.textContent = "Sudah punya akun? Login di sini.";
-      }
-      usernameInput.value = '';
-      passwordInput.value = '';
-      loginError.style.display = "none";
-    });
-
-    authButton.addEventListener("click", async () => {
-      const username = usernameInput.value.trim();
-      const password = passwordInput.value;
-      const emailForAuth = usernameToEmail(username);
-      loginError.style.display = "none";
-
-      if (!username || !password) {
-        loginError.textContent = "Username dan password harus diisi.";
-        loginError.style.display = "block";
-        return;
-      }
-      if (emailForAuth === `invalid-anonim@chatkita.com`) {
-        loginError.textContent = "Username 'Anonim' tidak dapat digunakan untuk pendaftaran.";
-        loginError.style.display = "block";
-        return;
-      }
-
-      try {
-        if (isLoginMode) {
-          if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-              const userCredential = await auth.signInWithEmailAndPassword(emailForAuth, password);
-              await db.ref('users/' + userCredential.user.uid).update({
-                  username: username,
-                  emailForAuth: emailForAuth,
-                  isAdmin: true
-              });
-          } else {
-              await auth.signInWithEmailAndPassword(emailForAuth, password);
-          }
-        } else {
-          if (username.toLowerCase() === ADMIN_USERNAME.toLowerCase()) {
-            loginError.textContent = "Username 'kyy' tidak dapat digunakan.";
-            loginError.style.display = "block";
-            return;
-          }
-          const userCredential = await auth.createUserWithEmailAndPassword(emailForAuth, password);
-          await db.ref('users/' + userCredential.user.uid).set({
-            username: username,
-            emailForAuth: emailForAuth,
-            isAdmin: false
-          });
-          alert("Pendaftaran berhasil! Silakan login.");
-          isLoginMode = true;
-          formTitle.textContent = "Login";
-          authButton.textContent = "Login";
-          toggleModeButton.textContent = "Belum punya akun? Daftar di sini.";
-          usernameInput.value = '';
-          passwordInput.value = '';
-        }
-      } catch (error) {
-        let errorMessage = "Terjadi kesalahan. Silakan coba lagi.";
-        if (error.code === 'auth/user-not-found') {
-          errorMessage = "Username atau password salah.";
-        } else if (error.code === 'auth/wrong-password') {
-          errorMessage = "Username atau password salah.";
-        } else if (error.code === 'auth/email-already-in-use') {
-          errorMessage = "Username sudah digunakan.";
-        } else if (error.code === 'auth/invalid-email') {
-          errorMessage = "Format username tidak valid. Gunakan hanya huruf dan angka.";
-        } else if (error.code === 'auth/weak-password') {
-          errorMessage = "Password harus minimal 6 karakter.";
-        }
-        loginError.textContent = errorMessage;
-        loginError.style.display = "block";
-        console.error("Authentication error:", error);
-      }
-    });
-
-    // --- Message Rendering ---
     function renderMessage(key, data) {
-      // Jika pesan ini dihapus untuk saya, jangan render
-      if (isDeletedForMe(key)) {
-        const existingEl = document.getElementById("msg-" + key);
-        if (existingEl) existingEl.remove();
-        return;
-      }
-
-      let div = document.getElementById("msg-" + key);
-      if (div) {
-        if (data.deleted) {
-          if (div.textContent !== "Pesan ini telah dihapus") {
-            div.textContent = "Pesan ini telah dihapus";
-            div.style.fontStyle = "italic";
-            div.innerHTML = div.textContent;
-            // Hapus reactions jika pesan dihapus permanen
-            const existingReactions = div.querySelector('.reactions-container');
-            if(existingReactions) existingReactions.remove();
-          }
-        } else {
-            // Update reactions if message changed
-            updateMessageReactions(div, data.reactions);
-        }
-        return;
-      }
-
-      div = document.createElement("div");
-      const isOwn = data.userUid === currentUid;
+      const div = document.createElement("div");
+      const isOwn = data.user === username;
       div.classList.add("msg", isOwn ? "own" : "other");
       div.id = "msg-" + key;
-      div.dataset.messageKey = key;
-      div.dataset.isOwnMessage = isOwn; // Simpan status kepemilikan
 
       const time = new Date(data.timestamp || Date.now());
       const timeStr = time.getHours().toString().padStart(2, "0") + ":" +
-                       time.getMinutes().toString().padStart(2, "0");
+                      time.getMinutes().toString().padStart(2, "0");
 
       if (data.deleted) {
         div.textContent = "Pesan ini telah dihapus";
@@ -733,406 +248,58 @@
       chatContainer.appendChild(div);
       scrollToBottom();
 
-      // Add reactions container
-      updateMessageReactions(div, data.reactions);
-
-      // --- Long press/tap & hold to show interaction overlay ---
-      // Variabel untuk melacak status touch
-      let touchStartX = 0;
-      let touchStartY = 0;
-      let touchTimeStart = 0;
-      let longPressTimer = null;
-      let isLongPress = false;
-      let isSwiping = false;
-
-      div.addEventListener("touchstart", (e) => {
-        if (e.target.tagName === 'IMG') return; // Jangan trigger jika menekan gambar
-
-        touchStartX = e.touches[0].clientX;
-        touchStartY = e.touches[0].clientY;
-        touchTimeStart = new Date().getTime();
-        isLongPress = false;
-        isSwiping = false;
-
-        const messageEl = e.currentTarget;
-
-        // Mulai timer untuk long press
-        longPressTimer = setTimeout(() => {
-          isLongPress = true;
-          e.preventDefault(); // Cegah default (seleksi teks) hanya jika long press terdeteksi
-          showInteractionPopover(messageEl);
-        }, 500); // 500ms for long press
-      }, { passive: false }); // Gunakan { passive: false } agar preventDefault() berfungsi
-
-      div.addEventListener("touchmove", (e) => {
-        const touchCurrentX = e.touches[0].clientX;
-        const touchCurrentY = e.touches[0].clientY;
-        const diffX = touchCurrentX - touchStartX;
-        const diffY = touchCurrentY - touchStartY;
-
-        // Deteksi apakah sedang swiping (gerakan signifikan)
-        if (Math.abs(diffX) > 10 || Math.abs(diffY) > 10) { // Toleransi kecil untuk jitter
-          clearTimeout(longPressTimer); // Batalkan long press jika ada gerakan
-          if (Math.abs(diffY) < Math.abs(diffX) && Math.abs(diffX) > 30) { // Gerakan horizontal yang cukup
-              isSwiping = true;
-              e.preventDefault(); // Cegah scrolling vertikal jika ini swipe horizontal
-              // Swipe to reply logic (dulu ada di touchend, sekarang lebih interaktif)
-              if (diffX > 0 && diffX < 100) {
-                div.style.transform = `translateX(${diffX}px)`;
-              }
-          } else {
-              // Jika gerakan vertikal dominan, biarkan scroll terjadi
-              div.style.transform = "translateX(0)";
-          }
-        }
-      }, { passive: false }); // Gunakan { passive: false } agar preventDefault() berfungsi
-
-      div.addEventListener("touchend", (e) => {
-        clearTimeout(longPressTimer);
-        div.style.transform = "translateX(0)"; // Reset posisi pesan
-
-        if (!isLongPress && !isSwiping) {
-            // Ini adalah tap singkat, bukan long press atau swipe.
-            // Lakukan sesuatu jika ada aksi tap singkat yang diinginkan,
-            // atau biarkan saja (untuk mengizinkan klik link di dalam pesan dll.)
-        } else if (isSwiping) {
-            const finalDiffX = e.changedTouches[0].clientX - touchStartX;
-            if (finalDiffX > 60) { // Cukup geser untuk reply
-                replyTo = { user: data.user, message: data.message || 'Gambar' };
-                replyText.textContent = "Balas: " + replyTo.user + ": " + replyTo.message;
-                replyPreview.style.display = "flex";
-            }
-        }
-        // Jika isLongPress adalah true, showInteractionPopover sudah dipanggil di touchstart timer.
-        isLongPress = false;
-        isSwiping = false;
+      // Geser untuk reply
+      let startX = 0, startY = 0, moved = false;
+      div.addEventListener("touchstart", e => {
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
       });
-
-      div.addEventListener("touchcancel", () => {
-        clearTimeout(longPressTimer);
+      div.addEventListener("touchmove", e => {
+        const dx = e.touches[0].clientX - startX;
+        const dy = e.touches[0].clientY - startY;
+        if (Math.abs(dy) > Math.abs(dx)) return;
+        if (dx > 0 && dx < 100) {
+          moved = true;
+          div.style.transform = `translateX(${dx}px)`;
+        }
+      });
+      div.addEventListener("touchend", e => {
+        const dx = e.changedTouches[0].clientX - startX;
+        if (moved && dx > 60) {
+          replyTo = { user: data.user, message: data.message || 'Gambar' };
+          replyText.textContent = "Balas: " + replyTo.user + ": " + replyTo.message;
+          replyPreview.style.display = "flex";
+        }
         div.style.transform = "translateX(0)";
-        isLongPress = false;
-        isSwiping = false;
       });
-    }
 
-    // Function to update/render reactions for a message element
-    function updateMessageReactions(messageEl, reactionsData) {
-        let reactionsContainer = messageEl.querySelector('.reactions-container');
-
-        // Remove existing container if no reactions or message deleted
-        if (!reactionsData || Object.keys(reactionsData).length === 0) {
-            if (reactionsContainer) {
-                reactionsContainer.remove();
+      // Hapus pesan
+      if (isOwn) {
+        let timeout = null;
+        div.addEventListener("touchstart", () => {
+          timeout = setTimeout(() => {
+            if (confirm("Hapus pesan ini?")) {
+              db.ref("chats/" + key).update({ deleted: true });
             }
-            return;
-        }
-
-        if (!reactionsContainer) {
-            reactionsContainer = document.createElement('div');
-            reactionsContainer.className = 'reactions-container';
-            messageEl.appendChild(reactionsContainer);
-        } else {
-            reactionsContainer.innerHTML = ''; // Clear existing reactions
-        }
-
-        const validEmojis = ['😸', '😹', '🙀', '😿', '😾'];
-        let hasReactionsToShow = false;
-
-        for (const emoji of validEmojis) {
-            // Check if there's a reaction for this emoji and if current user reacted
-            const hasUserReactedWithThisEmoji = reactionsData[emoji] && reactionsData[emoji][currentUid] === true;
-            const reactionCount = reactionsData[emoji] ? reactionsData[emoji].count : 0;
-
-            if (reactionCount > 0) {
-                const reactionItem = document.createElement('div');
-                reactionItem.className = 'reaction-item';
-                if (hasUserReactedWithThisEmoji) {
-                    reactionItem.style.backgroundColor = 'rgba(255,255,255,0.3)'; // Highlight if user reacted
-                }
-
-                const emojiSpan = document.createElement('span');
-                emojiSpan.className = 'reaction-emoji';
-                emojiSpan.textContent = emoji;
-
-                const countSpan = document.createElement('span');
-                countSpan.className = 'reaction-count';
-                countSpan.textContent = reactionCount;
-
-                reactionItem.appendChild(emojiSpan);
-                reactionItem.appendChild(countSpan);
-                reactionsContainer.appendChild(reactionItem);
-                hasReactionsToShow = true;
-            }
-        }
-
-        if (!hasReactionsToShow) {
-            if (reactionsContainer) reactionsContainer.remove();
-        }
-    }
-
-
-    // --- Chat Listener Setup ---
-    let chatListenerRef = null;
-
-    function setupChatListeners() {
-        if (chatListenerRef) {
-            chatListenerRef.off("child_added");
-            chatListenerRef.off("child_changed");
-            chatListenerRef.off("child_removed");
-        }
-        chatContainer.innerHTML = '';
-
-        chatListenerRef = db.ref("chats");
-
-        chatListenerRef.on("child_added", (childSnapshot) => {
-            renderMessage(childSnapshot.key, childSnapshot.val());
+          }, 600);
         });
-
-        chatListenerRef.on("child_changed", (childSnapshot) => {
-            const messageKey = childSnapshot.key;
-            const updatedData = childSnapshot.val();
-            // Cek apakah pesan sudah dihapus secara lokal untuk user ini
-            if (isDeletedForMe(messageKey)) {
-                const existingEl = document.getElementById("msg-" + messageKey);
-                if (existingEl) existingEl.remove();
-                return;
-            }
-
-            const existingMessageElement = document.getElementById("msg-" + messageKey);
-
-            if (existingMessageElement) {
-                if (updatedData.deleted && existingMessageElement.textContent !== "Pesan ini telah dihapus") {
-                    existingMessageElement.textContent = "Pesan ini telah dihapus";
-                    existingMessageElement.style.fontStyle = "italic";
-                    existingMessageElement.innerHTML = existingMessageElement.textContent;
-                    const existingReactions = existingMessageElement.querySelector('.reactions-container');
-                    if(existingReactions) existingReactions.remove();
-                } else if (!updatedData.deleted) {
-                    updateMessageReactions(existingMessageElement, updatedData.reactions);
-                }
-            } else if (!updatedData.deleted) {
-                renderMessage(messageKey, updatedData);
-            }
-        });
-
-        chatListenerRef.on("child_removed", (oldChildSnapshot) => {
-            const messageKey = oldChildSnapshot.key;
-            deletedForMeMessages = deletedForMeMessages.filter(key => key !== messageKey);
-            saveDeletedForMeMessages();
-
-            const messageElement = document.getElementById("msg-" + messageKey);
-            if (messageElement) {
-                messageElement.remove();
-            }
-        });
-
-        chatListenerRef.once('value').then(() => {
-            scrollToBottom();
-        });
-    }
-
-    // --- Message Interaction Popover Logic ---
-    function showInteractionPopover(messageEl) {
-        const messageKey = messageEl.dataset.messageKey;
-        const isOwnMessage = messageEl.dataset.isOwnMessage === 'true';
-
-        interactingMessageKey = messageKey;
-        interactingMessageIsOwn = isOwnMessage;
-
-        if (isOwnMessage || isAdmin) { // Tampilkan opsi hapus untuk admin juga
-            deleteMessageBtn.textContent = "Hapus untuk Semua";
-            deleteMessageBtn.style.display = 'block';
-        } else {
-            deleteMessageBtn.textContent = "Hapus untuk Saya";
-            deleteMessageBtn.style.display = 'block';
-        }
-
-
-        // Tentukan posisi popover
-        const rect = messageEl.getBoundingClientRect();
-        messageInteractionPopover.style.left = `${rect.left + rect.width / 2}px`;
-        messageInteractionPopover.style.top = `${rect.top}px`;
-
-        messageInteractionOverlay.style.display = 'block';
-        messageInteractionPopover.style.display = 'flex';
-    }
-
-    function hideInteractionPopover() {
-        messageInteractionOverlay.style.display = 'none';
-        messageInteractionPopover.style.display = 'none';
-        interactingMessageKey = null;
-        interactingMessageIsOwn = false;
-    }
-
-    messageInteractionOverlay.addEventListener('click', (e) => {
-        if (e.target === messageInteractionOverlay) {
-            hideInteractionPopover();
-        }
-    });
-
-
-    // Delete message handler
-    deleteMessageBtn.addEventListener('click', async () => {
-        if (!interactingMessageKey || !currentUid) return;
-
-        if (interactingMessageIsOwn || isAdmin) { // Jika pesan saya sendiri ATAU saya admin
-            // Hapus untuk semua (dari database)
-            if (confirm("Yakin ingin menghapus pesan ini untuk semua orang?")) {
-                db.ref(`chats/${interactingMessageKey}`).update({ deleted: true })
-                    .then(() => {
-                        console.log("Pesan berhasil dihapus dari database.");
-                        hideInteractionPopover();
-                    })
-                    .catch(error => {
-                        console.error("Error menghapus pesan:", error);
-                        alert("Gagal menghapus pesan. Coba lagi.");
-                    });
-            }
-        } else {
-            // Hapus untuk saya saja (lokal)
-            if (confirm("Yakin ingin menghapus pesan ini hanya untuk Anda?")) {
-                if (!deletedForMeMessages.includes(interactingMessageKey)) {
-                    deletedForMeMessages.push(interactingMessageKey);
-                    saveDeletedForMeMessages();
-                    const elToRemove = document.getElementById("msg-" + interactingMessageKey);
-                    if (elToRemove) elToRemove.remove();
-                    console.log("Pesan berhasil dihapus secara lokal.");
-                }
-                hideInteractionPopover();
-            }
-        }
-    });
-
-    // React emoji handler
-    reactEmojiButtons.forEach(button => {
-        button.addEventListener('click', async () => {
-            const selectedEmoji = button.dataset.emoji;
-            if (!interactingMessageKey || !currentUid || !selectedEmoji) return;
-
-            const messageRef = db.ref(`chats/${interactingMessageKey}`);
-            const userLastReactionRef = db.ref(`users/${currentUid}/messageLastReaction/${interactingMessageKey}`);
-
-            // 1. Dapatkan emoji terakhir yang diberikan user pada pesan ini
-            userLastReactionRef.once('value').then(lastReactionSnapshot => {
-                const lastEmoji = lastReactionSnapshot.val();
-
-                // 2. Lakukan transaksi untuk memperbarui reaksi pesan
-                messageRef.transaction((currentMessage) => {
-                    if (currentMessage) {
-                        if (!currentMessage.reactions) {
-                            currentMessage.reactions = {};
-                        }
-
-                        // Jika ada reaksi sebelumnya dari user ini di pesan ini DAN berbeda dengan yang baru
-                        if (lastEmoji && lastEmoji !== selectedEmoji) {
-                            // Kurangi count dari emoji lama
-                            if (currentMessage.reactions[lastEmoji]) {
-                                currentMessage.reactions[lastEmoji].count = Math.max(0, (currentMessage.reactions[lastEmoji].count || 0) - 1);
-                                delete currentMessage.reactions[lastEmoji][currentUid];
-                                if (currentMessage.reactions[lastEmoji].count === 0) {
-                                    delete currentMessage.reactions[lastEmoji];
-                                }
-                            }
-                        }
-
-                        // Jika emoji yang baru sama dengan emoji yang lama, berarti user ingin unreact
-                        if (lastEmoji === selectedEmoji) {
-                            if (currentMessage.reactions[selectedEmoji]) {
-                                currentMessage.reactions[selectedEmoji].count = Math.max(0, (currentMessage.reactions[selectedEmoji].count || 0) - 1);
-                                delete currentMessage.reactions[selectedEmoji][currentUid];
-                                if (currentMessage.reactions[selectedEmoji].count === 0) {
-                                    delete currentMessage.reactions[selectedEmoji];
-                                }
-                            }
-                            // Hapus juga dari userLastReaction
-                            userLastReactionRef.remove();
-                        } else {
-                            // Tambahkan atau tingkatkan count untuk emoji baru
-                            if (!currentMessage.reactions[selectedEmoji]) {
-                                currentMessage.reactions[selectedEmoji] = { count: 0 };
-                            }
-                            currentMessage.reactions[selectedEmoji].count = (currentMessage.reactions[selectedEmoji].count || 0) + 1;
-                            currentMessage.reactions[selectedEmoji][currentUid] = true;
-                            // Set emoji baru sebagai reaksi terakhir user
-                            userLastReactionRef.set(selectedEmoji);
-                        }
-                    }
-                    return currentMessage;
-                })
-                .then(() => {
-                    console.log(`Reaksi '${selectedEmoji}' berhasil diupdate.`);
-                    hideInteractionPopover();
-                })
-                .catch(error => {
-                    console.error("Error updating reaction:", error);
-                });
-            });
-        });
-    });
-
-
-    // --- Sidebar Functions ---
-    function openSidebar() {
-        sidebar.classList.add('active');
-        sidebarOverlay.style.display = 'block';
-        updateProfileDisplay();
-    }
-
-    function closeSidebar() {
-        sidebar.classList.remove('active');
-        sidebarOverlay.style.display = 'none';
-        logoutMenu.style.display = 'none';
-    }
-
-    sidebarToggleButton.addEventListener('click', openSidebar);
-    closeSidebarButton.addEventListener('click', closeSidebar);
-    sidebarOverlay.addEventListener('click', closeSidebar);
-
-    // --- Profile Display Logic ---
-    function updateProfileDisplay() {
-        if (currentUid && currentUsername) {
-            profileUsername.textContent = currentUsername;
-            profileUid.textContent = `UID: ${currentUid}`;
-            profileAvatar.textContent = currentUsername.charAt(0).toUpperCase();
-        } else {
-            profileUsername.textContent = "Tidak Login";
-            profileUid.textContent = "";
-            profileAvatar.textContent = "?";
-        }
-    }
-
-
-    // --- Logout & Options ---
-    optionsButton.addEventListener('click', (event) => {
-      logoutMenu.style.display = logoutMenu.style.display === 'flex' ? 'none' : 'flex';
-      event.stopPropagation();
-    });
-
-    document.addEventListener('click', (event) => {
-      if (!logoutMenu.contains(event.target) && event.target !== optionsButton) {
-        logoutMenu.style.display = 'none';
+        div.addEventListener("touchend", () => clearTimeout(timeout));
       }
+    }
+
+    db.ref("chats").on("child_added", snap => renderMessage(snap.key, snap.val()));
+    db.ref("chats").on("child_changed", snap => {
+      const el = document.getElementById("msg-" + snap.key);
+      if (el) el.remove();
+      renderMessage(snap.key, snap.val());
     });
 
-    logoutButton.addEventListener('click', async () => {
-      try {
-        await auth.signOut();
-        alert("Anda telah logout.");
-      } catch (error) {
-        console.error("Error logging out:", error);
-        alert("Gagal logout. Silakan coba lagi.");
-      }
-    });
-
-    // --- Send Message Logic ---
-    sendBtn.onclick = async () => {
+    sendBtn.onclick = () => {
       const message = input.value.trim();
-      if (!message || !currentUsername || !currentUid) return;
+      if (!message) return;
 
       const msgData = {
-        user: currentUsername,
-        userUid: currentUid,
+        user: username,
         message,
         timestamp: Date.now()
       };
@@ -1141,15 +308,13 @@
       db.ref("chats").push(msgData);
       input.value = "";
       cancelReply();
-      scrollToBottom();
     };
 
-    // --- Image Upload Logic ---
     uploadBtn.onclick = () => fileInput.click();
 
     fileInput.onchange = () => {
       const file = fileInput.files[0];
-      if (!file || !currentUsername || !currentUid) return;
+      if (!file) return;
 
       const reader = new FileReader();
       reader.onload = function () {
@@ -1159,109 +324,23 @@
           body: new URLSearchParams({ image: base64 })
         })
         .then(res => res.json())
-        .then(async result => {
+        .then(result => {
           const msgData = {
-            user: currentUsername,
-            userUid: currentUid,
+            user: username,
             imageURL: result.data.url,
             timestamp: Date.now()
           };
           if (replyTo) msgData.reply = replyTo;
-
           db.ref("chats").push(msgData);
           cancelReply();
-          scrollToBottom();
         })
-        .catch(err => {
-          alert("Gagal upload gambar");
-          console.error("Image upload error:", err);
-        });
+        .catch(err => alert("Gagal upload gambar"));
       };
       reader.readAsDataURL(file);
     };
 
     input.addEventListener("keypress", e => {
       if (e.key === "Enter") sendBtn.click();
-    });
-
-    // --- Initialization & Event Listeners ---
-    let initialViewportHeight = window.innerHeight;
-    let isKeyboardOpen = false;
-
-    function onViewportResize() {
-        const currentViewportHeight = window.innerHeight;
-        const diff = initialViewportHeight - currentViewportHeight;
-
-        if (diff > (initialViewportHeight * 0.2)) {
-            if (!isKeyboardOpen) {
-                console.log("Keyboard dibuka");
-                isKeyboardOpen = true;
-                scrollToBottom();
-            }
-        } else if (diff < (initialViewportHeight * 0.2) && isKeyboardOpen) {
-            console.log("Keyboard ditutup");
-            isKeyboardOpen = false;
-            scrollToBottom();
-        }
-    }
-    window.addEventListener('resize', onViewportResize);
-
-
-    // Auth State Change Listener (PENTING untuk mengelola login/logout dan data user)
-    auth.onAuthStateChanged(async user => {
-      loadingScreen.style.display = "none"; // Sembunyikan loading screen setelah status auth diketahui
-
-      if (user) {
-        currentUid = user.uid;
-        const userProfileRef = db.ref('users/' + currentUid);
-        userProfileRef.once('value').then(snapshot => {
-          if (snapshot.exists()) {
-            const userData = snapshot.val();
-            currentUsername = userData.username;
-            isAdmin = userData.isAdmin || false;
-
-            if (!userData.username || userData.username.includes('@chatkita.com')) {
-                currentUsername = "Anonim";
-                db.ref('users/' + currentUid).update({ username: "Anonim" });
-            }
-
-            loginPage.style.display = "none";
-            chatWrapper.style.display = "flex";
-
-            adjustChatWrapperPadding();
-            window.addEventListener('resize', adjustChatWrapperPadding);
-
-            setupChatListeners(); // Mulai dengarkan chat
-            updateProfileDisplay();
-          } else {
-            console.error("User profile not found in database. Logging out.");
-            auth.signOut();
-          }
-        }).catch(error => {
-          console.error("Error fetching user profile:", error);
-          auth.signOut();
-        });
-      } else {
-        currentUsername = null;
-        currentUid = null;
-        isAdmin = false;
-        loginPage.style.display = "flex";
-        chatWrapper.style.display = "none";
-        if (chatListenerRef) {
-            chatListenerRef.off("child_added");
-            chatListenerRef.off("child_changed");
-            chatListenerRef.off("child_removed");
-            chatListenerRef = null;
-        }
-        window.removeEventListener('resize', adjustChatWrapperPadding);
-        closeSidebar();
-        updateProfileDisplay();
-      }
-    });
-
-    // Initial padding adjustment on page load
-    window.addEventListener('load', () => {
-        // No explicit call needed here, onAuthStateChanged handles initial display
     });
   </script>
 
