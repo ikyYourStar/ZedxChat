@@ -219,36 +219,6 @@
             flex-shrink: 0;
         }
 
-        .chat-info {
-            flex-grow: 1;
-            overflow: hidden;
-        }
-
-        .chat-name {
-            font-weight: bold;
-            color: #e9edef;
-            font-size: 1.1em;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .chat-last-message {
-            color: #8696a0; /* Lighter grey for messages */
-            font-size: 0.9em;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            margin-top: 3px;
-        }
-
-        .chat-time {
-            font-size: 0.8em;
-            color: #8696a0;
-            margin-left: 10px;
-            flex-shrink: 0;
-        }
-
         /* --- Main Chat Content Styles --- */
         #main-content {
             flex: 1;
@@ -306,7 +276,7 @@
             word-wrap: break-word;
             font-size: 0.95em; /* Slightly smaller font for better fit */
             position: relative;
-            transition: transform 0.2s ease;
+            transition: transform 0.2s ease; /* For swipe animation */
             will-change: transform;
             box-shadow: 0 1px 1px rgba(0,0,0,0.1);
         }
@@ -569,6 +539,35 @@
         #toastMessage.show {
             opacity: 1;
         }
+
+        /* Context Menu for messages */
+        #messageContextMenu {
+            position: absolute;
+            background-color: #2a3942; /* Darker background */
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            z-index: 1000;
+            display: none;
+            overflow: hidden; /* Ensure rounded corners */
+        }
+
+        #messageContextMenu ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        #messageContextMenu ul li {
+            padding: 10px 15px;
+            color: #e9edef;
+            cursor: pointer;
+            font-size: 0.9em;
+            white-space: nowrap;
+        }
+
+        #messageContextMenu ul li:hover {
+            background-color: #005c4b; /* Highlight on hover */
+        }
     </style>
 </head>
 <body>
@@ -648,7 +647,7 @@
         </div>
     </div>
 
-    <div class="overlay" id="fullScreenOverlay" onclick="closeNav(); closeProfileModal()"></div>
+    <div class="overlay" id="fullScreenOverlay" onclick="closeNav(); closeProfileModal(); hideMessageContextMenu()"></div>
 
     <span id="sidebar-toggle" onclick="openNav()">&#9776;</span>
 
@@ -669,6 +668,12 @@
             <textarea id="input" placeholder="Ketik pesan..." rows="1"></textarea>
             <button id="send">Kirim</button>
         </div>
+    </div>
+
+    <div id="messageContextMenu">
+        <ul>
+            <li id="contextDelete">Hapus Pesan</li>
+        </ul>
     </div>
 
     <div id="toastMessage">Tekan kembali sekali lagi untuk keluar</div>
@@ -703,6 +708,16 @@
 
         let currentChatId = null; // Menambahkan variabel untuk melacak chat yang sedang aktif
         let currentChatListener = null; // Menambahkan variabel untuk melacak listener chat
+
+        // Variables for context menu
+        let currentContextMenuMessage = null; // Stores message data for context menu actions
+
+        // Variables for swipe gesture
+        let initialX = null;
+        let initialY = null;
+        const SWIPE_THRESHOLD = 50; // Minimum horizontal swipe distance to trigger reply
+        const VERTICAL_THRESHOLD = 20; // Maximum vertical deviation for a horizontal swipe
+        let swipedElement = null; // To keep track of the element being swiped
 
         // --- UI Elements ---
         // Loading Screen
@@ -754,6 +769,11 @@
         const sidebarToggle = document.getElementById("sidebar-toggle");
         const root = document.documentElement; /* Untuk mengakses variabel CSS */
 
+        // Context Menu
+        const messageContextMenu = document.getElementById("messageContextMenu");
+        // const contextReply = document.getElementById("contextReply"); // Dihapus karena reply via swipe
+        const contextDelete = document.getElementById("contextDelete");
+
         // Toast Message
         const toastMessage = document.getElementById("toastMessage");
 
@@ -772,6 +792,7 @@
             fullScreenOverlay.classList.remove("active");
             closeNav(); // Ensure sidebar is closed when changing screens
             hideToast(); // Hide any active toast message
+            hideMessageContextMenu(); // Hide context menu
 
             // Detach previous chat message listener if moving away from chat detail
             if (currentChatListener) { // Menggunakan currentChatListener
@@ -1071,17 +1092,85 @@
             }
 
 
-            // Add long press/right click listener for reply ONLY if not admin chat and not bot message
-            if (chatRef === PUBLIC_CHAT_ID && val.sender !== "ZedxBot") {
-                msgDiv.addEventListener('contextmenu', (e) => {
-                    e.preventDefault(); // Prevent default context menu
-                    startReply(key, val.text, val.sender, val.senderUid);
+            // Add long press/right click listener to show context menu (ONLY for Delete)
+            // This applies to ALL messages in public chat (or any chat where context menu is desired)
+            if (chatRef === PUBLIC_CHAT_ID) { // Only enable context menu for public chat
+                 msgDiv.addEventListener('contextmenu', (e) => {
+                    e.preventDefault(); // Prevent default browser context menu
+                    showContextMenu(e, key, val, chatRef);
                 });
-                // Optional: Add a simple click for reply on mobile (less common, but an option)
-                // msgDiv.addEventListener('click', () => {
-                //     startReply(key, val.text, val.sender, val.senderUid);
-                // });
+                 // For touch devices (long press emulation)
+                 let touchTimeout;
+                 msgDiv.addEventListener('touchstart', (e) => {
+                    touchTimeout = setTimeout(() => {
+                        e.preventDefault(); // Prevent default touch behavior (e.g., scroll)
+                        showContextMenu(e, key, val, chatRef);
+                    }, 500); // 500ms for a long press
+                 });
+                 msgDiv.addEventListener('touchend', () => {
+                    clearTimeout(touchTimeout);
+                 });
+                 msgDiv.addEventListener('touchmove', () => {
+                    clearTimeout(touchTimeout);
+                 });
             }
+
+            // --- SWIPE GESTURE FOR REPLY ---
+            if (chatRef === PUBLIC_CHAT_ID && val.sender !== "ZedxBot") { // Only enable swipe reply for public chat, and not for bot messages
+                msgDiv.addEventListener('touchstart', (e) => {
+                    if (e.touches.length === 1) { // Only track single touch
+                        initialX = e.touches[0].clientX;
+                        initialY = e.touches[0].clientY;
+                        swipedElement = msgDiv;
+                        msgDiv.style.transition = 'transform 0.1s ease-out'; // Make swipe visual smoother
+                    }
+                }, { passive: true }); // Use passive to avoid blocking scroll
+
+                msgDiv.addEventListener('touchmove', (e) => {
+                    if (initialX === null || swipedElement !== msgDiv || e.touches.length === 0) return;
+
+                    const currentX = e.touches[0].clientX;
+                    const currentY = e.touches[0].clientY;
+
+                    const diffX = currentX - initialX;
+                    const diffY = currentY - initialY;
+
+                    // Only consider horizontal movement if vertical movement is minimal
+                    if (Math.abs(diffY) < VERTICAL_THRESHOLD) {
+                        if (diffX > 0) { // Swiping right
+                            msgDiv.style.transform = `translateX(${Math.min(diffX, SWIPE_THRESHOLD * 0.7)}px)`; // Limit visual swipe
+                        } else {
+                            msgDiv.style.transform = `translateX(0px)`; // Reset if swiping left
+                        }
+                    } else {
+                        // If significant vertical movement, cancel swipe attempt
+                        msgDiv.style.transform = `translateX(0px)`;
+                        initialX = null;
+                        initialY = null;
+                        swipedElement = null;
+                    }
+                }, { passive: true });
+
+                msgDiv.addEventListener('touchend', (e) => {
+                    if (initialX === null || swipedElement !== msgDiv) return;
+
+                    const currentX = e.changedTouches[0].clientX;
+                    const diffX = currentX - initialX;
+
+                    msgDiv.style.transform = `translateX(0px)`; // Reset position
+
+                    if (diffX > SWIPE_THRESHOLD) { // If swipe right exceeds threshold
+                        // Trigger reply
+                        startReply(key, val.text, val.sender, val.senderUid);
+                    }
+
+                    initialX = null;
+                    initialY = null;
+                    swipedElement = null;
+                });
+            }
+            // --- END SWIPE GESTURE ---
+
 
             if (val.replyTo) {
                 const replyEl = document.createElement('div');
@@ -1119,7 +1208,85 @@
             scrollToBottom();
         }
 
-        // Fungsi untuk format waktu
+        // --- Message Context Menu Logic ---
+        function showContextMenu(event, msgKey, msgVal, chatRef) {
+            currentContextMenuMessage = { key: msgKey, val: msgVal, chatRef: chatRef };
+
+            // Determine if delete option should be shown
+            const isOwnMessage = msgVal.senderUid === currentLoggedInUser.uid;
+            const isAdmin = currentLoggedInUser.isAdmin;
+            const canDelete = isOwnMessage || isAdmin; // User can delete own, admin can delete any
+
+            // Hide/show delete option
+            contextDelete.style.display = canDelete ? 'block' : 'none';
+
+            // contextReply.style.display = 'none'; // Selalu sembunyikan opsi reply dari context menu
+
+            // Position the context menu
+            messageContextMenu.style.left = `${event.clientX}px`;
+            messageContextMenu.style.top = `${event.clientY}px`;
+            messageContextMenu.style.display = 'block';
+
+            // Ensure menu stays within viewport
+            const rect = messageContextMenu.getBoundingClientRect();
+            if (rect.bottom > window.innerHeight) {
+                messageContextMenu.style.top = `${event.clientY - rect.height}px`;
+            }
+            if (rect.right > window.innerWidth) {
+                messageContextMenu.style.left = `${event.clientX - rect.width}px`;
+            }
+
+            // Show overlay to close menu on outside click
+            fullScreenOverlay.classList.add('active');
+        }
+
+        function hideMessageContextMenu() {
+            messageContextMenu.style.display = 'none';
+            fullScreenOverlay.classList.remove('active');
+            currentContextMenuMessage = null; // Clear stored message data
+        }
+
+        // Add listeners for context menu items
+        // contextReply.addEventListener('click', () => { // Event listener ini dihapus karena reply via swipe
+        //     if (currentContextMenuMessage) {
+        //         startReply(
+        //             currentContextMenuMessage.key,
+        //             currentContextMenuMessage.val.text,
+        //             currentContextMenuMessage.val.sender,
+        //             currentContextMenuMessage.val.senderUid
+        //         );
+        //     }
+        //     hideMessageContextMenu();
+        // });
+
+        contextDelete.addEventListener('click', () => {
+            if (currentContextMenuMessage && currentContextMenuMessage.chatRef === PUBLIC_CHAT_ID) {
+                // Confirm deletion
+                if (confirm("Apakah Anda yakin ingin menghapus pesan ini?")) {
+                    db.ref(`${PUBLIC_CHAT_ID}/messages/${currentContextMenuMessage.key}`).update({ deleted: true })
+                        .then(() => {
+                            showToast("Pesan berhasil dihapus.");
+                            console.log("Pesan dihapus:", currentContextMenuMessage.key);
+                        })
+                        .catch(error => {
+                            showToast("Gagal menghapus pesan: " + error.message);
+                            console.error("Error deleting message:", error);
+                        });
+                }
+            } else {
+                 showToast("Hapus hanya tersedia untuk chat publik.");
+            }
+            hideMessageContextMenu();
+        });
+
+        // Close context menu if clicked outside
+        document.addEventListener('click', (e) => {
+            if (!messageContextMenu.contains(e.target) && messageContextMenu.style.display === 'block') {
+                hideMessageContextMenu();
+            }
+        });
+
+        // --- Fungsi untuk format waktu ---
         function formatTime(timestamp) {
             if (!timestamp) return '';
             const date = new Date(timestamp);
@@ -1171,13 +1338,12 @@
             const inputAreaComputedStyle = window.getComputedStyle(input_area);
             const inputAreaPaddingTop = parseFloat(inputAreaComputedStyle.paddingTop);
             const inputAreaPaddingBottom = parseFloat(inputAreaComputedStyle.paddingBottom);
-            const inputAreaGap = parseFloat(inputAreaComputedStyle.gap); // Assuming gap is applied to children
+            // Assuming gap is applied to children, no need to add explicitly if part of flex layout spacing
 
             let totalHeight = newHeight + inputAreaPaddingTop + inputAreaPaddingBottom;
 
-            // Add space for the buttons (assuming they contribute to the total height of the flex container)
-            // A rough estimate, adjust if needed
-            totalHeight += 10; // Extra buffer for button/gap
+            // Add some buffer if needed for consistent spacing, adjusted for the buttons
+            totalHeight += 10; // Small extra buffer
 
             if (replyPreview.style.display === 'flex') {
                 totalHeight += parseFloat(getComputedStyle(root).getPropertyValue('--reply-preview-height'));
@@ -1227,22 +1393,43 @@
                     return;
                 }
 
-                // Send to reports chat
+                // Send the actual report message to the reports chat
                 db.ref(`${REPORT_CHAT_ID}/messages`).push({
                     ...messageData,
                     text: reportText,
                     originalSenderEmail: currentLoggedInUser.email // Simpan email pelapor
                 }).then(() => {
                     console.log("Pesan laporan dikirim!");
-                    // Send bot message to public chat
+                    // Now, send a bot reply to the original message in the public chat
+                    // The original message (-report text) is NOT removed.
+                    // We need the key of the message just sent to public chat for the reply.
+                    // To do this, we'll send the original -report message to public chat first
+                    // THEN send the bot reply to IT.
+
+                    // Send the original message (including -report prefix) to public chat first
                     db.ref(`${PUBLIC_CHAT_ID}/messages`).push({
-                        sender: "ZedxBot",
-                        senderUid: "zedxbot_uid", // UID unik untuk bot
-                        text: "Pesan Anda akan dikirim ke admin, mohon tunggu yaa.",
-                        timestamp: firebase.database.ServerValue.TIMESTAMP
+                        ...messageData,
+                        text: text // Send the full original message (e.g., "-report spam")
+                    }).then((publicMessageRef) => {
+                        // Now, send the bot's reply to this public message
+                        db.ref(`${PUBLIC_CHAT_ID}/messages`).push({
+                            sender: "ZedxBot",
+                            senderUid: "zedxbot_uid", // UID unik untuk bot
+                            text: "Pesan Anda telah kami terima dan akan dikirim ke admin. Mohon tunggu yaa.",
+                            timestamp: firebase.database.ServerValue.TIMESTAMP,
+                            replyTo: { // Bot replies to the user's -report message
+                                id: publicMessageRef.key, // ID of the user's message
+                                text: text, // Original text of the user's message
+                                sender: currentDisplayName,
+                                senderUid: currentLoggedInUser.uid
+                            }
+                        });
+                    }).catch(error => {
+                        console.error("Gagal mengirim pesan publik asli atau bot reply:", error);
+                        showToast("Gagal mengirim laporan atau notifikasi: " + error.message);
                     });
                 }).catch(error => {
-                    console.error("Gagal mengirim pesan laporan:", error);
+                    console.error("Gagal mengirim pesan laporan ke admin:", error);
                     showToast("Gagal mengirim laporan: " + error.message);
                 });
 
@@ -1408,8 +1595,10 @@
             if (sidebar.classList.contains('open')) {
                 closeNav();
             }
+            if (messageContextMenu.style.display === 'block') { // Also close context menu
+                hideMessageContextMenu();
+            }
         });
-
     </script>
 </body>
 </html>
