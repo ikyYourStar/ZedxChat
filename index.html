@@ -291,6 +291,8 @@
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
+      /* PENTING: Tambahkan padding bawah agar pesan tidak tertutup input */
+      padding-bottom: 70px; /* Sesuaikan dengan tinggi area input */
     }
 
     .msg {
@@ -355,13 +357,19 @@
       cursor:pointer;
     }
 
+    /* FIX: Area input sekarang fixed di bagian bawah */
     #input-area {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
       display: flex;
       gap: 8px; /* Smaller gap */
       padding: 8px 15px; /* Adjust padding */
       background: #202c33; /* Dark input area */
       border-top: 1px solid #2a3942;
       align-items: center;
+      z-index: 101; /* Pastikan di atas konten chat */
     }
 
     #input {
