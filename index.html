@@ -3,119 +3,375 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Chat Realtime</title>
+  <title>ZedxChat</title>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <style>
+    /* Global Styles */
     * { box-sizing: border-box; }
     html, body {
       margin: 0; padding: 0; height: 100%;
       font-family: Arial, sans-serif;
-      background: url('https://raw.githubusercontent.com/ikyYourStar/ZedxChat/refs/heads/main/assets/Tak%20berjudul134_20250707192207.png') no-repeat center center fixed;
-      background-size: cover;
+      background: #202c33; /* Dark background like WhatsApp */
+      color: #e9edef; /* Light text color */
+      overflow: hidden; /* Prevent body scroll */
     }
     body { display: flex; flex-direction: column; }
+
+    /* --- Auth Container Styles (Login/Register) --- */
+    .auth-container {
+      background-color: rgba(32, 44, 51, 0.9); /* Darker, slightly transparent */
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+      box-sizing: border-box;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 102;
+      display: none;
+    }
+
+    .auth-container h2 {
+      margin-bottom: 25px;
+      color: #e9edef;
+    }
+
+    .input-group {
+      margin-bottom: 20px;
+      text-align: left;
+    }
+
+    .input-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+      color: #bec7c1;
+    }
+
+    .input-group input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #555;
+      border-radius: 5px;
+      font-size: 16px;
+      background-color: #33444d; /* Darker input background */
+      color: #e9edef;
+      box-sizing: border-box;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      margin-top: 25px;
+    }
+
+    .button-group button {
+      padding: 12px 25px;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      color: white;
+    }
+
+    #loginBtn {
+      background-color: #008069; /* WhatsApp Green */
+    }
+
+    #loginBtn:hover {
+      background-color: #006b5a;
+    }
+
+    #registerBtn {
+      background-color: #075e54; /* Darker WhatsApp Green */
+    }
+
+    #registerBtn:hover {
+      background-color: #064c44;
+    }
+
+    #authMessage {
+      margin-top: 20px;
+      font-weight: bold;
+      color: #ff6b6b; /* Error red */
+    }
+
+    /* --- Chat List (Lobby) Styles --- */
+    #chatListContainer {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        width: 100%;
+        background-color: #111b21; /* WhatsApp dark background */
+        position: relative;
+        overflow: hidden;
+    }
+
+    #chatListHeader {
+        display: flex;
+        align-items: center;
+        padding: 15px 20px;
+        background-color: #202c33;
+        color: #e9edef;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        z-index: 10;
+    }
+
+    #chatListHeader h1 {
+        flex-grow: 1;
+        margin: 0;
+        font-size: 1.5em;
+        text-align: left;
+    }
+
+    #chatListHeader button {
+        background: none;
+        border: none;
+        color: #e9edef;
+        font-size: 1.2em;
+        cursor: pointer;
+        margin-left: 15px;
+    }
+
+    #chatListContent {
+        flex: 1;
+        overflow-y: auto;
+        padding: 0;
+    }
+
+    .chat-list-item {
+        display: flex;
+        align-items: center;
+        padding: 15px 20px;
+        border-bottom: 1px solid #2a3942; /* Darker separator */
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+
+    .chat-list-item:hover {
+        background-color: #2a3942; /* Hover effect */
+    }
+
+    .chat-list-item:last-child {
+        border-bottom: none;
+    }
+
+    .chat-avatar {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background-color: #008069; /* Default avatar background */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 1.5em;
+        color: white;
+        margin-right: 15px;
+        flex-shrink: 0;
+    }
+
+    .chat-info {
+        flex-grow: 1;
+        overflow: hidden;
+    }
+
+    .chat-name {
+        font-weight: bold;
+        color: #e9edef;
+        font-size: 1.1em;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .chat-last-message {
+        color: #8696a0; /* Lighter grey for messages */
+        font-size: 0.9em;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-top: 3px;
+    }
+
+    .chat-time {
+        font-size: 0.8em;
+        color: #8696a0;
+        margin-left: 10px;
+        flex-shrink: 0;
+    }
+
+    /* --- Main Chat Content Styles --- */
+    #main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100vh; /* Use 100vh for full screen chat */
+      width: 100%;
+      position: relative;
+      background-color: #0b141a; /* WhatsApp chat background */
+      display: none; /* Hidden by default */
+    }
+
+    #chat-header {
+      display: flex;
+      align-items: center;
+      padding: 10px 15px;
+      background-color: #202c33; /* Darker header */
+      color: #e9edef;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      z-index: 10;
+    }
+
+    #chat-header button {
+        background: none;
+        border: none;
+        color: #e9edef;
+        font-size: 1.5em;
+        cursor: pointer;
+        margin-right: 15px;
+    }
+
+    #chat-header h2 {
+        flex-grow: 1;
+        margin: 0;
+        font-size: 1.2em;
+    }
 
     #chat-container {
       flex: 1;
       overflow-y: auto;
-      padding: 3vw;
+      padding: 10px 15px; /* Adjust padding for chat messages */
+      background-image: url('https://raw.githubusercontent.com/ikyYourStar/ZedxChat/refs/heads/main/assets/Tak%20berjudul134_20250707192207.png'); /* Your background image */
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
     }
 
     .msg {
-      max-width: 75%;
-      padding: 3vw;
-      margin: 2vw 0;
-      border-radius: 2vw;
+      max-width: 80%; /* Slightly wider messages */
+      padding: 8px 12px; /* Adjust padding */
+      margin: 6px 0; /* Adjust margin */
+      border-radius: 8px; /* Smaller border radius */
       word-wrap: break-word;
-      font-size: 4vw;
+      font-size: 0.95em; /* Slightly smaller font for better fit */
       position: relative;
       transition: transform 0.2s ease;
       will-change: transform;
+      box-shadow: 0 1px 1px rgba(0,0,0,0.1);
     }
 
     .own {
-      background: #dcf8c6;
+      background: #005c4b; /* Darker green for own messages */
       margin-left: auto;
       text-align: right;
     }
 
-    .own * {
-      text-align: right !important;
-    }
-
     .other {
-      background: #e5e5ea;
+      background: #202c33; /* Dark grey for other messages */
       margin-right: auto;
       text-align: left;
     }
 
     .reply {
-      font-size: 3.2vw;
-      opacity: 0.6;
-      margin-bottom: 1vw;
+      font-size: 0.75em;
+      opacity: 0.7;
+      margin-bottom: 5px;
+      font-style: italic;
+      border-left: 3px solid #075e54;
+      padding-left: 5px;
+      color: #aebac1;
     }
 
     #reply-preview {
-      background: rgba(0,0,0,0.6);
-      color: white;
-      padding: 2vw;
-      font-size: 3.5vw;
+      background: #202c33;
+      color: #e9edef;
+      padding: 10px 15px;
+      font-size: 0.9em;
       display: none;
-      display: flex;
-      justify-content: space-between;
       align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid #2a3942;
     }
 
     #reply-preview span {
       flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-right: 10px;
+    }
+
+    #reply-preview button {
+      background:none;
+      border:none;
+      color:#e9edef;
+      font-size:1.5em;
+      cursor:pointer;
     }
 
     #input-area {
       display: flex;
-      gap: 2vw;
-      padding: 2vw;
-      background: #fff;
-      border-top: 1px solid #ccc;
+      gap: 8px; /* Smaller gap */
+      padding: 8px 15px; /* Adjust padding */
+      background: #202c33; /* Dark input area */
+      border-top: 1px solid #2a3942;
       align-items: center;
     }
 
     #input {
       flex: 1;
-      padding: 2.5vw;
-      font-size: 4vw;
-      border: 1px solid #ccc;
-      border-radius: 1vw;
+      padding: 10px 15px; /* Adjust padding */
+      font-size: 1em;
+      border: none; /* No border */
+      border-radius: 20px; /* Pill shape */
+      background-color: #2a3942; /* Darker input background */
+      color: #e9edef;
+      outline: none; /* No outline on focus */
     }
 
-    #send {
-      padding: 2.5vw 4vw;
-      background: #4caf50;
+    #send, #uploadBtn {
+      width: 45px; /* Round buttons */
+      height: 45px;
+      border-radius: 50%;
+      background: #008069; /* WhatsApp Green */
       color: white;
-      font-size: 4vw;
+      font-size: 1.5em;
       border: none;
-      border-radius: 1vw;
       cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: background-color 0.3s ease;
+    }
+
+    #send:hover, #uploadBtn:hover {
+        background-color: #006b5a;
     }
 
     #uploadBtn {
-      background: none;
-      border: none;
-      font-size: 6vw;
-      cursor: pointer;
+        font-size: 1.2em; /* Smaller icon */
     }
 
     .msg img {
       max-width: 100%;
-      border-radius: 1vw;
-      margin-top: 1vw;
+      border-radius: 5px;
+      margin-top: 5px;
     }
 
     .time {
-      font-size: 3vw;
-      opacity: 0.5;
+      font-size: 0.7em;
+      opacity: 0.6;
       display: block;
-      margin-top: 1vw;
+      margin-top: 3px;
+      color: #aebac1;
     }
 
     .own .time {
@@ -126,30 +382,180 @@
       text-align: left;
     }
 
+    /* Sidebar Styles */
+    #sidebar {
+      width: 0;
+      background-color: #1f2c33; /* Darker sidebar */
+      overflow-x: hidden;
+      transition: 0.5s;
+      padding-top: 60px;
+      position: fixed;
+      height: 100%;
+      z-index: 100;
+      top: 0;
+      left: 0;
+      color: #e9edef;
+    }
+
+    #sidebar.open {
+      width: 250px;
+    }
+
+    #sidebar a {
+      padding: 8px 8px 8px 32px;
+      text-decoration: none;
+      font-size: 25px;
+      color: #818181;
+      display: block;
+      transition: 0.3s;
+    }
+
+    #sidebar a:hover {
+      color: #f1f1f1;
+    }
+
+    #sidebar .closebtn {
+      position: absolute;
+      top: 0;
+      right: 25px;
+      font-size: 36px;
+      margin-left: 50px;
+    }
+
+    #sidebar-menu-list ul {
+        list-style-type: none;
+        padding: 0;
+    }
+
+    #sidebar-menu-list li {
+        padding: 10px 32px;
+        font-size: 18px;
+        border-bottom: 1px solid #2a3942;
+    }
+
+    #sidebar-menu-list li:last-child {
+        border-bottom: none;
+    }
+
+    #sidebar-menu-list li a {
+        color: #e9edef;
+        text-decoration: none;
+        display: block;
+        padding: 0;
+        font-size: 18px;
+    }
+
+    #sidebar-menu-list li a:hover {
+        color: #008069;
+    }
+
+    /* Overlay effect */
+    .overlay {
+        position: fixed;
+        width: 100%;
+        height: 100%;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0,0,0,0.5);
+        z-index: 99;
+        display: none;
+        transition: opacity 0.5s;
+    }
+
+    .overlay.active {
+        display: block;
+        opacity: 1;
+    }
+
+    /* Responsive adjustments */
     @media (min-width: 768px) {
       .msg { font-size: 16px; }
       .reply { font-size: 13px; }
       #input { font-size: 16px; }
-      #send { font-size: 16px; }
-      #uploadBtn { font-size: 24px; }
+      #send, #uploadBtn { font-size: 24px; width: 50px; height: 50px;}
       .time { font-size: 12px; }
+      #sidebar-toggle { top: 20px; left: 20px; font-size: 36px;}
+      .auth-container, .profile-modal { padding: 40px; }
     }
   </style>
 </head>
 <body>
 
-  <div id="chat-container"></div>
-
-  <div id="reply-preview">
-    <span id="reply-text"></span>
-    <button onclick="cancelReply()" style="background:none;border:none;color:white;font-size:5vw;">×</button>
+  <div class="auth-container" id="authContainer">
+    <h2>Login / Daftar ZedxChat</h2>
+    <div class="input-group">
+      <label for="authEmail">Email:</label>
+      <input type="email" id="authEmail" placeholder="Masukkan email Anda" required />
+    </div>
+    <div class="input-group">
+      <label for="authPassword">Password:</label>
+      <input type="password" id="authPassword" placeholder="Masukkan password Anda" required />
+    </div>
+    <div class="button-group">
+      <button id="loginBtn">Login</button>
+      <button id="registerBtn">Daftar</button>
+    </div>
+    <p id="authMessage"></p>
   </div>
 
-  <div id="input-area">
-    <button id="uploadBtn">📎</button>
-    <input type="file" id="fileInput" accept="image/*" style="display:none;" />
-    <input type="text" id="input" placeholder="Ketik pesan..." />
-    <button id="send">Kirim</button>
+  <div id="chatListContainer">
+    <div id="chatListHeader">
+      <h1>ZedxChat</h1>
+      <button id="lobbyLogoutBtn">Logout</button>
+      <button id="viewProfileBtn">👤</button>
+    </div>
+    <div id="chatListContent">
+      </div>
+    </div>
+
+  <div class="auth-container" id="profileModal" style="display:none;">
+    <h2>Profil Anda</h2>
+    <p>Email: <strong id="profileEmail"></strong></p>
+    <div class="input-group">
+      <label for="profileDisplayName">Nama Pengguna (Username):</label>
+      <input type="text" id="profileDisplayName" placeholder="Atur nama pengguna Anda" required />
+    </div>
+    <button id="saveProfileBtn" style="background-color: #008069; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">Simpan</button>
+    <button onclick="closeProfileModal()" style="background-color: #555; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin-left: 10px;">Tutup</button>
+    <p id="profileMessage" style="margin-top: 10px; color: red;"></p>
+  </div>
+
+  <div id="sidebar">
+    <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
+    <div id="sidebar-menu-list">
+        <ul>
+            <li><a href="#" onclick="openProfileModal()">Profil Saya</a></li>
+            <li><a href="#">Pengaturan Notifikasi</a></li>
+            <li><a href="#">Privasi dan Keamanan</a></li>
+            <li><a href="#">Bantuan</a></li>
+            <li><a href="#">Tentang Aplikasi</a></li>
+            <li><a href="#" onclick="logout()">Logout</a></li>
+        </ul>
+    </div>
+  </div>
+
+  <div class="overlay" id="fullScreenOverlay" onclick="closeNav(); closeProfileModal()"></div>
+
+  <span id="sidebar-toggle" onclick="openNav()">&#9776;</span>
+
+  <div id="main-content">
+    <div id="chat-header">
+      <button id="backToChatListBtn">&#8249;</button> <h2 id="currentChatName">ZedxChat</h2> </div>
+    <div id="chat-container"></div>
+
+    <div id="reply-preview">
+      <span id="reply-text"></span>
+      <button onclick="cancelReply()" style="background:none;border:none;color:white;font-size:5vw;">×</button>
+    </div>
+
+    <div id="input-area">
+      <button id="uploadBtn">📎</button>
+      <input type="file" id="fileInput" accept="image/*" style="display:none;" />
+      <input type="text" id="input" placeholder="Ketik pesan..." />
+      <button id="send">Kirim</button>
+    </div>
   </div>
 
   <script>
@@ -166,13 +572,40 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
+    const auth = firebase.auth();
 
-    let username = localStorage.getItem("username");
-    if (!username) {
-      username = prompt("Masukkan nama kamu:") || "Anonim";
-      localStorage.setItem("username", username);
-    }
+    const PUBLIC_CHAT_ID = "publicChat"; // Fixed ID for the public chat
 
+    let currentLoggedInUser = null; // Firebase User Object
+    let currentDisplayName = "Anonim"; // Display Name for chat
+
+    // --- UI Elements ---
+    // Auth UI
+    const authContainer = document.getElementById("authContainer");
+    const authEmailInput = document.getElementById("authEmail");
+    const authPasswordInput = document.getElementById("authPassword");
+    const loginBtn = document.getElementById("loginBtn");
+    const registerBtn = document.getElementById("registerBtn");
+    const authMessageEl = document.getElementById("authMessage");
+
+    // Chat List (Lobby) UI
+    const chatListContainer = document.getElementById("chatListContainer");
+    const chatListContent = document.getElementById("chatListContent");
+    const lobbyLogoutBtn = document.getElementById("lobbyLogoutBtn");
+    const viewProfileBtn = document.getElementById("viewProfileBtn");
+
+    // Profile Modal
+    const profileModal = document.getElementById("profileModal");
+    const profileEmailEl = document.getElementById("profileEmail");
+    const profileDisplayNameInput = document.getElementById("profileDisplayName");
+    const saveProfileBtn = document.getElementById("saveProfileBtn");
+    const profileMessageEl = document.getElementById("profileMessage");
+
+    // Chat Detail UI
+    const mainContent = document.getElementById("main-content");
+    const chatHeader = document.getElementById("chat-header");
+    const backToChatListBtn = document.getElementById("backToChatListBtn");
+    const currentChatNameEl = document.getElementById("currentChatName"); // Hardcoded "ZedxChat" in HTML
     const chatContainer = document.getElementById("chat-container");
     const input = document.getElementById("input");
     const sendBtn = document.getElementById("send");
@@ -180,8 +613,249 @@
     const uploadBtn = document.getElementById("uploadBtn");
     const replyPreview = document.getElementById("reply-preview");
     const replyText = document.getElementById("reply-text");
-    let replyTo = null;
+    const sidebar = document.getElementById("sidebar");
+    const fullScreenOverlay = document.getElementById("fullScreenOverlay");
+    const sidebarToggle = document.getElementById("sidebar-toggle");
 
+    let replyTo = null;
+    let chatMessageListener = null; // Keep track of the chat message listener
+
+    // --- Screen Navigation Functions ---
+    function showScreen(screen) {
+        authContainer.style.display = "none";
+        chatListContainer.style.display = "none";
+        mainContent.style.display = "none";
+        sidebarToggle.style.display = "none"; // Hide sidebar toggle by default
+        profileModal.style.display = "none"; // Hide profile modal by default
+        fullScreenOverlay.classList.remove("active");
+
+        // Detach previous chat message listener if moving away from chat detail
+        if (chatMessageListener) {
+            db.ref(`publicChat/messages`).off('child_added', chatMessageListener);
+            db.ref(`publicChat/messages`).off('child_changed', chatMessageListener);
+            chatMessageListener = null;
+        }
+
+        if (screen === 'auth') {
+            authContainer.style.display = "block";
+            authEmailInput.value = "";
+            authPasswordInput.value = "";
+            authMessageEl.textContent = "";
+        } else if (screen === 'chatList') {
+            chatListContainer.style.display = "flex";
+            sidebarToggle.style.display = "block"; // Sidebar toggle visible on chat list
+            renderPublicChatItem(); // Always show public chat
+        } else if (screen === 'chatDetail') {
+            mainContent.style.display = "flex";
+            sidebarToggle.style.display = "block"; // Sidebar toggle visible on chat detail
+            chatContainer.innerHTML = ""; // Clear previous chat messages
+
+            // Attach listener for the public chat messages
+            chatMessageListener = db.ref(`publicChat/messages`).on("child_added", snap => renderMessage(snap.key, snap.val()));
+            db.ref(`publicChat/messages`).on("child_changed", snap => {
+                const el = document.getElementById("msg-" + snap.key);
+                if (el) el.remove();
+                renderMessage(snap.key, snap.val());
+            });
+            scrollToBottom();
+        }
+    }
+
+    // --- Authentication Functions ---
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        currentLoggedInUser = user;
+        db.ref('users/' + user.uid).once('value')
+          .then(snapshot => {
+            const userData = snapshot.val();
+            if (userData && userData.displayName) {
+              currentDisplayName = userData.displayName;
+            } else {
+              currentDisplayName = user.email.split('@')[0];
+              db.ref('users/' + user.uid).update({ displayName: currentDisplayName, email: user.email });
+            }
+            showScreen('chatList'); // Go to public chat lobby
+          })
+          .catch(error => {
+            console.error("Error fetching user data:", error);
+            currentDisplayName = user.email.split('@')[0]; // Fallback
+            showScreen('chatList');
+          });
+
+      } else {
+        currentLoggedInUser = null;
+        currentDisplayName = "Anonim";
+        showScreen('auth');
+      }
+    });
+
+    loginBtn.addEventListener("click", () => {
+      const email = authEmailInput.value.trim();
+      const password = authPasswordInput.value.trim();
+      if (!email || !password) { authMessageEl.textContent = "Email dan password harus diisi!"; return; }
+
+      auth.signInWithEmailAndPassword(email, password)
+        .then(() => { authMessageEl.textContent = "Login berhasil!"; })
+        .catch((error) => {
+          let errorMessage = "Login gagal.";
+          if (error.code === 'auth/wrong-password') errorMessage = "Password salah.";
+          else if (error.code === 'auth/user-not-found') errorMessage = "Pengguna tidak ditemukan.";
+          else if (error.code === 'auth/invalid-email') errorMessage = "Format email tidak valid.";
+          authMessageEl.textContent = errorMessage + " (" + error.message + ")";
+          console.error("Login Error:", error);
+        });
+    });
+
+    registerBtn.addEventListener("click", () => {
+      const email = authEmailInput.value.trim();
+      const password = authPasswordInput.value.trim();
+      if (!email || !password) { authMessageEl.textContent = "Email dan password harus diisi!"; return; }
+      if (password.length < 6) { authMessageEl.textContent = "Password minimal 6 karakter!"; return; }
+
+      auth.createUserWithEmailAndPassword(email, password)
+        .then((userCredential) => {
+          const defaultDisplayName = email.split('@')[0];
+          return db.ref('users/' + userCredential.user.uid).set({
+            email: email,
+            displayName: defaultDisplayName,
+            createdAt: firebase.database.ServerValue.TIMESTAMP
+          }).then(() => {
+            authMessageEl.textContent = "Pendaftaran berhasil! Nama pengguna Anda diatur sebagai '" + defaultDisplayName + "'. Silakan login.";
+            authPasswordInput.value = "";
+          });
+        })
+        .catch((error) => {
+          let errorMessage = "Pendaftaran gagal.";
+          if (error.code === 'auth/email-already-in-use') errorMessage = "Email ini sudah terdaftar. Silakan login atau gunakan email lain.";
+          else if (error.code === 'auth/invalid-email') errorMessage = "Format email tidak valid.";
+          else if (error.code === 'auth/weak-password') errorMessage = "Password terlalu lemah (minimal 6 karakter).";
+          authMessageEl.textContent = errorMessage + " (" + error.message + ")";
+          console.error("Register Error:", error);
+        });
+    });
+
+    function logout() {
+        auth.signOut().then(() => {
+            closeNav();
+        }).catch((error) => {
+            console.error("Logout error:", error);
+            alert("Gagal logout: " + error.message);
+        });
+    }
+    lobbyLogoutBtn.addEventListener("click", logout);
+
+    // --- Profile Management ---
+    function openProfileModal() {
+        if (!currentLoggedInUser) {
+            alert("Anda belum login.");
+            return;
+        }
+        closeNav(); // Close sidebar first
+        profileModal.style.display = "block";
+        fullScreenOverlay.classList.add("active");
+        profileEmailEl.textContent = currentLoggedInUser.email;
+        profileDisplayNameInput.value = currentDisplayName;
+        profileMessageEl.textContent = "";
+    }
+
+    function closeProfileModal() {
+        profileModal.style.display = "none";
+        fullScreenOverlay.classList.remove("active");
+    }
+
+    saveProfileBtn.addEventListener("click", () => {
+        if (!currentLoggedInUser) return;
+        let newDisplayName = profileDisplayNameInput.value.trim();
+        if (!newDisplayName) {
+            profileMessageEl.textContent = "Nama pengguna tidak boleh kosong.";
+            return;
+        }
+        if (newDisplayName.length < 3) {
+            profileMessageEl.textContent = "Nama pengguna minimal 3 karakter.";
+            return;
+        }
+
+        db.ref('users/' + currentLoggedInUser.uid).update({
+            displayName: newDisplayName
+        }).then(() => {
+            currentDisplayName = newDisplayName;
+            profileMessageEl.textContent = "Nama pengguna berhasil diperbarui!";
+            setTimeout(closeProfileModal, 1500); // Auto-close after a delay
+        }).catch(error => {
+            profileMessageEl.textContent = "Gagal memperbarui nama pengguna: " + error.message;
+            console.error("Error updating display name:", error);
+        });
+    });
+    viewProfileBtn.addEventListener("click", openProfileModal);
+
+
+    // --- Chat List (Lobby) Functions - Simplified for Public Chat ---
+    function renderPublicChatItem() {
+        chatListContent.innerHTML = ""; // Clear existing
+
+        const chatName = "ZedxChat";
+        const div = document.createElement("div");
+        div.classList.add("chat-list-item");
+        div.id = `chat-list-item-public`; // Unique ID for public chat item
+        div.dataset.chatId = PUBLIC_CHAT_ID; // Store public chat ID
+
+        // Avatar
+        const avatar = document.createElement("div");
+        avatar.classList.add("chat-avatar");
+        avatar.textContent = chatName.charAt(0).toUpperCase();
+        div.appendChild(avatar);
+
+        // Chat Info
+        const info = document.createElement("div");
+        info.classList.add("chat-info");
+
+        const nameEl = document.createElement("div");
+        nameEl.classList.add("chat-name");
+        nameEl.textContent = chatName;
+        info.appendChild(nameEl);
+
+        const lastMessageEl = document.createElement("div");
+        lastMessageEl.classList.add("chat-last-message");
+        lastMessageEl.textContent = "Memuat pesan terakhir...";
+        info.appendChild(lastMessageEl);
+
+        div.appendChild(info);
+
+        // Last message time
+        const timeEl = document.createElement("div");
+        timeEl.classList.add("chat-time");
+        div.appendChild(timeEl);
+
+        div.addEventListener("click", () => enterChat()); // Handle click to enter public chat
+
+        chatListContent.appendChild(div);
+
+        // Fetch last message for public chat
+        db.ref(`publicChat/messages`).limitToLast(1).on('child_added', (snapshot) => {
+            const messageData = snapshot.val();
+            if (messageData) {
+                lastMessageEl.textContent = `${messageData.user}: ${messageData.message || '[Gambar]'}`;
+                const date = new Date(messageData.timestamp);
+                timeEl.textContent = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            } else {
+                lastMessageEl.textContent = "Belum ada pesan.";
+                timeEl.textContent = "";
+            }
+        });
+    }
+
+    function enterChat() {
+        // Set the current chat ID to the public one
+        // The currentChatNameEl is already hardcoded in HTML for ZedxChat
+        showScreen('chatDetail');
+    }
+
+    backToChatListBtn.addEventListener("click", () => {
+        showScreen('chatList');
+    });
+
+
+    // --- Chat Detail Functions ---
     function scrollToBottom() {
       setTimeout(() => {
         chatContainer.scrollTop = chatContainer.scrollHeight;
@@ -195,7 +869,7 @@
 
     function renderMessage(key, data) {
       const div = document.createElement("div");
-      const isOwn = data.user === username;
+      const isOwn = data.user === currentDisplayName;
       div.classList.add("msg", isOwn ? "own" : "other");
       div.id = "msg-" + key;
 
@@ -220,21 +894,21 @@
 
       const contentDiv = document.createElement("div");
 
+      if (!isOwn) {
+        const label = document.createElement("strong");
+        label.textContent = data.user;
+        contentDiv.appendChild(label);
+        contentDiv.appendChild(document.createElement("br"));
+      }
+
       if (data.imageURL) {
-        if (!isOwn) {
-          const label = document.createElement("strong");
-          label.textContent = data.user;
-          contentDiv.appendChild(label);
-          contentDiv.appendChild(document.createElement("br"));
-        }
         const img = document.createElement("img");
         img.src = data.imageURL;
         img.alt = "gambar";
         contentDiv.appendChild(img);
       } else {
-        const text = isOwn ? data.message : `${data.user}: ${data.message}`;
         const p = document.createElement("div");
-        p.textContent = text;
+        p.textContent = data.message;
         contentDiv.appendChild(p);
       }
 
@@ -248,7 +922,7 @@
       chatContainer.appendChild(div);
       scrollToBottom();
 
-      // Geser untuk reply
+      // Swipe to reply (touch events)
       let startX = 0, startY = 0, moved = false;
       div.addEventListener("touchstart", e => {
         startX = e.touches[0].clientX;
@@ -267,19 +941,20 @@
         const dx = e.changedTouches[0].clientX - startX;
         if (moved && dx > 60) {
           replyTo = { user: data.user, message: data.message || 'Gambar' };
-          replyText.textContent = "Balas: " + replyTo.user + ": " + replyTo.message;
+          replyText.textContent = "Balas: " + replyTo.user + ": " + (data.message || 'Gambar');
           replyPreview.style.display = "flex";
         }
         div.style.transform = "translateX(0)";
+        moved = false;
       });
 
-      // Hapus pesan
+      // Long press to delete message (only for own messages)
       if (isOwn) {
         let timeout = null;
         div.addEventListener("touchstart", () => {
           timeout = setTimeout(() => {
             if (confirm("Hapus pesan ini?")) {
-              db.ref("chats/" + key).update({ deleted: true });
+              db.ref(`publicChat/messages/${key}`).update({ deleted: true });
             }
           }, 600);
         });
@@ -287,25 +962,22 @@
       }
     }
 
-    db.ref("chats").on("child_added", snap => renderMessage(snap.key, snap.val()));
-    db.ref("chats").on("child_changed", snap => {
-      const el = document.getElementById("msg-" + snap.key);
-      if (el) el.remove();
-      renderMessage(snap.key, snap.val());
-    });
-
     sendBtn.onclick = () => {
+      if (!currentLoggedInUser || !currentDisplayName || currentDisplayName === "Anonim") {
+        alert("Anda belum login atau belum memiliki nama pengguna!");
+        return;
+      }
       const message = input.value.trim();
       if (!message) return;
 
       const msgData = {
-        user: username,
+        user: currentDisplayName,
         message,
-        timestamp: Date.now()
+        timestamp: firebase.database.ServerValue.TIMESTAMP
       };
       if (replyTo) msgData.reply = replyTo;
 
-      db.ref("chats").push(msgData);
+      db.ref(`publicChat/messages`).push(msgData);
       input.value = "";
       cancelReply();
     };
@@ -313,6 +985,10 @@
     uploadBtn.onclick = () => fileInput.click();
 
     fileInput.onchange = () => {
+      if (!currentLoggedInUser || !currentDisplayName || currentDisplayName === "Anonim") {
+        alert("Anda belum login atau belum memiliki nama pengguna!");
+        return;
+      }
       const file = fileInput.files[0];
       if (!file) return;
 
@@ -326,15 +1002,16 @@
         .then(res => res.json())
         .then(result => {
           const msgData = {
-            user: username,
+            user: currentDisplayName,
             imageURL: result.data.url,
-            timestamp: Date.now()
+            timestamp: firebase.database.ServerValue.TIMESTAMP
           };
           if (replyTo) msgData.reply = replyTo;
-          db.ref("chats").push(msgData);
+
+          db.ref(`publicChat/messages`).push(msgData);
           cancelReply();
         })
-        .catch(err => alert("Gagal upload gambar"));
+        .catch(err => alert("Gagal upload gambar: " + err.message));
       };
       reader.readAsDataURL(file);
     };
@@ -342,6 +1019,17 @@
     input.addEventListener("keypress", e => {
       if (e.key === "Enter") sendBtn.click();
     });
+
+    // --- Sidebar Functions ---
+    function openNav() {
+      sidebar.classList.add("open");
+      fullScreenOverlay.classList.add("active");
+    }
+
+    function closeNav() {
+      sidebar.classList.remove("open");
+      fullScreenOverlay.classList.remove("active");
+    }
   </script>
 
 </body>
