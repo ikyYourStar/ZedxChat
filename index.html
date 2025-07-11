@@ -8,7 +8,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <style>
-        /* Global Styles */
+        /* (Your existing CSS here, no changes needed for this fix in CSS) */
         :root {
             /* Variabel CSS untuk tinggi total input area (input + reply preview) */
             --input-area-total-height: 70px; /* Default: Tinggi input area tanpa reply preview */
@@ -849,8 +849,9 @@
 
             // Detach previous chat message listener if moving away from chat detail
             if (currentChatListener) { // Menggunakan currentChatListener
-                db.ref(`${currentChatId}/messages`).off('child_added', currentChatListener);
-                db.ref(`${currentChatId}/messages`).off('child_changed', currentChatListener);
+                // It's safer to detach all listeners when changing chat, then re-attach.
+                db.ref(`${currentChatId}/messages`).off('child_added');
+                db.ref(`${currentChatId}/messages`).off('child_changed');
                 currentChatListener = null;
             }
 
@@ -887,48 +888,39 @@
                 // Panggil ini agar padding awal sesuai saat layar chat dimuat
                 updateInputAreaHeight();
 
-                // Attach listener for the specific chat messages
-                currentChatListener = db.ref(`${currentChatId}/messages`).on("child_added", snap => renderMessage(snap.key, snap.val(), currentChatId));
-                db.ref(`${currentChatId}/messages`).on("child_changed", snap => {
-                    const el = document.getElementById("msg-" + snap.key);
-                    if (el) {
-                        // If the message is marked as deleted
-                        if (snap.val().deleted) {
-                            // Update content to "Pesan ini telah dihapus" and grey out
-                            el.innerHTML = `
-                                <span style="font-style: italic; color: #aebac1;">Pesan ini telah dihapus.</span>
-                                <span class="time">${formatTime(snap.val().timestamp)}</span>
-                            `;
-                            el.style.backgroundColor = '#303f4a'; // Grey out background
-                            el.style.opacity = '0.7'; // Reduce opacity
-                            el.classList.remove('own', 'other'); // Remove sender specific styling
-                            el.removeAttribute('data-sender-uid'); // Remove swipe data
-                            el.style.transform = 'translateX(0px)'; // Reset any swipe position
-                            el.onclick = null; // Disable click/long press
-                            el.oncontextmenu = null;
-                            el.removeEventListener('touchstart', handleTouchStart); // Remove touch listeners
-                            el.removeEventListener('touchmove', handleTouchMove);
-                            el.removeEventListener('touchend', handleTouchEnd);
+                // Load initial messages first
+                db.ref(`${currentChatId}/messages`).once('value', (snapshot) => {
+                    chatContainer.innerHTML = ""; // Ensure it's clear before initial load
+                    snapshot.forEach((childSnapshot) => {
+                        renderMessage(childSnapshot.key, childSnapshot.val(), currentChatId);
+                    });
+                    scrollToBottom();
 
+                    // Attach real-time listeners AFTER initial load
+                    // This listener is for new messages
+                    db.ref(`${currentChatId}/messages`).on("child_added", (snap) => {
+                        // Check if the message is already rendered (from initial load)
+                        if (!document.getElementById("msg-" + snap.key)) {
+                            renderMessage(snap.key, snap.val(), currentChatId);
+                        }
+                    });
 
-                            // If the deleted message was the one being replied to, cancel reply
-                            if (replyTo && "msg-" + snap.key === replyTo.id) {
-                                cancelReply();
-                            }
-                        } else {
-                            // If message changed but not deleted, re-render normally (e.g., if content was edited)
+                    // This listener is for changes to existing messages (e.g., deleted status)
+                    db.ref(`${currentChatId}/messages`).on("child_changed", (snap) => {
+                        const el = document.getElementById("msg-" + snap.key);
+                        if (el) {
                             const scrollAtBottom = chatContainer.scrollHeight - chatContainer.clientHeight <= chatContainer.scrollTop + 50; // Toleransi 50px
-
-                            el.remove(); // Remove old element
-                            renderMessage(snap.key, snap.val(), currentChatId); // Re-render with updated data
+                            
+                            // Remove existing element to re-render it with updated content
+                            el.remove();
+                            renderMessage(snap.key, snap.val(), currentChatId);
 
                             if (scrollAtBottom) {
                                 scrollToBottom();
                             }
                         }
-                    }
+                    });
                 });
-                scrollToBottom();
             }
 
             // Hide loading screen after the target screen is displayed
@@ -1137,51 +1129,65 @@
 
         // Fungsi renderMessage yang diperbarui untuk mendukung balasan dan gambar
         function renderMessage(key, val, chatRef) {
-            // --- MODIFIKASI: Jangan hapus elemen jika 'deleted' adalah true, tetapi ubah isinya ---
-            if (val.deleted) {
-                const existingEl = document.getElementById("msg-" + key);
-                if (existingEl) {
-                    existingEl.innerHTML = `
-                        <span style="font-style: italic; color: #aebac1;">Pesan ini telah dihapus.</span>
-                        <span class="time">${formatTime(val.timestamp)}</span>
-                    `;
-                    existingEl.style.backgroundColor = '#303f4a';
-                    existingEl.style.opacity = '0.7';
-                    existingEl.classList.remove('own', 'other');
-                    existingEl.removeAttribute('data-sender-uid'); // Remove swipe data
-                    existingEl.style.transform = 'translateX(0px)'; // Reset any swipe position
-                    existingEl.onclick = null; // Disable click/long press
-                    existingEl.oncontextmenu = null;
-                    // Remove swipe touch listeners if they were added
-                    existingEl.removeEventListener('touchstart', handleTouchStart);
-                    existingEl.removeEventListener('touchmove', handleTouchMove);
-                    existingEl.removeEventListener('touchend', handleTouchEnd);
+            const msgDivId = "msg-" + key;
+            let msgDiv = document.getElementById(msgDivId);
+            let isNewMessage = false;
 
-
-                    // If the deleted message was the one being replied to, cancel reply
-                    if (replyTo && "msg-" + key === replyTo.id) {
-                        cancelReply();
-                    }
-                }
-                return; // Hentikan eksekusi lebih lanjut karena pesan sudah ditandai sebagai dihapus
+            if (!msgDiv) {
+                msgDiv = document.createElement('div');
+                msgDiv.id = msgDivId;
+                msgDiv.classList.add('msg');
+                chatContainer.appendChild(msgDiv);
+                isNewMessage = true;
+            } else {
+                // Clear existing content if message is being re-rendered (e.g., from child_changed)
+                msgDiv.innerHTML = '';
+                // Remove previous event listeners to avoid duplicates
+                msgDiv.removeEventListener('contextmenu', (e) => { e.preventDefault(); showContextMenu(e, key, val, chatRef); });
+                msgDiv.removeEventListener('touchstart', handleTouchStart);
+                msgDiv.removeEventListener('touchmove', handleTouchMove);
+                msgDiv.removeEventListener('touchend', handleTouchEnd);
             }
-            // --- AKHIR MODIFIKASI ---
-
-            const msgDiv = document.createElement('div');
-            msgDiv.id = "msg-" + key;
-            msgDiv.classList.add('msg');
 
             // Set class based on sender (own, other, or bot)
+            msgDiv.classList.remove('own', 'other'); // Ensure old classes are removed
             if (val.senderUid === currentLoggedInUser.uid) {
                 msgDiv.classList.add('own');
             } else if (val.sender === "ZedxBot") {
                 msgDiv.classList.add('other'); // Bot messages appear as "other"
                 msgDiv.style.backgroundColor = '#303f4a'; // Slightly different background for bot
                 msgDiv.style.fontStyle = 'italic';
-            }
-            else {
+            } else {
                 msgDiv.classList.add('other');
             }
+
+            // --- MODIFIKASI: Penanganan pesan terhapus ---
+            if (val.deleted) {
+                msgDiv.innerHTML = `
+                    <span style="font-style: italic; color: #aebac1;">Pesan ini telah dihapus.</span>
+                    <span class="time">${formatTime(val.timestamp)}</span>
+                `;
+                msgDiv.style.backgroundColor = '#303f4a';
+                msgDiv.style.opacity = '0.7';
+                msgDiv.classList.remove('own', 'other'); // Ensure deleted messages don't retain sender styles
+                msgDiv.removeAttribute('data-sender-uid'); // Remove swipe data
+                msgDiv.style.transform = 'translateX(0px)'; // Reset any swipe position
+                msgDiv.onclick = null; // Disable click/long press
+                msgDiv.oncontextmenu = null;
+                // Remove swipe touch listeners if they were added
+                // These are defined outside to be accessible for removal
+                // msgDiv.removeEventListener('touchstart', handleTouchStart); // Removed because it's re-added below if not deleted
+                // msgDiv.removeEventListener('touchmove', handleTouchMove);
+                // msgDiv.removeEventListener('touchend', handleTouchEnd);
+
+                // If the deleted message was the one being replied to, cancel reply
+                if (replyTo && msgDivId === replyTo.id) {
+                    cancelReply();
+                }
+                scrollToBottom(); // Scroll to bottom when message is rendered/updated
+                return; // Stop further rendering for deleted messages
+            }
+            // --- AKHIR MODIFIKASI: Penanganan pesan terhapus ---
 
             // Handlers for swipe gesture (extracted to named functions for easy removal)
             const handleTouchStart = (e) => {
@@ -1246,7 +1252,8 @@
                         e.preventDefault();
                         showContextMenu(e, key, val, chatRef);
                     }, 500);
-                 });
+                 }, { passive: true }); // Make touchstart passive to avoid blocking scroll if not long press
+
                  msgDiv.addEventListener('touchend', () => {
                     clearTimeout(touchTimeout);
                  });
@@ -1296,7 +1303,10 @@
                 messageContent.prepend(senderNameSpan); // Masukkan di depan teks pesan
             }
 
-            chatContainer.appendChild(msgDiv);
+            // If it's a new message, append it. If it's an update, it's already in the DOM.
+            if (isNewMessage) {
+                 // chatContainer.appendChild(msgDiv); // This was already done at the beginning for new messages
+            }
             scrollToBottom();
         }
 
@@ -1338,7 +1348,7 @@
 
         // Add listeners for context menu items
         contextDelete.addEventListener('click', () => {
-            if (currentContextMenuMessage && currentContextMenuMessage.chatRef === PUBLIC_CHAT_ID) {
+            if (currentContextMenuMessage && currentContextMenuMessage.chatRef === PUBLIC_CHAT_ID && currentContextMenuMessage.key) { // Ensure key exists
                 // Confirm deletion
                 if (confirm("Apakah Anda yakin ingin menghapus pesan ini?")) {
                     // Update the 'deleted' property in Firebase
@@ -1353,7 +1363,8 @@
                         });
                 }
             } else {
-                 showToast("Hapus hanya tersedia untuk chat publik.");
+                 showToast("Hapus hanya tersedia untuk chat publik atau pesan tidak valid.");
+                 console.error("Attempted to delete with invalid currentContextMenuMessage:", currentContextMenuMessage);
             }
             hideMessageContextMenu();
         });
@@ -1381,7 +1392,7 @@
         // --- Reply Functions ---
         function startReply(msgId, msgText, senderName, senderUid) {
             replyTo = {
-                id: "msg-" + msgId,
+                id: msgId, // Already "msg-" + key, so just use msgId directly
                 text: msgText,
                 sender: senderName,
                 senderUid: senderUid
