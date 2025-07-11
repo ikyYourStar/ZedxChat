@@ -568,6 +568,43 @@
         #messageContextMenu ul li:hover {
             background-color: #005c4b; /* Highlight on hover */
         }
+
+        /* Styles for Bot Command Suggestions */
+        #commandSuggestions {
+            position: absolute;
+            bottom: calc(var(--input-area-total-height) + 5px); /* Position above the input area */
+            left: 15px;
+            right: 15px;
+            background-color: #2a3942; /* Darker background, similar to messageContextMenu */
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            z-index: 101; /* Above chat but below reply preview */
+            max-height: 200px; /* Limit height and make it scrollable */
+            overflow-y: auto;
+            display: none; /* Hidden by default */
+        }
+
+        #commandSuggestions ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        #commandSuggestions li {
+            padding: 10px 15px;
+            color: #e9edef;
+            cursor: pointer;
+            font-size: 0.95em;
+            border-bottom: 1px solid #33444d; /* Separator between commands */
+        }
+
+        #commandSuggestions li:last-child {
+            border-bottom: none;
+        }
+
+        #commandSuggestions li:hover {
+            background-color: #005c4b; /* Highlight on hover */
+        }
     </style>
 </head>
 <body>
@@ -647,7 +684,7 @@
         </div>
     </div>
 
-    <div class="overlay" id="fullScreenOverlay" onclick="closeNav(); closeProfileModal(); hideMessageContextMenu()"></div>
+    <div class="overlay" id="fullScreenOverlay" onclick="closeNav(); closeProfileModal(); hideMessageContextMenu(); hideCommandSuggestions()"></div>
 
     <span id="sidebar-toggle" onclick="openNav()">&#9776;</span>
 
@@ -656,6 +693,11 @@
             <button id="backToChatListBtn">&#8249;</button> <h2 id="currentChatName"></h2>
         </div>
         <div id="chat-container"></div>
+
+        <div id="commandSuggestions">
+            <ul>
+                </ul>
+        </div>
 
         <div id="reply-preview">
             <span id="reply-text"></span>
@@ -719,6 +761,13 @@
         const VERTICAL_THRESHOLD = 20; // Maximum vertical deviation for a horizontal swipe
         let swipedElement = null; // To keep track of the element being swiped
 
+        // Bot Commands
+        const botCommands = [
+            { command: "report", description: "Laporkan pesan atau pengguna yang melanggar aturan." },
+            { command: "help", description: "Dapatkan bantuan dan informasi tentang bot." },
+            // Tambahkan perintah lain di sini jika ada
+        ];
+
         // --- UI Elements ---
         // Loading Screen
         const loadingScreen = document.getElementById("loadingScreen");
@@ -771,8 +820,11 @@
 
         // Context Menu
         const messageContextMenu = document.getElementById("messageContextMenu");
-        // const contextReply = document.getElementById("contextReply"); // Dihapus karena reply via swipe
         const contextDelete = document.getElementById("contextDelete");
+
+        // Command Suggestions
+        const commandSuggestions = document.getElementById("commandSuggestions");
+        const commandSuggestionsList = commandSuggestions.querySelector("ul");
 
         // Toast Message
         const toastMessage = document.getElementById("toastMessage");
@@ -793,6 +845,7 @@
             closeNav(); // Ensure sidebar is closed when changing screens
             hideToast(); // Hide any active toast message
             hideMessageContextMenu(); // Hide context menu
+            hideCommandSuggestions(); // Hide command suggestions when changing screens
 
             // Detach previous chat message listener if moving away from chat detail
             if (currentChatListener) { // Menggunakan currentChatListener
@@ -835,26 +888,43 @@
                 updateInputAreaHeight();
 
                 // Attach listener for the specific chat messages
-                currentChatListener = db.ref(`${currentChatId}/messages`).on("child_added", snap => renderMessage(snap.key, snap.val(), currentChatId)); // Tambahkan currentChatId ke renderMessage
+                currentChatListener = db.ref(`${currentChatId}/messages`).on("child_added", snap => renderMessage(snap.key, snap.val(), currentChatId));
                 db.ref(`${currentChatId}/messages`).on("child_changed", snap => {
                     const el = document.getElementById("msg-" + snap.key);
                     if (el) {
-                        // Check if user is near the bottom before removing/re-adding
-                        const scrollAtBottom = chatContainer.scrollHeight - chatContainer.clientHeight <= chatContainer.scrollTop + 50; // Toleransi 50px
+                        // If the message is marked as deleted
+                        if (snap.val().deleted) {
+                            // Update content to "Pesan ini telah dihapus" and grey out
+                            el.innerHTML = `
+                                <span style="font-style: italic; color: #aebac1;">Pesan ini telah dihapus.</span>
+                                <span class="time">${formatTime(snap.val().timestamp)}</span>
+                            `;
+                            el.style.backgroundColor = '#303f4a'; // Grey out background
+                            el.style.opacity = '0.7'; // Reduce opacity
+                            el.classList.remove('own', 'other'); // Remove sender specific styling
+                            el.removeAttribute('data-sender-uid'); // Remove swipe data
+                            el.style.transform = 'translateX(0px)'; // Reset any swipe position
+                            el.onclick = null; // Disable click/long press
+                            el.oncontextmenu = null;
+                            el.removeEventListener('touchstart', handleTouchStart); // Remove touch listeners
+                            el.removeEventListener('touchmove', handleTouchMove);
+                            el.removeEventListener('touchend', handleTouchEnd);
 
-                        // Remove old element
-                        el.remove();
 
-                        // If the deleted message was the one being replied to, cancel reply
-                        if (replyTo && "msg-" + snap.key === replyTo.id) {
-                            cancelReply();
-                        }
-                        
-                        // Re-render the message with updated data
-                        renderMessage(snap.key, snap.val(), currentChatId);
+                            // If the deleted message was the one being replied to, cancel reply
+                            if (replyTo && "msg-" + snap.key === replyTo.id) {
+                                cancelReply();
+                            }
+                        } else {
+                            // If message changed but not deleted, re-render normally (e.g., if content was edited)
+                            const scrollAtBottom = chatContainer.scrollHeight - chatContainer.clientHeight <= chatContainer.scrollTop + 50; // Toleransi 50px
 
-                        if (scrollAtBottom) { // Only scroll if user was at the bottom
-                            scrollToBottom();
+                            el.remove(); // Remove old element
+                            renderMessage(snap.key, snap.val(), currentChatId); // Re-render with updated data
+
+                            if (scrollAtBottom) {
+                                scrollToBottom();
+                            }
                         }
                     }
                 });
@@ -1066,14 +1136,36 @@
         }
 
         // Fungsi renderMessage yang diperbarui untuk mendukung balasan dan gambar
-        function renderMessage(key, val, chatRef) { // Tambahkan chatRef
-            if (val.deleted) { // Jika pesan ditandai dihapus, sembunyikan atau hapus
+        function renderMessage(key, val, chatRef) {
+            // --- MODIFIKASI: Jangan hapus elemen jika 'deleted' adalah true, tetapi ubah isinya ---
+            if (val.deleted) {
                 const existingEl = document.getElementById("msg-" + key);
                 if (existingEl) {
-                    existingEl.remove();
+                    existingEl.innerHTML = `
+                        <span style="font-style: italic; color: #aebac1;">Pesan ini telah dihapus.</span>
+                        <span class="time">${formatTime(val.timestamp)}</span>
+                    `;
+                    existingEl.style.backgroundColor = '#303f4a';
+                    existingEl.style.opacity = '0.7';
+                    existingEl.classList.remove('own', 'other');
+                    existingEl.removeAttribute('data-sender-uid'); // Remove swipe data
+                    existingEl.style.transform = 'translateX(0px)'; // Reset any swipe position
+                    existingEl.onclick = null; // Disable click/long press
+                    existingEl.oncontextmenu = null;
+                    // Remove swipe touch listeners if they were added
+                    existingEl.removeEventListener('touchstart', handleTouchStart);
+                    existingEl.removeEventListener('touchmove', handleTouchMove);
+                    existingEl.removeEventListener('touchend', handleTouchEnd);
+
+
+                    // If the deleted message was the one being replied to, cancel reply
+                    if (replyTo && "msg-" + key === replyTo.id) {
+                        cancelReply();
+                    }
                 }
-                return;
+                return; // Hentikan eksekusi lebih lanjut karena pesan sudah ditandai sebagai dihapus
             }
+            // --- AKHIR MODIFIKASI ---
 
             const msgDiv = document.createElement('div');
             msgDiv.id = "msg-" + key;
@@ -1091,21 +1183,69 @@
                 msgDiv.classList.add('other');
             }
 
+            // Handlers for swipe gesture (extracted to named functions for easy removal)
+            const handleTouchStart = (e) => {
+                if (e.touches.length === 1) {
+                    initialX = e.touches[0].clientX;
+                    initialY = e.touches[0].clientY;
+                    swipedElement = msgDiv;
+                    msgDiv.style.transition = 'transform 0.1s ease-out';
+                }
+            };
+
+            const handleTouchMove = (e) => {
+                if (initialX === null || swipedElement !== msgDiv || e.touches.length === 0) return;
+
+                const currentX = e.touches[0].clientX;
+                const currentY = e.touches[0].clientY;
+
+                const diffX = currentX - initialX;
+                const diffY = currentY - initialY;
+
+                if (Math.abs(diffY) < VERTICAL_THRESHOLD) {
+                    if (diffX > 0) {
+                        msgDiv.style.transform = `translateX(${Math.min(diffX, SWIPE_THRESHOLD * 0.7)}px)`;
+                    } else {
+                        msgDiv.style.transform = `translateX(0px)`;
+                    }
+                } else {
+                    msgDiv.style.transform = `translateX(0px)`;
+                    initialX = null;
+                    initialY = null;
+                    swipedElement = null;
+                }
+            };
+
+            const handleTouchEnd = (e) => {
+                if (initialX === null || swipedElement !== msgDiv) return;
+
+                const currentX = e.changedTouches[0].clientX;
+                const diffX = currentX - initialX;
+
+                msgDiv.style.transform = `translateX(0px)`;
+
+                if (diffX > SWIPE_THRESHOLD) {
+                    startReply(key, val.text, val.sender, val.senderUid);
+                }
+
+                initialX = null;
+                initialY = null;
+                swipedElement = null;
+            };
+
 
             // Add long press/right click listener to show context menu (ONLY for Delete)
-            // This applies to ALL messages in public chat (or any chat where context menu is desired)
-            if (chatRef === PUBLIC_CHAT_ID) { // Only enable context menu for public chat
+            if (chatRef === PUBLIC_CHAT_ID) {
                  msgDiv.addEventListener('contextmenu', (e) => {
-                    e.preventDefault(); // Prevent default browser context menu
+                    e.preventDefault();
                     showContextMenu(e, key, val, chatRef);
                 });
-                 // For touch devices (long press emulation)
                  let touchTimeout;
                  msgDiv.addEventListener('touchstart', (e) => {
                     touchTimeout = setTimeout(() => {
-                        e.preventDefault(); // Prevent default touch behavior (e.g., scroll)
+                        e.preventDefault();
                         showContextMenu(e, key, val, chatRef);
-                    }, 500); // 500ms for a long press
+                    }, 500);
                  });
                  msgDiv.addEventListener('touchend', () => {
                     clearTimeout(touchTimeout);
@@ -1116,61 +1256,13 @@
             }
 
             // --- SWIPE GESTURE FOR REPLY ---
-            if (chatRef === PUBLIC_CHAT_ID && val.sender !== "ZedxBot") { // Only enable swipe reply for public chat, and not for bot messages
-                msgDiv.addEventListener('touchstart', (e) => {
-                    if (e.touches.length === 1) { // Only track single touch
-                        initialX = e.touches[0].clientX;
-                        initialY = e.touches[0].clientY;
-                        swipedElement = msgDiv;
-                        msgDiv.style.transition = 'transform 0.1s ease-out'; // Make swipe visual smoother
-                    }
-                }, { passive: true }); // Use passive to avoid blocking scroll
-
-                msgDiv.addEventListener('touchmove', (e) => {
-                    if (initialX === null || swipedElement !== msgDiv || e.touches.length === 0) return;
-
-                    const currentX = e.touches[0].clientX;
-                    const currentY = e.touches[0].clientY;
-
-                    const diffX = currentX - initialX;
-                    const diffY = currentY - initialY;
-
-                    // Only consider horizontal movement if vertical movement is minimal
-                    if (Math.abs(diffY) < VERTICAL_THRESHOLD) {
-                        if (diffX > 0) { // Swiping right
-                            msgDiv.style.transform = `translateX(${Math.min(diffX, SWIPE_THRESHOLD * 0.7)}px)`; // Limit visual swipe
-                        } else {
-                            msgDiv.style.transform = `translateX(0px)`; // Reset if swiping left
-                        }
-                    } else {
-                        // If significant vertical movement, cancel swipe attempt
-                        msgDiv.style.transform = `translateX(0px)`;
-                        initialX = null;
-                        initialY = null;
-                        swipedElement = null;
-                    }
-                }, { passive: true });
-
-                msgDiv.addEventListener('touchend', (e) => {
-                    if (initialX === null || swipedElement !== msgDiv) return;
-
-                    const currentX = e.changedTouches[0].clientX;
-                    const diffX = currentX - initialX;
-
-                    msgDiv.style.transform = `translateX(0px)`; // Reset position
-
-                    if (diffX > SWIPE_THRESHOLD) { // If swipe right exceeds threshold
-                        // Trigger reply
-                        startReply(key, val.text, val.sender, val.senderUid);
-                    }
-
-                    initialX = null;
-                    initialY = null;
-                    swipedElement = null;
-                });
+            // Only enable swipe reply for public chat, and not for bot messages
+            if (chatRef === PUBLIC_CHAT_ID && val.sender !== "ZedxBot") {
+                msgDiv.addEventListener('touchstart', handleTouchStart, { passive: true });
+                msgDiv.addEventListener('touchmove', handleTouchMove, { passive: true });
+                msgDiv.addEventListener('touchend', handleTouchEnd);
             }
             // --- END SWIPE GESTURE ---
-
 
             if (val.replyTo) {
                 const replyEl = document.createElement('div');
@@ -1220,8 +1312,6 @@
             // Hide/show delete option
             contextDelete.style.display = canDelete ? 'block' : 'none';
 
-            // contextReply.style.display = 'none'; // Selalu sembunyikan opsi reply dari context menu
-
             // Position the context menu
             messageContextMenu.style.left = `${event.clientX}px`;
             messageContextMenu.style.top = `${event.clientY}px`;
@@ -1247,22 +1337,11 @@
         }
 
         // Add listeners for context menu items
-        // contextReply.addEventListener('click', () => { // Event listener ini dihapus karena reply via swipe
-        //     if (currentContextMenuMessage) {
-        //         startReply(
-        //             currentContextMenuMessage.key,
-        //             currentContextMenuMessage.val.text,
-        //             currentContextMenuMessage.val.sender,
-        //             currentContextMenuMessage.val.senderUid
-        //         );
-        //     }
-        //     hideMessageContextMenu();
-        // });
-
         contextDelete.addEventListener('click', () => {
             if (currentContextMenuMessage && currentContextMenuMessage.chatRef === PUBLIC_CHAT_ID) {
                 // Confirm deletion
                 if (confirm("Apakah Anda yakin ingin menghapus pesan ini?")) {
+                    // Update the 'deleted' property in Firebase
                     db.ref(`${PUBLIC_CHAT_ID}/messages/${currentContextMenuMessage.key}`).update({ deleted: true })
                         .then(() => {
                             showToast("Pesan berhasil dihapus.");
@@ -1378,6 +1457,7 @@
                 };
             }
 
+            // --- MODIFIKASI: Penanganan perintah bot ---
             if (text.startsWith("-report ")) {
                 if (currentChatId !== PUBLIC_CHAT_ID) {
                     showToast("Perintah -report hanya bisa digunakan di ZedxChat (Publik).");
@@ -1432,8 +1512,41 @@
                     console.error("Gagal mengirim pesan laporan ke admin:", error);
                     showToast("Gagal mengirim laporan: " + error.message);
                 });
-
-            } else {
+            }
+            else if (text.startsWith("-help")) {
+                if (currentChatId !== PUBLIC_CHAT_ID) {
+                    showToast("Perintah -help hanya bisa digunakan di ZedxChat (Publik).");
+                    input.value = "";
+                    cancelReply();
+                    return;
+                }
+                // Send the user's -help command to public chat first
+                db.ref(`${PUBLIC_CHAT_ID}/messages`).push({
+                    ...messageData,
+                    text: text
+                }).then((publicMessageRef) => {
+                    // Then send bot's reply to the user's -help message
+                    const helpMessage = "Halo! Berikut beberapa perintah yang bisa Anda gunakan:\n" +
+                                        "-report [pesan] : Laporkan pesan atau pengguna.\n" +
+                                        "-help : Menampilkan daftar perintah ini.";
+                    db.ref(`${PUBLIC_CHAT_ID}/messages`).push({
+                        sender: "ZedxBot",
+                        senderUid: "zedxbot_uid",
+                        text: helpMessage,
+                        timestamp: firebase.database.ServerValue.TIMESTAMP,
+                        replyTo: {
+                            id: publicMessageRef.key,
+                            text: text,
+                            sender: currentDisplayName,
+                            senderUid: currentLoggedInUser.uid
+                        }
+                    });
+                }).catch(error => {
+                    console.error("Gagal mengirim pesan -help atau bot reply:", error);
+                    showToast("Gagal memproses perintah help: " + error.message);
+                });
+            }
+            else {
                 // Normal message logic
                 if (!currentChatId) { // Prevent sending if no chat is active
                     showToast("Tidak ada chat yang aktif.");
@@ -1455,9 +1568,11 @@
                     });
                 }
             }
+            // --- AKHIR MODIFIKASI: Penanganan perintah bot ---
 
             input.value = ""; // Clear input after sending
             cancelReply(); // Clear reply preview
+            hideCommandSuggestions(); // Hide suggestions after sending
         });
 
         uploadBtn.addEventListener("click", () => {
@@ -1588,7 +1703,7 @@
         });
 
         // Event listener for profile modal/sidebar closing via overlay
-        fullScreenOverlay.addEventListener("click", () => {
+        fullScreenOverlay.addEventListener("click", (e) => {
             if (profileModal.style.display === 'block') {
                 closeProfileModal();
             }
@@ -1598,7 +1713,61 @@
             if (messageContextMenu.style.display === 'block') { // Also close context menu
                 hideMessageContextMenu();
             }
+            // MODIFIKASI: Sembunyikan command suggestions jika overlay diklik
+            if (commandSuggestions.style.display === 'block' && !commandSuggestions.contains(e.target)) {
+                 hideCommandSuggestions();
+            }
         });
+
+        // --- MODIFIKASI: Bot Command Suggestions Logic ---
+        function showCommandSuggestions(query) {
+            commandSuggestionsList.innerHTML = ''; // Clear previous suggestions
+            const filteredCommands = botCommands.filter(cmd =>
+                cmd.command.startsWith(query.substring(1)) // Match command after '-'
+            );
+
+            if (filteredCommands.length > 0 && currentChatId === PUBLIC_CHAT_ID) { // Only show in public chat
+                filteredCommands.forEach(cmd => {
+                    const listItem = document.createElement('li');
+                    listItem.innerHTML = `<b>-${cmd.command}</b> - ${cmd.description}`;
+                    listItem.addEventListener('click', () => {
+                        input.value = `-${cmd.command} `; // Insert command into input
+                        hideCommandSuggestions();
+                        input.focus();
+                        updateInputAreaHeight(); // Adjust height after text insertion
+                    });
+                    commandSuggestionsList.appendChild(listItem);
+                });
+                commandSuggestions.style.display = 'block';
+            } else {
+                hideCommandSuggestions();
+            }
+        }
+
+        function hideCommandSuggestions() {
+            commandSuggestions.style.display = 'none';
+        }
+
+        input.addEventListener('input', () => {
+            const text = input.value;
+            if (text.startsWith('-')) {
+                showCommandSuggestions(text);
+            } else {
+                hideCommandSuggestions();
+            }
+            updateInputAreaHeight(); // Ensure height updates with typing
+        });
+
+        input.addEventListener('blur', () => {
+            // Give a small delay before hiding to allow click on suggestions
+            setTimeout(() => {
+                // Check if the focus actually moved outside the suggestions area
+                if (!commandSuggestions.contains(document.activeElement)) {
+                    hideCommandSuggestions();
+                }
+            }, 100);
+        });
+        // --- AKHIR MODIFIKASI: Bot Command Suggestions Logic ---
     </script>
 </body>
 </html>
