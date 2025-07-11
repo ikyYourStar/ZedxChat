@@ -293,6 +293,32 @@
             text-align: left;
         }
 
+        /* MODIFIKASI: Gaya khusus untuk pesan yang dihapus */
+        .deleted-message {
+            background-color: #303f4a; /* Slightly different background for deleted */
+            opacity: 0.7;
+            font-style: italic;
+            color: #aebac1;
+            /* Pastikan margin-left/right tidak auto jika ingin di tengah atau sesuai asal */
+            margin-left: unset; /* Reset margin-left */
+            margin-right: unset; /* Reset margin-right */
+            text-align: center; /* Teks "Pesan ini telah dihapus" bisa di tengah */
+            max-width: 80%; /* Tetap batasi lebar */
+            /* Kita perlu mempertahankan posisi asli (own/other) */
+        }
+        /* Overrides for deleted messages to keep their original alignment */
+        .deleted-message.own {
+            margin-left: auto;
+            margin-right: 0;
+            text-align: right; /* Teks tetap di kanan untuk pesan sendiri yang dihapus */
+        }
+        .deleted-message.other {
+            margin-right: auto;
+            margin-left: 0;
+            text-align: left; /* Teks tetap di kiri untuk pesan orang lain yang dihapus */
+        }
+
+
         .reply {
             font-size: 0.75em;
             opacity: 0.7;
@@ -765,7 +791,7 @@
         const botCommands = [
             { command: "report", description: "Laporkan pesan atau pengguna yang melanggar aturan." },
             { command: "help", description: "Dapatkan bantuan dan informasi tentang bot." },
-            // Tambahkan perintah lain di sini jika ada
+            { command: "system", description: "Menampilkan informasi simulasi sistem (RAM, CPU, Uptime, Core)." } // New command
         ];
 
         // --- UI Elements ---
@@ -907,14 +933,13 @@
 
                     // This listener is for changes to existing messages (e.g., deleted status)
                     db.ref(`${currentChatId}/messages`).on("child_changed", (snap) => {
-                        const el = document.getElementById("msg-" + snap.key);
-                        if (el) {
+                        // We need to re-render the message completely to apply new styles
+                        // This ensures the "Pesan ini telah dihapus" styling is applied correctly
+                        const existingEl = document.getElementById("msg-" + snap.key);
+                        if (existingEl) {
                             const scrollAtBottom = chatContainer.scrollHeight - chatContainer.clientHeight <= chatContainer.scrollTop + 50; // Toleransi 50px
-                            
-                            // Remove existing element to re-render it with updated content
-                            el.remove();
-                            renderMessage(snap.key, snap.val(), currentChatId);
-
+                            existingEl.remove(); // Remove the old element
+                            renderMessage(snap.key, snap.val(), currentChatId); // Re-render with updated data
                             if (scrollAtBottom) {
                                 scrollToBottom();
                             }
@@ -1131,29 +1156,41 @@
         function renderMessage(key, val, chatRef) {
             const msgDivId = "msg-" + key;
             let msgDiv = document.getElementById(msgDivId);
-            let isNewMessage = false;
+            const isNewMessage = !msgDiv; // Check if the message element already exists
 
-            if (!msgDiv) {
+            if (isNewMessage) {
                 msgDiv = document.createElement('div');
                 msgDiv.id = msgDivId;
                 msgDiv.classList.add('msg');
                 chatContainer.appendChild(msgDiv);
-                isNewMessage = true;
             } else {
                 // Clear existing content if message is being re-rendered (e.g., from child_changed)
                 msgDiv.innerHTML = '';
                 // Remove previous event listeners to avoid duplicates
-                msgDiv.removeEventListener('contextmenu', (e) => { e.preventDefault(); showContextMenu(e, key, val, chatRef); });
-                msgDiv.removeEventListener('touchstart', handleTouchStart);
-                msgDiv.removeEventListener('touchmove', handleTouchMove);
-                msgDiv.removeEventListener('touchend', handleTouchEnd);
+                // Note: Re-attaching listeners is crucial here.
+                msgDiv.removeEventListener('contextmenu', msgDiv.contextMenuHandler);
+                msgDiv.removeEventListener('touchstart', msgDiv.touchStartHandler);
+                msgDiv.removeEventListener('touchmove', msgDiv.touchMoveHandler);
+                msgDiv.removeEventListener('touchend', msgDiv.touchEndHandler);
+                msgDiv.removeEventListener('touchstart', msgDiv.longPressStartHandler);
+                msgDiv.removeEventListener('touchend', msgDiv.longPressEndHandler);
+                msgDiv.removeEventListener('touchmove', msgDiv.longPressMoveHandler);
+
+                // Reset classes before applying new ones, especially for deleted state
+                msgDiv.classList.remove('own', 'other', 'deleted-message');
+                msgDiv.style.backgroundColor = ''; // Clear custom background
+                msgDiv.style.opacity = ''; // Clear custom opacity
+                msgDiv.style.fontStyle = ''; // Clear custom font style
+                msgDiv.style.transform = 'translateX(0px)'; // Reset any swipe position
             }
 
             // Set class based on sender (own, other, or bot)
-            msgDiv.classList.remove('own', 'other'); // Ensure old classes are removed
-            if (val.senderUid === currentLoggedInUser.uid) {
+            const isOwn = val.senderUid === currentLoggedInUser.uid;
+            const isBot = val.sender === "ZedxBot";
+
+            if (isOwn) {
                 msgDiv.classList.add('own');
-            } else if (val.sender === "ZedxBot") {
+            } else if (isBot) {
                 msgDiv.classList.add('other'); // Bot messages appear as "other"
                 msgDiv.style.backgroundColor = '#303f4a'; // Slightly different background for bot
                 msgDiv.style.fontStyle = 'italic';
@@ -1163,28 +1200,18 @@
 
             // --- MODIFIKASI: Penanganan pesan terhapus ---
             if (val.deleted) {
+                msgDiv.classList.add('deleted-message');
                 msgDiv.innerHTML = `
-                    <span style="font-style: italic; color: #aebac1;">Pesan ini telah dihapus.</span>
+                    <span style="font-style: italic;">Pesan ini telah dihapus.</span>
                     <span class="time">${formatTime(val.timestamp)}</span>
                 `;
-                msgDiv.style.backgroundColor = '#303f4a';
-                msgDiv.style.opacity = '0.7';
-                msgDiv.classList.remove('own', 'other'); // Ensure deleted messages don't retain sender styles
-                msgDiv.removeAttribute('data-sender-uid'); // Remove swipe data
-                msgDiv.style.transform = 'translateX(0px)'; // Reset any swipe position
-                msgDiv.onclick = null; // Disable click/long press
-                msgDiv.oncontextmenu = null;
-                // Remove swipe touch listeners if they were added
-                // These are defined outside to be accessible for removal
-                // msgDiv.removeEventListener('touchstart', handleTouchStart); // Removed because it's re-added below if not deleted
-                // msgDiv.removeEventListener('touchmove', handleTouchMove);
-                // msgDiv.removeEventListener('touchend', handleTouchEnd);
-
-                // If the deleted message was the one being replied to, cancel reply
+                // If it's a deleted message, we don't need context menu or swipe.
+                // The class `deleted-message` will override `own`/`other` background, but
+                // `own`/`other` should still be present to maintain alignment (margin auto).
                 if (replyTo && msgDivId === replyTo.id) {
                     cancelReply();
                 }
-                scrollToBottom(); // Scroll to bottom when message is rendered/updated
+                scrollToBottom();
                 return; // Stop further rendering for deleted messages
             }
             // --- AKHIR MODIFIKASI: Penanganan pesan terhapus ---
@@ -1239,35 +1266,40 @@
                 swipedElement = null;
             };
 
+            // Storing handlers on the element itself to easily remove them later
+            msgDiv.contextMenuHandler = (e) => { e.preventDefault(); showContextMenu(e, key, val, chatRef); };
+            msgDiv.touchStartHandler = handleTouchStart;
+            msgDiv.touchMoveHandler = handleTouchMove;
+            msgDiv.touchEndHandler = handleTouchEnd;
 
             // Add long press/right click listener to show context menu (ONLY for Delete)
             if (chatRef === PUBLIC_CHAT_ID) {
-                 msgDiv.addEventListener('contextmenu', (e) => {
-                    e.preventDefault();
-                    showContextMenu(e, key, val, chatRef);
-                });
+                 msgDiv.addEventListener('contextmenu', msgDiv.contextMenuHandler);
                  let touchTimeout;
-                 msgDiv.addEventListener('touchstart', (e) => {
+                 msgDiv.longPressStartHandler = (e) => {
                     touchTimeout = setTimeout(() => {
                         e.preventDefault();
                         showContextMenu(e, key, val, chatRef);
                     }, 500);
-                 }, { passive: true }); // Make touchstart passive to avoid blocking scroll if not long press
+                 };
+                 msgDiv.longPressEndHandler = () => {
+                    clearTimeout(touchTimeout);
+                 };
+                 msgDiv.longPressMoveHandler = () => {
+                    clearTimeout(touchTimeout);
+                 };
 
-                 msgDiv.addEventListener('touchend', () => {
-                    clearTimeout(touchTimeout);
-                 });
-                 msgDiv.addEventListener('touchmove', () => {
-                    clearTimeout(touchTimeout);
-                 });
+                 msgDiv.addEventListener('touchstart', msgDiv.longPressStartHandler, { passive: true }); // Make touchstart passive to avoid blocking scroll if not long press
+                 msgDiv.addEventListener('touchend', msgDiv.longPressEndHandler);
+                 msgDiv.addEventListener('touchmove', msgDiv.longPressMoveHandler);
             }
 
             // --- SWIPE GESTURE FOR REPLY ---
             // Only enable swipe reply for public chat, and not for bot messages
-            if (chatRef === PUBLIC_CHAT_ID && val.sender !== "ZedxBot") {
-                msgDiv.addEventListener('touchstart', handleTouchStart, { passive: true });
-                msgDiv.addEventListener('touchmove', handleTouchMove, { passive: true });
-                msgDiv.addEventListener('touchend', handleTouchEnd);
+            if (chatRef === PUBLIC_CHAT_ID && !isBot) {
+                msgDiv.addEventListener('touchstart', msgDiv.touchStartHandler, { passive: true });
+                msgDiv.addEventListener('touchmove', msgDiv.touchMoveHandler, { passive: true });
+                msgDiv.addEventListener('touchend', msgDiv.touchEndHandler);
             }
             // --- END SWIPE GESTURE ---
 
@@ -1296,17 +1328,13 @@
             msgDiv.appendChild(timeSpan);
 
             // Menambahkan nama pengirim untuk pesan yang bukan dari user sendiri dan bukan bot
-            if (val.senderUid !== currentLoggedInUser.uid && val.sender !== "ZedxBot") {
+            if (!isOwn && !isBot) {
                 const senderNameSpan = document.createElement('span');
                 senderNameSpan.classList.add('sender-name'); // Tambahkan kelas untuk styling
                 senderNameSpan.textContent = val.sender + ": "; // Tampilkan nama pengirim
                 messageContent.prepend(senderNameSpan); // Masukkan di depan teks pesan
             }
 
-            // If it's a new message, append it. If it's an update, it's already in the DOM.
-            if (isNewMessage) {
-                 // chatContainer.appendChild(msgDiv); // This was already done at the beginning for new messages
-            }
             scrollToBottom();
         }
 
@@ -1343,7 +1371,7 @@
         function hideMessageContextMenu() {
             messageContextMenu.style.display = 'none';
             fullScreenOverlay.classList.remove('active');
-            currentContextMenuMessage = null; // Clear stored message data
+            // currentContextMenuMessage = null; // Don't clear immediately, clear it in the delete action or after a delay
         }
 
         // Add listeners for context menu items
@@ -1356,15 +1384,18 @@
                         .then(() => {
                             showToast("Pesan berhasil dihapus.");
                             console.log("Pesan dihapus:", currentContextMenuMessage.key);
+                            currentContextMenuMessage = null; // Clear after successful action
                         })
                         .catch(error => {
                             showToast("Gagal menghapus pesan: " + error.message);
                             console.error("Error deleting message:", error);
+                            currentContextMenuMessage = null; // Clear even on error
                         });
                 }
             } else {
                  showToast("Hapus hanya tersedia untuk chat publik atau pesan tidak valid.");
                  console.error("Attempted to delete with invalid currentContextMenuMessage:", currentContextMenuMessage);
+                 currentContextMenuMessage = null; // Clear if it was somehow invalid
             }
             hideMessageContextMenu();
         });
@@ -1539,7 +1570,8 @@
                     // Then send bot's reply to the user's -help message
                     const helpMessage = "Halo! Berikut beberapa perintah yang bisa Anda gunakan:\n" +
                                         "-report [pesan] : Laporkan pesan atau pengguna.\n" +
-                                        "-help : Menampilkan daftar perintah ini.";
+                                        "-help : Menampilkan daftar perintah ini.\n" +
+                                        "-system : Menampilkan informasi simulasi sistem."; // Updated help
                     db.ref(`${PUBLIC_CHAT_ID}/messages`).push({
                         sender: "ZedxBot",
                         senderUid: "zedxbot_uid",
@@ -1555,6 +1587,49 @@
                 }).catch(error => {
                     console.error("Gagal mengirim pesan -help atau bot reply:", error);
                     showToast("Gagal memproses perintah help: " + error.message);
+                });
+            }
+            else if (text.startsWith("-system")) {
+                if (currentChatId !== PUBLIC_CHAT_ID) {
+                    showToast("Perintah -system hanya bisa digunakan di ZedxChat (Publik).");
+                    input.value = "";
+                    cancelReply();
+                    return;
+                }
+                // Send the user's -system command to public chat first
+                db.ref(`${PUBLIC_CHAT_ID}/messages`).push({
+                    ...messageData,
+                    text: text
+                }).then((publicMessageRef) => {
+                    // Generate simulated system info
+                    const ram = (Math.random() * (8 - 2) + 2).toFixed(1); // 2-8 GB
+                    const cpu = (Math.random() * (90 - 10) + 10).toFixed(0); // 10-90%
+                    const uptimeHours = Math.floor(Math.random() * 24 * 7); // Up to 7 days
+                    const uptimeMinutes = Math.floor(Math.random() * 60);
+                    const cores = Math.floor(Math.random() * (16 - 2) + 2); // 2-16 cores
+
+                    const systemInfoMessage = `Status Sistem ZedxChat (Simulasi):\n` +
+                                              `RAM Terpakai: ${ram} GB\n` +
+                                              `CPU Usage: ${cpu}%\n` +
+                                              `Uptime: ${uptimeHours} jam ${uptimeMinutes} menit\n` +
+                                              `Core CPU: ${cores} core`;
+
+                    // Then send bot's reply to the user's -system message
+                    db.ref(`${PUBLIC_CHAT_ID}/messages`).push({
+                        sender: "ZedxBot",
+                        senderUid: "zedxbot_uid",
+                        text: systemInfoMessage,
+                        timestamp: firebase.database.ServerValue.TIMESTAMP,
+                        replyTo: {
+                            id: publicMessageRef.key,
+                            text: text,
+                            sender: currentDisplayName,
+                            senderUid: currentLoggedInUser.uid
+                        }
+                    });
+                }).catch(error => {
+                    console.error("Gagal mengirim pesan -system atau bot reply:", error);
+                    showToast("Gagal memproses perintah sistem: " + error.message);
                 });
             }
             else {
