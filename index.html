@@ -1,1331 +1,1415 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ZedxChat</title>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-  <style>
-    /* Global Styles */
-    :root {
-        /* Variabel CSS untuk tinggi total input area (input + reply preview) */
-        --input-area-total-height: 70px; /* Default: Tinggi input area tanpa reply preview */
-        --input-area-min-height: 50px; /* Tinggi minimum untuk #input-area */
-        --reply-preview-height: 50px; /* Tinggi tetap untuk reply preview */
-        --chat-message-spacing: 8px; /* Spasi antar pesan */
-        --extra-bottom-padding: 10px; /* Tambahan padding di bawah pesan terakhir */
-    }
-
-    * { box-sizing: border-box; }
-    html, body {
-      margin: 0; padding: 0; height: 100%;
-      font-family: Arial, sans-serif;
-      background: #202c33; /* Dark background like WhatsApp */
-      color: #e9edef; /* Light text color */
-      overflow: hidden; /* Prevent body scroll */
-    }
-    body { display: flex; flex-direction: column; } /* Menggunakan flexbox untuk layout utama */
-
-    /* --- Loading Screen Styles --- */
-    #loadingScreen {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: #111b21; /* Match app background */
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      color: #008069; /* WhatsApp Green */
-      font-size: 1.5em;
-      z-index: 9999; /* Ensure it's on top */
-      transition: opacity 0.5s ease-out;
-      opacity: 1;
-    }
-
-    #loadingSpinner {
-      border: 4px solid rgba(0, 128, 105, 0.3);
-      border-top: 4px solid #008069;
-      border-radius: 50%;
-      width: 50px;
-      height: 50px;
-      animation: spin 1s linear infinite;
-      margin-bottom: 20px;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
-    /* --- Auth Container Styles (Login/Register) --- */
-    .auth-container {
-      background-color: rgba(32, 44, 51, 0.9); /* Darker, slightly transparent */
-      padding: 30px;
-      border-radius: 8px;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-      width: 100%;
-      max-width: 400px;
-      text-align: center;
-      box-sizing: border-box;
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 102;
-      display: none;
-    }
-
-    .auth-container h2 {
-      margin-bottom: 25px;
-      color: #e9edef;
-    }
-
-    .input-group {
-      margin-bottom: 20px;
-      text-align: left;
-    }
-
-    .input-group input {
-      width: 100%;
-      padding: 12px;
-      border: 1px solid #555;
-      border-radius: 5px;
-      font-size: 16px;
-      background-color: #33444d; /* Darker input background */
-      color: #e9edef;
-      box-sizing: border-box;
-    }
-
-    .button-group {
-      display: flex;
-      gap: 15px;
-      justify-content: center;
-      margin-top: 25px;
-    }
-
-    .button-group button {
-      padding: 12px 25px;
-      border: none;
-      border-radius: 5px;
-      font-size: 16px;
-      cursor: pointer;
-      transition: background-color 0.3s ease;
-      color: white;
-    }
-
-    .auth-button { /* General style for login/register buttons */
-      background-color: #008069; /* WhatsApp Green */
-    }
-
-    .auth-button:hover {
-      background-color: #006b5a;
-    }
-
-    .switch-auth-mode {
-      margin-top: 20px;
-      font-size: 0.9em;
-      color: #aebac1;
-    }
-
-    .switch-auth-mode a {
-      color: #008069;
-      text-decoration: none;
-      font-weight: bold;
-    }
-
-    .auth-message { /* Combined style for login/register messages */
-      margin-top: 20px;
-      font-weight: bold;
-      color: #ff6b6b; /* Error red */
-    }
-
-    /* --- Chat List (Lobby) Styles --- */
-    #chatListContainer {
-        display: flex;
-        flex-direction: column;
-        height: 100vh;
-        width: 100%;
-        background-color: #111b21; /* WhatsApp dark background */
-        position: relative;
-        overflow: hidden;
-    }
-
-    #chatListHeader {
-        display: flex;
-        align-items: center;
-        padding: 15px 20px;
-        background-color: #202c33;
-        color: #e9edef;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        z-index: 10;
-    }
-
-    #chatListHeader h1 {
-        flex-grow: 1;
-        margin: 0;
-        font-size: 1.5em;
-        text-align: left;
-    }
-
-    #chatListHeader button {
-        background: none;
-        border: none;
-        color: #e9edef;
-        font-size: 1.2em;
-        cursor: pointer;
-        margin-left: 15px;
-    }
-
-    #chatListContent {
-        flex: 1;
-        overflow-y: auto;
-        padding: 0;
-    }
-
-    .chat-list-item {
-        display: flex;
-        align-items: center;
-        padding: 15px 20px;
-        border-bottom: 1px solid #2a3942; /* Darker separator */
-        cursor: pointer;
-        transition: background-color 0.2s ease;
-    }
-
-    .chat-list-item:hover {
-        background-color: #2a3942; /* Hover effect */
-    }
-
-    .chat-list-item:last-child {
-        border-bottom: none;
-    }
-
-    .chat-avatar {
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        background-color: #008069; /* Default avatar background */
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        font-size: 1.5em;
-        color: white;
-        margin-right: 15px;
-        flex-shrink: 0;
-    }
-
-    .chat-info {
-        flex-grow: 1;
-        overflow: hidden;
-    }
-
-    .chat-name {
-        font-weight: bold;
-        color: #e9edef;
-        font-size: 1.1em;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .chat-last-message {
-        color: #8696a0; /* Lighter grey for messages */
-        font-size: 0.9em;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        margin-top: 3px;
-    }
-
-    .chat-time {
-        font-size: 0.8em;
-        color: #8696a0;
-        margin-left: 10px;
-        flex-shrink: 0;
-    }
-
-    /* --- Main Chat Content Styles --- */
-    #main-content {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      height: 100vh; /* Use 100vh for full screen chat */
-      width: 100%;
-      position: relative;
-      background-color: #0b141a; /* WhatsApp chat background */
-      display: none; /* Hidden by default */
-    }
-
-    #chat-header {
-      display: flex;
-      align-items: center;
-      padding: 10px 15px;
-      background-color: #202c33; /* Darker header */
-      color: #e9edef;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-      z-index: 10;
-    }
-
-    #chat-header button {
-        background: none;
-        border: none;
-        color: #e9edef;
-        font-size: 1.5em;
-        cursor: pointer;
-        margin-right: 15px;
-    }
-
-    #chat-header h2 {
-        flex-grow: 1;
-        margin: 0;
-        font-size: 1.2em;
-    }
-
-    #chat-container {
-      flex: 1; /* Penting agar container mengisi sisa ruang */
-      overflow-y: auto;
-      padding: 10px 15px; /* Padding samping dan atas */
-      background-image: url('https://raw.githubusercontent.com/ikyYourStar/ZedxChat/refs/heads/main/assets/Tak%20berjudul134_20250707192207.png'); /* Your background image */
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
-      /* PERBAIKAN: Padding bawah dinamis agar pesan tidak tertutup input */
-      padding-bottom: calc(var(--input-area-total-height) + var(--extra-bottom-padding));
-    }
-
-    .msg {
-      max-width: 80%; /* Slightly wider messages */
-      padding: 8px 12px; /* Adjust padding */
-      margin-bottom: var(--chat-message-spacing); /* Spasi antar pesan */
-      border-radius: 8px; /* Smaller border radius */
-      word-wrap: break-word;
-      font-size: 0.95em; /* Slightly smaller font for better fit */
-      position: relative;
-      transition: transform 0.2s ease;
-      will-change: transform;
-      box-shadow: 0 1px 1px rgba(0,0,0,0.1);
-    }
-
-    .own {
-      background: #005c4b; /* Darker green for own messages */
-      margin-left: auto;
-      text-align: right;
-    }
-
-    .other {
-      background: #202c33; /* Dark grey for other messages */
-      margin-right: auto;
-      text-align: left;
-    }
-
-    .reply {
-      font-size: 0.75em;
-      opacity: 0.7;
-      margin-bottom: 5px;
-      font-style: italic;
-      border-left: 3px solid #075e54;
-      padding-left: 5px;
-      color: #aebac1;
-    }
-
-    #reply-preview {
-      background: #202c33;
-      color: #e9edef;
-      padding: 10px 15px;
-      font-size: 0.9em;
-      display: none;
-      align-items: center;
-      justify-content: space-between;
-      border-top: 1px solid #2a3942;
-      position: fixed;
-      left: 0;
-      right: 0;
-      /* PERBAIKAN: Ditempatkan tepat di atas input-area */
-      bottom: var(--input-area-min-height);
-      z-index: 101;
-      height: var(--reply-preview-height); /* Tinggi tetap */
-    }
-
-    #reply-preview span {
-      flex: 1;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      margin-right: 10px;
-    }
-
-    #reply-preview button {
-      background:none;
-      border:none;
-      color:#e9edef;
-      font-size:1.5em;
-      cursor:pointer;
-    }
-
-    /* PERBAIKAN: Area input sekarang fixed di bagian bawah */
-    #input-area {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      display: flex;
-      gap: 8px; /* Smaller gap */
-      padding: 8px 15px; /* Adjust padding */
-      background: #202c33; /* Dark input area */
-      border-top: 1px solid #2a3942;
-      align-items: center;
-      z-index: 102; /* Pastikan di atas reply-preview dan konten chat */
-      min-height: var(--input-area-min-height); /* Tinggi minimum */
-    }
-
-    /* PERBAIKAN: Menggunakan textarea agar bisa multi-baris otomatis */
-    #input {
-      flex: 1;
-      padding: 10px 15px; /* Adjust padding */
-      font-size: 1em; /* Ukuran font relatif */
-      border: none; /* No border */
-      border-radius: 20px; /* Pill shape */
-      background-color: #2a3942; /* Darker input background */
-      color: #e9edef;
-      outline: none; /* No outline on focus */
-      min-height: 35px; /* Menjaga tinggi input agar tidak gepeng */
-      line-height: 1.2; /* Membantu teks agar tidak gepeng */
-      resize: none; /* Mencegah user resize textarea */
-      overflow-y: auto; /* Izinkan scrollbar jika teks terlalu panjang */
-      max-height: 150px; /* Batasi tinggi maksimal textarea agar tidak terlalu besar */
-    }
-
-    #send, #uploadBtn {
-      width: 45px; /* Round buttons */
-      height: 45px;
-      border-radius: 50%;
-      background: #008069; /* WhatsApp Green */
-      color: white;
-      font-size: 1.5em; /* Ukuran font relatif */
-      border: none;
-      cursor: pointer;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      transition: background-color 0.3s ease;
-    }
-
-    #send:hover, #uploadBtn:hover {
-        background-color: #006b5a;
-    }
-
-    #uploadBtn {
-        font-size: 1.2em; /* Smaller icon */
-    }
-
-    .msg img {
-      max-width: 100%;
-      border-radius: 5px;
-      margin-top: 5px;
-    }
-
-    .time {
-      font-size: 0.7em;
-      opacity: 0.6;
-      display: block;
-      margin-top: 3px;
-      color: #aebac1;
-    }
-
-    .own .time {
-      text-align: right;
-    }
-
-    .other .time {
-      text-align: left;
-    }
-
-    /* Sidebar Styles */
-    #sidebar {
-      width: 0;
-      background-color: #1f2c33; /* Darker sidebar */
-      overflow-x: hidden;
-      transition: 0.5s;
-      padding-top: 60px;
-      position: fixed;
-      height: 100%;
-      z-index: 100;
-      top: 0;
-      left: 0;
-      color: #e9edef;
-    }
-
-    #sidebar.open {
-      width: 250px;
-    }
-
-    #sidebar a {
-      padding: 8px 8px 8px 32px;
-      text-decoration: none;
-      font-size: 25px;
-      color: #818181;
-      display: block;
-      transition: 0.3s;
-    }
-
-    #sidebar a:hover {
-      color: #f1f1f1;
-    }
-
-    #sidebar .closebtn {
-      position: absolute;
-      top: 0;
-      right: 25px;
-      font-size: 36px;
-      margin-left: 50px;
-    }
-
-    #sidebar-menu-list ul {
-        list-style-type: none;
-        padding: 0;
-    }
-
-    #sidebar-menu-list li {
-        padding: 10px 32px;
-        font-size: 18px;
-        border-bottom: 1px solid #2a3942;
-    }
-
-    #sidebar-menu-list li:last-child {
-        border-bottom: none;
-    }
-
-    #sidebar-menu-list li a {
-        color: #e9edef;
-        text-decoration: none;
-        display: block;
-        padding: 0;
-        font-size: 18px;
-    }
-
-    #sidebar-menu-list li a:hover {
-        color: #008069;
-    }
-
-    /* Overlay effect */
-    .overlay {
-        position: fixed;
-        width: 100%;
-        height: 100%;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: rgba(0,0,0,0.5);
-        z-index: 99;
-        display: none;
-        transition: opacity 0.5s;
-    }
-
-    .overlay.active {
-        display: block;
-        opacity: 1;
-    }
-
-    /* Responsive adjustments */
-    @media (min-width: 768px) {
-      .msg { font-size: 16px; }
-      .reply { font-size: 13px; }
-      #input { font-size: 16px; }
-      #send, #uploadBtn { font-size: 24px; width: 50px; height: 50px;}
-      .time { font-size: 12px; }
-      #sidebar-toggle { top: 20px; left: 20px; font-size: 36px;}
-      .auth-container, .profile-modal { padding: 40px; }
-    }
-
-    /* Toast Message for "Press back again to exit" */
-    #toastMessage {
-        position: fixed;
-        bottom: 50px;
-        left: 50%;
-        transform: translateX(-50%);
-        background-color: rgba(0, 0, 0, 0.7);
-        color: white;
-        padding: 10px 20px;
-        border-radius: 5px;
-        font-size: 0.9em;
-        z-index: 10000;
-        opacity: 0;
-        transition: opacity 0.3s ease-in-out;
-        pointer-events: none; /* Allows clicks to pass through */
-    }
-
-    #toastMessage.show {
-        opacity: 1;
-    }
-  </style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ZedxChat</title>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <style>
+        /* Global Styles */
+        :root {
+            /* Variabel CSS untuk tinggi total input area (input + reply preview) */
+            --input-area-total-height: 70px; /* Default: Tinggi input area tanpa reply preview */
+            --input-area-min-height: 50px; /* Tinggi minimum untuk #input-area */
+            --reply-preview-height: 50px; /* Tinggi tetap untuk reply preview */
+            --chat-message-spacing: 8px; /* Spasi antar pesan */
+            --extra-bottom-padding: 10px; /* Tambahan padding di bawah pesan terakhir */
+        }
+
+        * { box-sizing: border-box; }
+        html, body {
+            margin: 0; padding: 0; height: 100%;
+            font-family: Arial, sans-serif;
+            background: #202c33; /* Dark background like WhatsApp */
+            color: #e9edef; /* Light text color */
+            overflow: hidden; /* Prevent body scroll */
+        }
+        body { display: flex; flex-direction: column; } /* Menggunakan flexbox untuk layout utama */
+
+        /* --- Loading Screen Styles --- */
+        #loadingScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #111b21; /* Match app background */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #008069; /* WhatsApp Green */
+            font-size: 1.5em;
+            z-index: 9999; /* Ensure it's on top */
+            transition: opacity 0.5s ease-out;
+            opacity: 1;
+        }
+
+        #loadingSpinner {
+            border: 4px solid rgba(0, 128, 105, 0.3);
+            border-top: 4px solid #008069;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* --- Auth Container Styles (Login/Register) --- */
+        .auth-container {
+            background-color: rgba(32, 44, 51, 0.9); /* Darker, slightly transparent */
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            box-sizing: border-box;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 102;
+            display: none;
+        }
+
+        .auth-container h2 {
+            margin-bottom: 25px;
+            color: #e9edef;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #555;
+            border-radius: 5px;
+            font-size: 16px;
+            background-color: #33444d; /* Darker input background */
+            color: #e9edef;
+            box-sizing: border-box;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 25px;
+        }
+
+        .button-group button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            color: white;
+        }
+
+        .auth-button { /* General style for login/register buttons */
+            background-color: #008069; /* WhatsApp Green */
+        }
+
+        .auth-button:hover {
+            background-color: #006b5a;
+        }
+
+        .switch-auth-mode {
+            margin-top: 20px;
+            font-size: 0.9em;
+            color: #aebac1;
+        }
+
+        .switch-auth-mode a {
+            color: #008069;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .auth-message { /* Combined style for login/register messages */
+            margin-top: 20px;
+            font-weight: bold;
+            color: #ff6b6b; /* Error red */
+        }
+
+        /* --- Chat List (Lobby) Styles --- */
+        #chatListContainer {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100%;
+            background-color: #111b21; /* WhatsApp dark background */
+            position: relative;
+            overflow: hidden;
+            display: none; /* Hidden by default */
+        }
+
+        #chatListHeader {
+            display: flex;
+            align-items: center;
+            padding: 15px 20px;
+            background-color: #202c33;
+            color: #e9edef;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 10;
+        }
+
+        #chatListHeader h1 {
+            flex-grow: 1;
+            margin: 0;
+            font-size: 1.5em;
+            text-align: left;
+        }
+
+        #chatListHeader button {
+            background: none;
+            border: none;
+            color: #e9edef;
+            font-size: 1.2em;
+            cursor: pointer;
+            margin-left: 15px;
+        }
+
+        #chatListContent {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0;
+        }
+
+        .chat-list-item {
+            display: flex;
+            align-items: center;
+            padding: 15px 20px;
+            border-bottom: 1px solid #2a3942; /* Darker separator */
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .chat-list-item:hover {
+            background-color: #2a3942; /* Hover effect */
+        }
+
+        .chat-list-item:last-child {
+            border-bottom: none;
+        }
+
+        .chat-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: #008069; /* Default avatar background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5em;
+            color: white;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+
+        .chat-info {
+            flex-grow: 1;
+            overflow: hidden;
+        }
+
+        .chat-name {
+            font-weight: bold;
+            color: #e9edef;
+            font-size: 1.1em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .chat-last-message {
+            color: #8696a0; /* Lighter grey for messages */
+            font-size: 0.9em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-top: 3px;
+        }
+
+        .chat-time {
+            font-size: 0.8em;
+            color: #8696a0;
+            margin-left: 10px;
+            flex-shrink: 0;
+        }
+
+        /* --- Main Chat Content Styles --- */
+        #main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100vh; /* Use 100vh for full screen chat */
+            width: 100%;
+            position: relative;
+            background-color: #0b141a; /* WhatsApp chat background */
+            display: none; /* Hidden by default */
+        }
+
+        #chat-header {
+            display: flex;
+            align-items: center;
+            padding: 10px 15px;
+            background-color: #202c33; /* Darker header */
+            color: #e9edef;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 10;
+        }
+
+        #chat-header button {
+            background: none;
+            border: none;
+            color: #e9edef;
+            font-size: 1.5em;
+            cursor: pointer;
+            margin-right: 15px;
+        }
+
+        #chat-header h2 {
+            flex-grow: 1;
+            margin: 0;
+            font-size: 1.2em;
+        }
+
+        #chat-container {
+            flex: 1; /* Penting agar container mengisi sisa ruang */
+            overflow-y: auto;
+            padding: 10px 15px; /* Padding samping dan atas */
+            background-image: url('https://raw.githubusercontent.com/ikyYourStar/ZedxChat/refs/heads/main/assets/Tak%20berjudul134_20250707192207.png'); /* Your background image */
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            /* PERBAIKAN: Padding bawah dinamis agar pesan tidak tertutup input */
+            padding-bottom: calc(var(--input-area-total-height) + var(--extra-bottom-padding));
+        }
+
+        .msg {
+            max-width: 80%; /* Slightly wider messages */
+            padding: 8px 12px; /* Adjust padding */
+            margin-bottom: var(--chat-message-spacing); /* Spasi antar pesan */
+            border-radius: 8px; /* Smaller border radius */
+            word-wrap: break-word;
+            font-size: 0.95em; /* Slightly smaller font for better fit */
+            position: relative;
+            transition: transform 0.2s ease;
+            will-change: transform;
+            box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+        }
+
+        .own {
+            background: #005c4b; /* Darker green for own messages */
+            margin-left: auto;
+            text-align: right;
+        }
+
+        .other {
+            background: #202c33; /* Dark grey for other messages */
+            margin-right: auto;
+            text-align: left;
+        }
+
+        .reply {
+            font-size: 0.75em;
+            opacity: 0.7;
+            margin-bottom: 5px;
+            font-style: italic;
+            border-left: 3px solid #075e54;
+            padding-left: 5px;
+            color: #aebac1;
+        }
+
+        #reply-preview {
+            background: #202c33;
+            color: #e9edef;
+            padding: 10px 15px;
+            font-size: 0.9em;
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            border-top: 1px solid #2a3942;
+            position: fixed;
+            left: 0;
+            right: 0;
+            /* PERBAIKAN: Ditempatkan tepat di atas input-area */
+            bottom: var(--input-area-min-height);
+            z-index: 101;
+            height: var(--reply-preview-height); /* Tinggi tetap */
+        }
+
+        #reply-preview span {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-right: 10px;
+        }
+
+        #reply-preview button {
+            background:none;
+            border:none;
+            color:#e9edef;
+            font-size:1.5em;
+            cursor:pointer;
+        }
+
+        /* PERBAIKAN: Area input sekarang fixed di bagian bawah */
+        #input-area {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            gap: 8px; /* Smaller gap */
+            padding: 8px 15px; /* Adjust padding */
+            background: #202c33; /* Dark input area */
+            border-top: 1px solid #2a3942;
+            align-items: center;
+            z-index: 102; /* Pastikan di atas reply-preview dan konten chat */
+            min-height: var(--input-area-min-height); /* Tinggi minimum */
+        }
+
+        /* PERBAIKAN: Menggunakan textarea agar bisa multi-baris otomatis */
+        #input {
+            flex: 1;
+            padding: 10px 15px; /* Adjust padding */
+            font-size: 1em; /* Ukuran font relatif */
+            border: none; /* No border */
+            border-radius: 20px; /* Pill shape */
+            background-color: #2a3942; /* Darker input background */
+            color: #e9edef;
+            outline: none; /* No outline on focus */
+            min-height: 35px; /* Menjaga tinggi input agar tidak gepeng */
+            line-height: 1.2; /* Membantu teks agar tidak gepeng */
+            resize: none; /* Mencegah user resize textarea */
+            overflow-y: auto; /* Izinkan scrollbar jika teks terlalu panjang */
+            max-height: 150px; /* Batasi tinggi maksimal textarea agar tidak terlalu besar */
+        }
+
+        #send, #uploadBtn {
+            width: 45px; /* Round buttons */
+            height: 45px;
+            border-radius: 50%;
+            background: #008069; /* WhatsApp Green */
+            color: white;
+            font-size: 1.5em; /* Ukuran font relatif */
+            border: none;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: background-color 0.3s ease;
+        }
+
+        #send:hover, #uploadBtn:hover {
+            background-color: #006b5a;
+        }
+
+        #uploadBtn {
+            font-size: 1.2em; /* Smaller icon */
+        }
+
+        .msg img {
+            max-width: 100%;
+            border-radius: 5px;
+            margin-top: 5px;
+        }
+
+        .time {
+            font-size: 0.7em;
+            opacity: 0.6;
+            display: block;
+            margin-top: 3px;
+            color: #aebac1;
+        }
+
+        .own .time {
+            text-align: right;
+        }
+
+        .other .time {
+            text-align: left;
+        }
+
+        .sender-name { /* New style for sender name in 'other' messages */
+            font-weight: bold;
+            color: #075e54; /* A distinct color for sender name */
+            margin-right: 5px;
+        }
+
+        /* Sidebar Styles */
+        #sidebar {
+            width: 0;
+            background-color: #1f2c33; /* Darker sidebar */
+            overflow-x: hidden;
+            transition: 0.5s;
+            padding-top: 60px;
+            position: fixed;
+            height: 100%;
+            z-index: 100;
+            top: 0;
+            left: 0;
+            color: #e9edef;
+        }
+
+        #sidebar.open {
+            width: 250px;
+        }
+
+        #sidebar a {
+            padding: 8px 8px 8px 32px;
+            text-decoration: none;
+            font-size: 25px;
+            color: #818181;
+            display: block;
+            transition: 0.3s;
+        }
+
+        #sidebar a:hover {
+            color: #f1f1f1;
+        }
+
+        #sidebar .closebtn {
+            position: absolute;
+            top: 0;
+            right: 25px;
+            font-size: 36px;
+            margin-left: 50px;
+        }
+
+        #sidebar-menu-list ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        #sidebar-menu-list li {
+            padding: 10px 32px;
+            font-size: 18px;
+            border-bottom: 1px solid #2a3942;
+        }
+
+        #sidebar-menu-list li:last-child {
+            border-bottom: none;
+        }
+
+        #sidebar-menu-list li a {
+            color: #e9edef;
+            text-decoration: none;
+            display: block;
+            padding: 0;
+            font-size: 18px;
+        }
+
+        #sidebar-menu-list li a:hover {
+            color: #008069;
+        }
+
+        /* Overlay effect */
+        .overlay {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 99;
+            display: none;
+            transition: opacity 0.5s;
+        }
+
+        .overlay.active {
+            display: block;
+            opacity: 1;
+        }
+
+        /* Responsive adjustments */
+        @media (min-width: 768px) {
+            .msg { font-size: 16px; }
+            .reply { font-size: 13px; }
+            #input { font-size: 16px; }
+            #send, #uploadBtn { font-size: 24px; width: 50px; height: 50px;}
+            .time { font-size: 12px; }
+            #sidebar-toggle { top: 20px; left: 20px; font-size: 36px;}
+            .auth-container, .profile-modal { padding: 40px; }
+        }
+
+        /* Toast Message for "Press back again to exit" */
+        #toastMessage {
+            position: fixed;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            z-index: 10000;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            pointer-events: none; /* Allows clicks to pass through */
+        }
+
+        #toastMessage.show {
+            opacity: 1;
+        }
+    </style>
 </head>
 <body>
 
-  <div id="loadingScreen">
-    <div id="loadingSpinner"></div>
-    <span>Memuat ZedxChat...</span>
-  </div>
-
-  <div class="auth-container" id="loginScreen">
-    <h2>Login ke ZedxChat</h2>
-    <div class="input-group">
-      <label for="loginEmail">Email:</label>
-      <input type="email" id="loginEmail" placeholder="Masukkan email Anda" required />
-    </div>
-    <div class="input-group">
-      <label for="loginPassword">Password:</label>
-      <input type="password" id="loginPassword" placeholder="Masukkan password Anda" required />
-    </div>
-    <div class="button-group">
-      <button id="loginBtn" class="auth-button">Login</button>
-    </div>
-    <p id="loginMessage" class="auth-message"></p>
-    <p class="switch-auth-mode">Belum punya akun? <a href="#" id="goToRegister">Buat Akun di sini</a></p>
-  </div>
-
-  <div class="auth-container" id="registerScreen">
-    <h2>Daftar Akun Baru</h2>
-    <div class="input-group">
-      <label for="registerEmail">Email:</label>
-      <input type="email" id="registerEmail" placeholder="Masukkan email Anda" required />
-    </div>
-    <div class="input-group">
-      <label for="registerPassword">Password:</label>
-      <input type="password" id="registerPassword" placeholder="Minimal 6 karakter" required />
-    </div>
-    <div class="button-group">
-      <button id="registerBtn" class="auth-button">Daftar</button>
-    </div>
-    <p id="registerMessage" class="auth-message"></p>
-    <p class="switch-auth-mode">Sudah punya akun? <a href="#" id="goToLogin">Login di sini</a></p>
-  </div>
-
-  <div id="chatListContainer">
-    <div id="chatListHeader">
-      <h1>ZedxChat</h1>
-      <button id="lobbyLogoutBtn">Logout</button>
-      <button id="viewProfileBtn">👤</button>
-    </div>
-    <div id="chatListContent">
-      </div>
-  </div>
-
-  <div class="auth-container" id="profileModal" style="display:none;">
-    <h2>Profil Anda</h2>
-    <p>Email: <strong id="profileEmail"></strong></p>
-    <div class="input-group">
-      <label for="profileDisplayName">Nama Pengguna (Username):</label>
-      <input type="text" id="profileDisplayName" placeholder="Atur nama pengguna Anda" required />
-    </div>
-    <button id="saveProfileBtn" style="background-color: #008069; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">Simpan</button>
-    <button onclick="closeProfileModal()" style="background-color: #555; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin-left: 10px;">Tutup</button>
-    <p id="profileMessage" style="margin-top: 10px; color: red;"></p>
-  </div>
-
-  <div id="sidebar">
-    <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
-    <div id="sidebar-menu-list">
-        <ul>
-            <li><a href="#" onclick="openProfileModal()">Profil Saya</a></li>
-            <li><a href="#">Pengaturan Notifikasi</a></li>
-            <li><a href="#">Privasi dan Keamanan</a></li>
-            <li><a href="#">Bantuan</a></li>
-            <li><a href="#">Tentang Aplikasi</a></li>
-            <li><a href="#" onclick="logout()">Logout</a></li>
-        </ul>
-    </div>
-  </div>
-
-  <div class="overlay" id="fullScreenOverlay" onclick="closeNav(); closeProfileModal()"></div>
-
-  <span id="sidebar-toggle" onclick="openNav()">&#9776;</span>
-
-  <div id="main-content">
-    <div id="chat-header">
-      <button id="backToChatListBtn">&#8249;</button> <h2 id="currentChatName">ZedxChat</h2> </div>
-    <div id="chat-container"></div>
-
-    <div id="reply-preview">
-      <span id="reply-text"></span>
-      <button onclick="cancelReply()" style="background:none;border:none;color:white;font-size:1.5em;">×</button>
+    <div id="loadingScreen">
+        <div id="loadingSpinner"></div>
+        <span>Memuat ZedxChat...</span>
     </div>
 
-    <div id="input-area">
-      <button id="uploadBtn">📎</button>
-      <input type="file" id="fileInput" accept="image/*" style="display:none;" />
-      <textarea id="input" placeholder="Ketik pesan..." rows="1"></textarea>
-      <button id="send">Kirim</button>
+    <div class="auth-container" id="loginScreen">
+        <h2>Login ke ZedxChat</h2>
+        <div class="input-group">
+            <label for="loginEmail">Email:</label>
+            <input type="email" id="loginEmail" placeholder="Masukkan email Anda" required />
+        </div>
+        <div class="input-group">
+            <label for="loginPassword">Password:</label>
+            <input type="password" id="loginPassword" placeholder="Masukkan password Anda" required />
+        </div>
+        <div class="button-group">
+            <button id="loginBtn" class="auth-button">Login</button>
+        </div>
+        <p id="loginMessage" class="auth-message"></p>
+        <p class="switch-auth-mode">Belum punya akun? <a href="#" id="goToRegister">Buat Akun di sini</a></p>
     </div>
-  </div>
 
-  <div id="toastMessage">Tekan kembali sekali lagi untuk keluar</div>
+    <div class="auth-container" id="registerScreen">
+        <h2>Daftar Akun Baru</h2>
+        <div class="input-group">
+            <label for="registerEmail">Email:</label>
+            <input type="email" id="registerEmail" placeholder="Masukkan email Anda" required />
+        </div>
+        <div class="input-group">
+            <label for="registerPassword">Password:</label>
+            <input type="password" id="registerPassword" placeholder="Minimal 6 karakter" required />
+        </div>
+        <div class="button-group">
+            <button id="registerBtn" class="auth-button">Daftar</button>
+        </div>
+        <p id="registerMessage" class="auth-message"></p>
+        <p class="switch-auth-mode">Sudah punya akun? <a href="#" id="goToLogin">Login di sini</a></p>
+    </div>
 
-  <script>
-    // GANTI DENGAN KUNCI API IMGBB ANDA
-    const imgbbKey = "a12e3657b8edd041c13eda8c12ff5925"; // Example key, get yours from imgbb.com/api
+    <div id="chatListContainer">
+        <div id="chatListHeader">
+            <h1>ZedxChat</h1>
+            <button id="lobbyLogoutBtn">Logout</button>
+            <button id="viewProfileBtn">👤</button>
+        </div>
+        <div id="chatListContent">
+            </div>
+    </div>
 
-    // GANTI DENGAN KONFIGURASI FIREBASE ANDA
-    const firebaseConfig = {
-      apiKey: "AIzaSyCTjBsKdHmmTELY3wnfGYANEzzDBEF2BIo", // Your Firebase API Key
-      authDomain: "realtime-df5d0.firebaseapp.com",
-      databaseURL: "https://realtime-df5d0-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "realtime-df5d0",
-      storageBucket: "realtime-df5d0.appspot.com",
-      messagingSenderId: "1065067984786",
-      appId: "1:1065067984786:web:b315a080932587ec53f34b"
-    };
+    <div class="auth-container" id="profileModal" style="display:none;">
+        <h2>Profil Anda</h2>
+        <p>Email: <strong id="profileEmail"></strong></p>
+        <div class="input-group">
+            <label for="profileDisplayName">Nama Pengguna (Username):</label>
+            <input type="text" id="profileDisplayName" placeholder="Atur nama pengguna Anda" required />
+        </div>
+        <button id="saveProfileBtn" style="background-color: #008069; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">Simpan</button>
+        <button onclick="closeProfileModal()" style="background-color: #555; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin-left: 10px;">Tutup</button>
+        <p id="profileMessage" style="margin-top: 10px; color: red;"></p>
+    </div>
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-    const auth = firebase.auth();
+    <div id="sidebar">
+        <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
+        <div id="sidebar-menu-list">
+            <ul>
+                <li><a href="#" onclick="openProfileModal()">Profil Saya</a></li>
+                <li><a href="#">Pengaturan Notifikasi</a></li>
+                <li><a href="#">Privasi dan Keamanan</a></li>
+                <li><a href="#">Bantuan</a></li>
+                <li><a href="#">Tentang Aplikasi</a></li>
+                <li><a href="#" onclick="logout()">Logout</a></li>
+            </ul>
+        </div>
+    </div>
 
-    const PUBLIC_CHAT_ID = "publicChat"; // Fixed ID for the public chat in Firebase DB
+    <div class="overlay" id="fullScreenOverlay" onclick="closeNav(); closeProfileModal()"></div>
 
-    let currentLoggedInUser = null; // Firebase User Object
-    let currentDisplayName = "Anonim"; // Display Name for chat
-    let currentScreen = 'loading'; // Keep track of the current active screen
-    let backButtonPressedOnce = false; // For double-tap to exit logic
-    let backButtonTimeout; // To clear the double-tap timeout
+    <span id="sidebar-toggle" onclick="openNav()">&#9776;</span>
 
-    // --- UI Elements ---
-    // Loading Screen
-    const loadingScreen = document.getElementById("loadingScreen");
+    <div id="main-content">
+        <div id="chat-header">
+            <button id="backToChatListBtn">&#8249;</button> <h2 id="currentChatName"></h2>
+        </div>
+        <div id="chat-container"></div>
 
-    // Auth UI - Separated
-    const loginScreen = document.getElementById("loginScreen");
-    const loginEmailInput = document.getElementById("loginEmail");
-    const loginPasswordInput = document.getElementById("loginPassword");
-    const loginBtn = document.getElementById("loginBtn");
-    const loginMessageEl = document.getElementById("loginMessage");
-    const goToRegisterLink = document.getElementById("goToRegister");
+        <div id="reply-preview">
+            <span id="reply-text"></span>
+            <button onclick="cancelReply()" style="background:none;border:none;color:white;font-size:1.5em;">×</button>
+        </div>
 
-    const registerScreen = document.getElementById("registerScreen");
-    const registerEmailInput = document.getElementById("registerEmail");
-    const registerPasswordInput = document.getElementById("registerPassword");
-    const registerBtn = document.getElementById("registerBtn");
-    const registerMessageEl = document.getElementById("registerMessage");
-    const goToLoginLink = document.getElementById("goToLogin");
+        <div id="input-area">
+            <button id="uploadBtn">📎</button>
+            <input type="file" id="fileInput" accept="image/*" style="display:none;" />
+            <textarea id="input" placeholder="Ketik pesan..." rows="1"></textarea>
+            <button id="send">Kirim</button>
+        </div>
+    </div>
 
-    // Chat List (Lobby) UI
-    const chatListContainer = document.getElementById("chatListContainer");
-    const chatListContent = document.getElementById("chatListContent");
-    const lobbyLogoutBtn = document.getElementById("lobbyLogoutBtn");
-    const viewProfileBtn = document.getElementById("viewProfileBtn");
+    <div id="toastMessage">Tekan kembali sekali lagi untuk keluar</div>
 
-    // Profile Modal
-    const profileModal = document.getElementById("profileModal");
-    const profileEmailEl = document.getElementById("profileEmail");
-    const profileDisplayNameInput = document.getElementById("profileDisplayName");
-    const saveProfileBtn = document.getElementById("saveProfileBtn");
-    const profileMessageEl = document.getElementById("profileMessage");
+    <script>
+        // GANTI DENGAN KUNCI API IMGBB ANDA
+        const imgbbKey = "a12e3657b8edd041c13eda8c12ff5925"; // Example key, get yours from imgbb.com/api
 
-    // Chat Detail UI
-    const mainContent = document.getElementById("main-content");
-    const chatHeader = document.getElementById("chat-header");
-    const backToChatListBtn = document.getElementById("backToChatListBtn");
-    const currentChatNameEl = document.getElementById("currentChatName");
-    const chatContainer = document.getElementById("chat-container");
-    const input_area = document.getElementById("input-area"); /* Mendefinisikan input_area */
-    const input = document.getElementById("input"); /* Ini adalah textarea */
-    const sendBtn = document.getElementById("send");
-    const fileInput = document.getElementById("fileInput");
-    const uploadBtn = document.getElementById("uploadBtn");
-    const replyPreview = document.getElementById("reply-preview");
-    const replyText = document.getElementById("reply-text");
-    const sidebar = document.getElementById("sidebar");
-    const fullScreenOverlay = document.getElementById("fullScreenOverlay");
-    const sidebarToggle = document.getElementById("sidebar-toggle");
-    const root = document.documentElement; /* Untuk mengakses variabel CSS */
+        // GANTI DENGAN KONFIGURASI FIREBASE ANDA
+        const firebaseConfig = {
+            apiKey: "AIzaSyCTjBsKdHmmTELY3wnfGYANEzzDBEF2BIo", // Your Firebase API Key
+            authDomain: "realtime-df5d0.firebaseapp.com",
+            databaseURL: "https://realtime-df5d0-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "realtime-df5d0",
+            storageBucket: "realtime-df5d0.appspot.com",
+            messagingSenderId: "1065067984786",
+            appId: "1:1065067984786:web:b315a080932587ec53f34b"
+        };
 
-    // Toast Message
-    const toastMessage = document.getElementById("toastMessage");
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const auth = firebase.auth();
 
-    let replyTo = null;
-    let chatMessageListener = null;
+        const PUBLIC_CHAT_ID = "publicChat"; // Fixed ID for the public chat in Firebase DB
+        const REPORT_CHAT_ID = "reportChat"; // Fixed ID for the report chat
 
-    // --- Screen Navigation Functions ---
-    // This function now manages browser history for proper back button behavior
-    function showScreen(screen, pushState = true) {
-        // Hide all main screens initially
-        loginScreen.style.display = "none";
-        registerScreen.style.display = "none";
-        chatListContainer.style.display = "none";
-        mainContent.style.display = "none";
-        sidebarToggle.style.display = "none";
-        profileModal.style.display = "none";
-        fullScreenOverlay.classList.remove("active");
-        closeNav(); // Ensure sidebar is closed when changing screens
-        hideToast(); // Hide any active toast message
+        let currentLoggedInUser = null; // Firebase User Object, will have .isAdmin property
+        let currentDisplayName = "Anonim"; // Display Name for chat
+        let currentScreen = 'loading'; // Keep track of the current active screen
+        let backButtonPressedOnce = false; // For double-tap to exit logic
+        let backButtonTimeout; // To clear the double-tap timeout
 
-        // Detach previous chat message listener if moving away from chat detail
-        if (chatMessageListener) {
-            db.ref(`${PUBLIC_CHAT_ID}/messages`).off('child_added', chatMessageListener);
-            db.ref(`${PUBLIC_CHAT_ID}/messages`).off('child_changed', chatMessageListener);
-            chatMessageListener = null;
+        let currentChatId = null; // Menambahkan variabel untuk melacak chat yang sedang aktif
+        let currentChatListener = null; // Menambahkan variabel untuk melacak listener chat
+
+        // --- UI Elements ---
+        // Loading Screen
+        const loadingScreen = document.getElementById("loadingScreen");
+
+        // Auth UI - Separated
+        const loginScreen = document.getElementById("loginScreen");
+        const loginEmailInput = document.getElementById("loginEmail");
+        const loginPasswordInput = document.getElementById("loginPassword");
+        const loginBtn = document.getElementById("loginBtn");
+        const loginMessageEl = document.getElementById("loginMessage");
+        const goToRegisterLink = document.getElementById("goToRegister");
+
+        const registerScreen = document.getElementById("registerScreen");
+        const registerEmailInput = document.getElementById("registerEmail");
+        const registerPasswordInput = document.getElementById("registerPassword");
+        const registerBtn = document.getElementById("registerBtn");
+        const registerMessageEl = document.getElementById("registerMessage");
+        const goToLoginLink = document.getElementById("goToLogin");
+
+        // Chat List (Lobby) UI
+        const chatListContainer = document.getElementById("chatListContainer");
+        const chatListContent = document.getElementById("chatListContent");
+        const lobbyLogoutBtn = document.getElementById("lobbyLogoutBtn");
+        const viewProfileBtn = document.getElementById("viewProfileBtn");
+
+        // Profile Modal
+        const profileModal = document.getElementById("profileModal");
+        const profileEmailEl = document.getElementById("profileEmail");
+        const profileDisplayNameInput = document.getElementById("profileDisplayName");
+        const saveProfileBtn = document.getElementById("saveProfileBtn");
+        const profileMessageEl = document.getElementById("profileMessage");
+
+        // Chat Detail UI
+        const mainContent = document.getElementById("main-content");
+        const chatHeader = document.getElementById("chat-header");
+        const backToChatListBtn = document.getElementById("backToChatListBtn");
+        const currentChatNameEl = document.getElementById("currentChatName");
+        const chatContainer = document.getElementById("chat-container");
+        const input_area = document.getElementById("input-area"); /* Mendefinisikan input_area */
+        const input = document.getElementById("input"); /* Ini adalah textarea */
+        const sendBtn = document.getElementById("send");
+        const fileInput = document.getElementById("fileInput");
+        const uploadBtn = document.getElementById("uploadBtn");
+        const replyPreview = document.getElementById("reply-preview");
+        const replyText = document.getElementById("reply-text");
+        const sidebar = document.getElementById("sidebar");
+        const fullScreenOverlay = document.getElementById("fullScreenOverlay");
+        const sidebarToggle = document.getElementById("sidebar-toggle");
+        const root = document.documentElement; /* Untuk mengakses variabel CSS */
+
+        // Toast Message
+        const toastMessage = document.getElementById("toastMessage");
+
+        let replyTo = null;
+
+        // --- Screen Navigation Functions ---
+        // This function now manages browser history for proper back button behavior
+        function showScreen(screen, pushState = true, chatId = null) { // Tambahkan parameter chatId
+            // Hide all main screens initially
+            loginScreen.style.display = "none";
+            registerScreen.style.display = "none";
+            chatListContainer.style.display = "none";
+            mainContent.style.display = "none";
+            sidebarToggle.style.display = "none";
+            profileModal.style.display = "none";
+            fullScreenOverlay.classList.remove("active");
+            closeNav(); // Ensure sidebar is closed when changing screens
+            hideToast(); // Hide any active toast message
+
+            // Detach previous chat message listener if moving away from chat detail
+            if (currentChatListener) { // Menggunakan currentChatListener
+                db.ref(`${currentChatId}/messages`).off('child_added', currentChatListener);
+                db.ref(`${currentChatId}/messages`).off('child_changed', currentChatListener);
+                currentChatListener = null;
+            }
+
+            currentScreen = screen; // Update current screen state
+
+            if (pushState) {
+                // Push the new screen state to browser history
+                // We're pushing a 'data' object which includes the screen name and chatId
+                history.pushState({ screen: screen, chatId: chatId }, '', `#${screen}${chatId ? '/' + chatId : ''}`);
+            }
+
+            if (screen === 'login') {
+                loginScreen.style.display = "block";
+                loginEmailInput.value = "";
+                loginPasswordInput.value = "";
+                loginMessageEl.textContent = "";
+            } else if (screen === 'register') {
+                registerScreen.style.display = "block";
+                registerEmailInput.value = "";
+                registerPasswordInput.value = "";
+                registerMessageEl.textContent = "";
+            } else if (screen === 'chatList') {
+                chatListContainer.style.display = "flex";
+                sidebarToggle.style.display = "block";
+                renderChatListItems(); // Ganti dari renderPublicChatItem() ke fungsi yang lebih umum
+            } else if (screen === 'chatDetail') {
+                currentChatId = chatId; // Set chat ID yang sedang aktif
+                mainContent.style.display = "flex";
+                sidebarToggle.style.display = "block";
+                chatContainer.innerHTML = ""; // Clear previous chat messages
+                currentChatNameEl.textContent = (chatId === PUBLIC_CHAT_ID) ? "ZedxChat (Publik)" : "Pesan Laporan Admin"; // Sesuaikan nama header
+                cancelReply(); // Pastikan reply preview bersih saat masuk chat baru
+
+                // Panggil ini agar padding awal sesuai saat layar chat dimuat
+                updateInputAreaHeight();
+
+                // Attach listener for the specific chat messages
+                currentChatListener = db.ref(`${currentChatId}/messages`).on("child_added", snap => renderMessage(snap.key, snap.val(), currentChatId)); // Tambahkan currentChatId ke renderMessage
+                db.ref(`${currentChatId}/messages`).on("child_changed", snap => {
+                    const el = document.getElementById("msg-" + snap.key);
+                    if (el) {
+                        // Check if user is near the bottom before removing/re-adding
+                        const scrollAtBottom = chatContainer.scrollHeight - chatContainer.clientHeight <= chatContainer.scrollTop + 50; // Toleransi 50px
+
+                        // Remove old element
+                        el.remove();
+
+                        // If the deleted message was the one being replied to, cancel reply
+                        if (replyTo && "msg-" + snap.key === replyTo.id) {
+                            cancelReply();
+                        }
+                        
+                        // Re-render the message with updated data
+                        renderMessage(snap.key, snap.val(), currentChatId);
+
+                        if (scrollAtBottom) { // Only scroll if user was at the bottom
+                            scrollToBottom();
+                        }
+                    }
+                });
+                scrollToBottom();
+            }
+
+            // Hide loading screen after the target screen is displayed
+            loadingScreen.style.opacity = 0;
+            setTimeout(() => { loadingScreen.style.display = 'none'; }, 500); // Wait for fade out
         }
 
-        currentScreen = screen; // Update current screen state
+        // --- History Management and Popstate Event Listener ---
+        // Initial pushState to mark the application's start point
+        history.replaceState({ screen: 'loading' }, '', ''); // Replace initial empty state
 
-        if (pushState) {
-            // Push the new screen state to browser history
-            // We're pushing a 'data' object which includes the screen name
-            history.pushState({ screen: screen }, '', `#${screen}`);
-        }
+        window.addEventListener('popstate', (event) => {
+            const targetScreen = event.state ? event.state.screen : null;
+            const targetChatId = event.state ? event.state.chatId : null; // Ambil chatId dari history
 
-        if (screen === 'login') {
-            loginScreen.style.display = "block";
-            loginEmailInput.value = "";
-            loginPasswordInput.value = "";
-            loginMessageEl.textContent = "";
-        } else if (screen === 'register') {
-            registerScreen.style.display = "block";
-            registerEmailInput.value = "";
-            registerPasswordInput.value = "";
-            registerMessageEl.textContent = "";
-        } else if (screen === 'chatList') {
-            chatListContainer.style.display = "flex";
-            sidebarToggle.style.display = "block";
-            renderPublicChatItem();
-        } else if (screen === 'chatDetail') {
-            mainContent.style.display = "flex";
-            sidebarToggle.style.display = "block";
-            chatContainer.innerHTML = ""; // Clear previous chat messages
+            if (event.state && event.state.sidebarOpen) {
+                // If the state is about sidebar being open, just close it
+                closeNav();
+                return; // Stop further processing as we just handled sidebar
+            }
+            if (event.state && event.state.profileModalOpen) {
+                // If the state is about profile modal being open, just close it
+                closeProfileModal();
+                return; // Stop further processing
+            }
 
-            // Panggil ini agar padding awal sesuai saat layar chat dimuat
-            updateInputAreaHeight();
-
-            // Attach listener for the public chat messages
-            chatMessageListener = db.ref(`${PUBLIC_CHAT_ID}/messages`).on("child_added", snap => renderMessage(snap.key, snap.val()));
-            // Menangani perubahan (misal: penghapusan) pada pesan
-            db.ref(`${PUBLIC_CHAT_ID}/messages`).on("child_changed", snap => {
-                const el = document.getElementById("msg-" + snap.key);
-                if (el) {
-                    // Check if user is near the bottom before removing/re-adding
-                    const scrollAtBottom = chatContainer.scrollHeight - chatContainer.clientHeight <= chatContainer.scrollTop + 50; // Toleransi 50px
-
-                    // Remove old element
-                    el.remove();
-
-                    // If the deleted message was the one being replied to, cancel reply
-                    if (replyTo && "msg-" + snap.key === replyTo.id) {
-                      cancelReply();
-                    }
-                    
-                    // Re-render the message with updated data
-                    renderMessage(snap.key, snap.val()); 
-
-                    if (scrollAtBottom) { // Only scroll if user was at the bottom
-                        scrollToBottom();
-                    }
+            if (currentScreen === 'chatList') {
+                if (backButtonPressedOnce) {
+                    clearTimeout(backButtonTimeout);
+                    backButtonPressedOnce = false;
+                    // Allow browser to exit - For a PWA, this might close the tab/app
+                    // On actual Android app via WebView/Capacitor, you might need specific plugins
+                    // to exit the app programmatically. For a web app, this usually means
+                    // allowing the browser to navigate to previous page or close tab.
+                } else {
+                    showToast("Tekan kembali sekali lagi untuk keluar");
+                    backButtonPressedOnce = true;
+                    // Push current state back to prevent immediate exit
+                    // This is a common trick for double-tap to exit in web apps
+                    history.pushState({ screen: 'chatList' }, '', '#chatList');
+                    backButtonTimeout = setTimeout(() => {
+                        backButtonPressedOnce = false;
+                        hideToast();
+                    }, 2000);
                 }
+            } else if (targetScreen) {
+                showScreen(targetScreen, false, targetChatId); // Teruskan chatId saat popstate
+            }
+        });
+
+
+        // --- Toast Message Functions ---
+        function showToast(message) {
+            toastMessage.textContent = message;
+            toastMessage.classList.add('show');
+        }
+
+        function hideToast() {
+            toastMessage.classList.remove('show');
+        }
+
+        // --- Authentication Functions ---
+        loadingScreen.style.display = 'flex'; // Ensure loading screen is visible at start
+
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                currentLoggedInUser = user;
+                db.ref('users/' + user.uid).once('value')
+                    .then(snapshot => {
+                        const userData = snapshot.val();
+                        if (userData && userData.displayName) {
+                            currentDisplayName = userData.displayName;
+                            // Cek status isAdmin
+                            if (userData.isAdmin) {
+                                currentLoggedInUser.isAdmin = true; // Tambahkan properti isAdmin ke objek user
+                            } else {
+                                currentLoggedInUser.isAdmin = false;
+                            }
+                        } else {
+                            currentDisplayName = user.email.split('@')[0];
+                            // Initialize user data if not exists, including default isAdmin: false
+                            db.ref('users/' + user.uid).set({ displayName: currentDisplayName, email: user.email, createdAt: firebase.database.ServerValue.TIMESTAMP, isAdmin: false });
+                            currentLoggedInUser.isAdmin = false; // Set default isAdmin to false
+                        }
+                        showScreen('chatList');
+                    })
+                    .catch(error => {
+                        console.error("Error fetching user data:", error);
+                        currentDisplayName = user.email.split('@')[0];
+                        currentLoggedInUser.isAdmin = false; // Assume not admin on error
+                        showScreen('chatList'); // Fallback to chat list even on error
+                    });
+
+            } else {
+                currentLoggedInUser = null;
+                currentDisplayName = "Anonim";
+                showScreen('login'); // Show login screen if not authenticated
+            }
+        });
+
+        // --- Login Logic ---
+        loginBtn.addEventListener("click", () => {
+            const email = loginEmailInput.value.trim();
+            const password = loginPasswordInput.value.trim();
+            if (!email || !password) { loginMessageEl.textContent = "Email dan password harus diisi!"; return; }
+
+            auth.signInWithEmailAndPassword(email, password)
+                .then(() => { loginMessageEl.textContent = "Login berhasil!"; })
+                .catch((error) => {
+                    let errorMessage = "Login gagal.";
+                    if (error.code === 'auth/wrong-password') errorMessage = "Password salah.";
+                    else if (error.code === 'auth/user-not-found') errorMessage = "Pengguna tidak ditemukan.";
+                    else if (error.code === 'auth/invalid-email') errorMessage = "Format email tidak valid.";
+                    loginMessageEl.textContent = errorMessage + " (" + error.message + ")";
+                    console.error("Login Error:", error);
+                });
+        });
+
+        goToRegisterLink.addEventListener("click", (e) => {
+            e.preventDefault(); // Prevent page reload
+            showScreen('register');
+        });
+
+        // --- Register Logic ---
+        registerBtn.addEventListener("click", () => {
+            const email = registerEmailInput.value.trim();
+            const password = registerPasswordInput.value.trim();
+            if (!email || !password) { registerMessageEl.textContent = "Email dan password harus diisi!"; return; }
+            if (password.length < 6) { registerMessageEl.textContent = "Password minimal 6 karakter!"; return; }
+
+            auth.createUserWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    const defaultDisplayName = email.split('@')[0];
+                    return db.ref('users/' + userCredential.user.uid).set({
+                        email: email,
+                        displayName: defaultDisplayName,
+                        createdAt: firebase.database.ServerValue.TIMESTAMP,
+                        isAdmin: false // Default to false for new registrations
+                    }).then(() => {
+                        registerMessageEl.textContent = "Pendaftaran berhasil! Nama pengguna Anda diatur sebagai '" + defaultDisplayName + "'. Silakan login.";
+                        registerPasswordInput.value = ""; // Clear password for security
+                        setTimeout(() => showScreen('login'), 2000); // Auto-redirect to login after successful registration
+                    });
+                })
+                .catch((error) => {
+                    let errorMessage = "Pendaftaran gagal.";
+                    if (error.code === 'auth/email-already-in-use') errorMessage = "Email ini sudah terdaftar. Silakan login atau gunakan email lain.";
+                    else if (error.code === 'auth/invalid-email') errorMessage = "Format email tidak valid.";
+                    else if (error.code === 'auth/weak-password') errorMessage = "Password terlalu lemah (minimal 6 karakter).";
+                    registerMessageEl.textContent = errorMessage + " (" + error.message + ")";
+                    console.error("Register Error:", error);
+                });
+        });
+
+        // --- Chat List & Message Rendering ---
+
+        function renderChatListItems() {
+            chatListContent.innerHTML = ''; // Clear existing items
+
+            // Add Public Chat item
+            const publicChatDiv = document.createElement('div');
+            publicChatDiv.className = 'chat-list-item';
+            publicChatDiv.onclick = () => showScreen('chatDetail', true, PUBLIC_CHAT_ID);
+            publicChatDiv.innerHTML = `
+                <div class="chat-avatar">Z</div>
+                <div class="chat-info">
+                    <div class="chat-name">ZedxChat (Publik)</div>
+                    <div class="chat-last-message" id="publicChatLastMsg">Memuat...</div>
+                </div>
+                <div class="chat-time" id="publicChatLastTime"></div>
+            `;
+            chatListContent.appendChild(publicChatDiv);
+
+            // Add a listener for the last message in public chat
+            db.ref(`${PUBLIC_CHAT_ID}/messages`).orderByKey().limitToLast(1).on('child_added', snap => {
+                const msgData = snap.val();
+                document.getElementById('publicChatLastMsg').textContent = msgData.text || (msgData.imageUrl ? "Gambar" : "");
+                document.getElementById('publicChatLastTime').textContent = formatTime(msgData.timestamp);
             });
+
+            // Add Report Chat item if user is admin
+            if (currentLoggedInUser && currentLoggedInUser.isAdmin) {
+                const reportChatDiv = document.createElement('div');
+                reportChatDiv.className = 'chat-list-item';
+                // Styling khusus untuk report chat
+                reportChatDiv.innerHTML = `
+                    <div class="chat-avatar" style="background-color: #ff0000; font-size: 1.8em;">!</div>
+                    <div class="chat-info">
+                        <div class="chat-name" style="color: #ff6b6b;">Pesan Laporan Admin</div>
+                        <div class="chat-last-message" id="reportChatLastMsg">Tidak ada laporan baru</div>
+                    </div>
+                    <div class="chat-time" id="reportChatLastTime"></div>
+                `;
+                // Gunakan addEventListener untuk menghindari masalah jika Anda ingin menambahkan lebih banyak event
+                reportChatDiv.addEventListener('click', () => showScreen('chatDetail', true, REPORT_CHAT_ID));
+                chatListContent.appendChild(reportChatDiv);
+
+                // Add a listener for the last message in report chat
+                db.ref(`${REPORT_CHAT_ID}/messages`).orderByKey().limitToLast(1).on('child_added', snap => {
+                    const msgData = snap.val();
+                    document.getElementById('reportChatLastMsg').textContent = `Dari ${msgData.sender}: ${msgData.text}`;
+                    document.getElementById('reportChatLastTime').textContent = formatTime(msgData.timestamp);
+                });
+            }
+        }
+
+        // Fungsi renderMessage yang diperbarui untuk mendukung balasan dan gambar
+        function renderMessage(key, val, chatRef) { // Tambahkan chatRef
+            if (val.deleted) { // Jika pesan ditandai dihapus, sembunyikan atau hapus
+                const existingEl = document.getElementById("msg-" + key);
+                if (existingEl) {
+                    existingEl.remove();
+                }
+                return;
+            }
+
+            const msgDiv = document.createElement('div');
+            msgDiv.id = "msg-" + key;
+            msgDiv.classList.add('msg');
+
+            // Set class based on sender (own, other, or bot)
+            if (val.senderUid === currentLoggedInUser.uid) {
+                msgDiv.classList.add('own');
+            } else if (val.sender === "ZedxBot") {
+                msgDiv.classList.add('other'); // Bot messages appear as "other"
+                msgDiv.style.backgroundColor = '#303f4a'; // Slightly different background for bot
+                msgDiv.style.fontStyle = 'italic';
+            }
+            else {
+                msgDiv.classList.add('other');
+            }
+
+
+            // Add long press/right click listener for reply ONLY if not admin chat and not bot message
+            if (chatRef === PUBLIC_CHAT_ID && val.sender !== "ZedxBot") {
+                msgDiv.addEventListener('contextmenu', (e) => {
+                    e.preventDefault(); // Prevent default context menu
+                    startReply(key, val.text, val.sender, val.senderUid);
+                });
+                // Optional: Add a simple click for reply on mobile (less common, but an option)
+                // msgDiv.addEventListener('click', () => {
+                //     startReply(key, val.text, val.sender, val.senderUid);
+                // });
+            }
+
+            if (val.replyTo) {
+                const replyEl = document.createElement('div');
+                replyEl.classList.add('reply');
+                replyEl.textContent = `Membalas ${val.replyTo.sender}: ${val.replyTo.text}`;
+                msgDiv.appendChild(replyEl);
+            }
+
+            const messageContent = document.createElement('span');
+            messageContent.textContent = val.text;
+            msgDiv.appendChild(messageContent);
+
+            if (val.imageUrl) {
+                const img = document.createElement('img');
+                img.src = val.imageUrl;
+                img.alt = "Gambar terkirim";
+                img.onload = () => scrollToBottom(); // Scroll once image is loaded
+                msgDiv.appendChild(img);
+            }
+
+            const timeSpan = document.createElement('span');
+            timeSpan.classList.add('time');
+            timeSpan.textContent = formatTime(val.timestamp);
+            msgDiv.appendChild(timeSpan);
+
+            // Menambahkan nama pengirim untuk pesan yang bukan dari user sendiri dan bukan bot
+            if (val.senderUid !== currentLoggedInUser.uid && val.sender !== "ZedxBot") {
+                const senderNameSpan = document.createElement('span');
+                senderNameSpan.classList.add('sender-name'); // Tambahkan kelas untuk styling
+                senderNameSpan.textContent = val.sender + ": "; // Tampilkan nama pengirim
+                messageContent.prepend(senderNameSpan); // Masukkan di depan teks pesan
+            }
+
+            chatContainer.appendChild(msgDiv);
             scrollToBottom();
         }
 
-        // Hide loading screen after the target screen is displayed
-        loadingScreen.style.opacity = 0;
-        setTimeout(() => { loadingScreen.style.display = 'none'; }, 500); // Wait for fade out
-    }
-
-    // --- History Management and Popstate Event Listener ---
-    // Initial pushState to mark the application's start point
-    history.replaceState({ screen: 'loading' }, '', ''); // Replace initial empty state
-
-    window.addEventListener('popstate', (event) => {
-        const targetScreen = event.state ? event.state.screen : null;
-
-        if (currentScreen === 'chatList') {
-            if (backButtonPressedOnce) {
-                clearTimeout(backButtonTimeout);
-                backButtonPressedOnce = false;
-                // Allow browser to exit
-                // Note: For actual Android app behavior, you might need specific Cordova/ Capacitor plugins
-            } else {
-                showToast("Tekan kembali sekali lagi untuk keluar");
-                backButtonPressedOnce = true;
-                // Push current state back to prevent immediate exit
-                // This is a common trick for double-tap to exit in web apps
-                history.pushState({ screen: 'chatList' }, '', '#chatList'); 
-                backButtonTimeout = setTimeout(() => {
-                    backButtonPressedOnce = false;
-                    hideToast();
-                }, 2000);
-            }
-        } else if (targetScreen) {
-            showScreen(targetScreen, false);
-        }
-    });
-
-    // --- Toast Message Functions ---
-    function showToast(message) {
-        toastMessage.textContent = message;
-        toastMessage.classList.add('show');
-    }
-
-    function hideToast() {
-        toastMessage.classList.remove('show');
-    }
-
-    // --- Authentication Functions ---
-    loadingScreen.style.display = 'flex'; // Ensure loading screen is visible at start
-
-    auth.onAuthStateChanged(user => {
-      if (user) {
-        currentLoggedInUser = user;
-        db.ref('users/' + user.uid).once('value')
-          .then(snapshot => {
-            const userData = snapshot.val();
-            if (userData && userData.displayName) {
-              currentDisplayName = userData.displayName;
-            } else {
-              currentDisplayName = user.email.split('@')[0];
-              db.ref('users/' + user.uid).update({ displayName: currentDisplayName, email: user.email, createdAt: firebase.database.ServerValue.TIMESTAMP });
-            }
-            showScreen('chatList');
-          })
-          .catch(error => {
-            console.error("Error fetching user data:", error);
-            currentDisplayName = user.email.split('@')[0];
-            showScreen('chatList'); // Fallback to chat list even on error
-          });
-
-      } else {
-        currentLoggedInUser = null;
-        currentDisplayName = "Anonim";
-        showScreen('login'); // Show login screen if not authenticated
-      }
-    });
-
-    // --- Login Logic ---
-    loginBtn.addEventListener("click", () => {
-      const email = loginEmailInput.value.trim();
-      const password = loginPasswordInput.value.trim();
-      if (!email || !password) { loginMessageEl.textContent = "Email dan password harus diisi!"; return; }
-
-      auth.signInWithEmailAndPassword(email, password)
-        .then(() => { loginMessageEl.textContent = "Login berhasil!"; })
-        .catch((error) => {
-          let errorMessage = "Login gagal.";
-          if (error.code === 'auth/wrong-password') errorMessage = "Password salah.";
-          else if (error.code === 'auth/user-not-found') errorMessage = "Pengguna tidak ditemukan.";
-          else if (error.code === 'auth/invalid-email') errorMessage = "Format email tidak valid.";
-          loginMessageEl.textContent = errorMessage + " (" + error.message + ")";
-          console.error("Login Error:", error);
-        });
-    });
-
-    goToRegisterLink.addEventListener("click", (e) => {
-      e.preventDefault(); // Prevent page reload
-      showScreen('register');
-    });
-
-    // --- Register Logic ---
-    registerBtn.addEventListener("click", () => {
-      const email = registerEmailInput.value.trim();
-      const password = registerPasswordInput.value.trim();
-      if (!email || !password) { registerMessageEl.textContent = "Email dan password harus diisi!"; return; }
-      if (password.length < 6) { registerMessageEl.textContent = "Password minimal 6 karakter!"; return; }
-
-      auth.createUserWithEmailAndPassword(email, password)
-        .then((userCredential) => {
-          const defaultDisplayName = email.split('@')[0];
-          return db.ref('users/' + userCredential.user.uid).set({
-            email: email,
-            displayName: defaultDisplayName,
-            createdAt: firebase.database.ServerValue.TIMESTAMP
-          }).then(() => {
-            registerMessageEl.textContent = "Pendaftaran berhasil! Nama pengguna Anda diatur sebagai '" + defaultDisplayName + "'. Silakan login.";
-            registerPasswordInput.value = ""; // Clear password for security
-            setTimeout(() => showScreen('login'), 2000); // Auto-redirect to login after successful registration
-          });
-        })
-        .catch((error) => {
-          let errorMessage = "Pendaftaran gagal.";
-          if (error.code === 'auth/email-already-in-use') errorMessage = "Email ini sudah terdaftar. Silakan login atau gunakan email lain.";
-          else if (error.code === 'auth/invalid-email') errorMessage = "Format email tidak valid.";
-          else if (error.code === 'auth/weak-password') errorMessage = "Password terlalu lemah (minimal 6 karakter).";
-          registerMessageEl.textContent = errorMessage + " (" + error.message + ")";
-          console.error("Register Error:", error);
-        });
-    });
-
-    goToLoginLink.addEventListener("click", (e) => {
-      e.preventDefault(); // Prevent page reload
-      showScreen('login');
-    });
-
-    function logout() {
-        auth.signOut().then(() => {
-            closeNav();
-            showScreen('login'); // Redirect to login after logout
-        }).catch((error) => {
-            console.error("Logout error:", error);
-            alert("Gagal logout: " + error.message);
-        });
-    }
-    lobbyLogoutBtn.addEventListener("click", logout);
-
-    // --- Profile Management ---
-    function openProfileModal() {
-        if (!currentLoggedInUser) {
-            alert("Anda belum login.");
-            return;
-        }
-        closeNav(); // Close sidebar first
-        profileModal.style.display = "block";
-        fullScreenOverlay.classList.add("active");
-        profileEmailEl.textContent = currentLoggedInUser.email;
-        profileDisplayNameInput.value = currentDisplayName;
-        profileMessageEl.textContent = "";
-    }
-
-    function closeProfileModal() {
-        profileModal.style.display = "none";
-        fullScreenOverlay.classList.remove("active");
-    }
-
-    saveProfileBtn.addEventListener("click", () => {
-        if (!currentLoggedInUser) return;
-        let newDisplayName = profileDisplayNameInput.value.trim();
-        if (!newDisplayName) {
-            profileMessageEl.textContent = "Nama pengguna tidak boleh kosong.";
-            return;
-        }
-        if (newDisplayName.length < 3) {
-            profileMessageEl.textContent = "Nama pengguna minimal 3 karakter.";
-            return;
+        // Fungsi untuk format waktu
+        function formatTime(timestamp) {
+            if (!timestamp) return '';
+            const date = new Date(timestamp);
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            return `${hours}:${minutes}`;
         }
 
-        db.ref('users/' + currentLoggedInUser.uid).update({
-            displayName: newDisplayName
-        }).then(() => {
-            currentDisplayName = newDisplayName;
-            profileMessageEl.textContent = "Nama pengguna berhasil diperbarui!";
-            setTimeout(closeProfileModal, 1500);
-        }).catch(error => {
-            profileMessageEl.textContent = "Gagal memperbarui nama pengguna: " + error.message;
-            console.error("Error updating display name:", error);
-        });
-    });
-    viewProfileBtn.addEventListener("click", openProfileModal);
-
-
-    // --- Chat List (Lobby) Functions - Simplified for Public Chat ---
-    function renderPublicChatItem() {
-        chatListContent.innerHTML = ""; // Clear existing
-
-        const chatName = "ZedxChat";
-        const div = document.createElement("div");
-        div.classList.add("chat-list-item");
-        div.id = `chat-list-item-public`;
-        div.dataset.chatId = PUBLIC_CHAT_ID;
-
-        const avatar = document.createElement("div");
-        avatar.classList.add("chat-avatar");
-        avatar.textContent = chatName.charAt(0).toUpperCase();
-        div.appendChild(avatar);
-
-        const info = document.createElement("div");
-        info.classList.add("chat-info");
-
-        const nameEl = document.createElement("div");
-        nameEl.classList.add("chat-name");
-        nameEl.textContent = chatName;
-        info.appendChild(nameEl);
-
-        const lastMessageEl = document.createElement("div");
-        lastMessageEl.classList.add("chat-last-message");
-        lastMessageEl.textContent = "Memuat pesan terakhir...";
-        info.appendChild(lastMessageEl);
-
-        div.appendChild(info);
-
-        const timeEl = document.createElement("div");
-        timeEl.classList.add("chat-time");
-        div.appendChild(timeEl);
-
-        div.addEventListener("click", () => enterChat());
-
-        chatListContent.appendChild(div);
-
-        db.ref(`${PUBLIC_CHAT_ID}/messages`).limitToLast(1).on('child_added', (snapshot) => {
-            const messageData = snapshot.val();
-            if (messageData) {
-                lastMessageEl.textContent = `${messageData.user}: ${messageData.message || '[Gambar]'}`;
-                const date = new Date(messageData.timestamp);
-                timeEl.textContent = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            } else {
-                lastMessageEl.textContent = "Belum ada pesan.";
-                timeEl.textContent = "";
-            }
-        });
-    }
-
-    function enterChat() {
-        showScreen('chatDetail');
-    }
-
-    backToChatListBtn.addEventListener("click", () => {
-        history.back();
-    });
-
-
-    // --- Chat Detail Functions ---
-    // Fungsi untuk memperbarui tinggi input area dinamis
-    function updateInputAreaHeight() {
-        let totalHeight = input_area.offsetHeight;
-
-        // Jika reply preview aktif, tambahkan tingginya
-        if (replyPreview.style.display === "flex") {
-            // Kita menggunakan tinggi yang sudah didefinisikan di CSS untuk reply-preview
-            // Karena reply-preview punya tinggi fixed (--reply-preview-height)
-            totalHeight += parseFloat(getComputedStyle(root).getPropertyValue('--reply-preview-height'));
+        function scrollToBottom() {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
         }
-        
-        // Atur variabel CSS untuk padding bawah chat-container
-        root.style.setProperty('--input-area-total-height', `${totalHeight}px`);
-        scrollToBottom(); // Scroll setelah update padding
-    }
 
-    function scrollToBottom() {
-      // Pastikan ada sedikit delay agar DOM selesai dirender setelah update
-      setTimeout(() => {
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-      }, 50); // Mengurangi delay menjadi 50ms
-    }
-
-    function cancelReply() {
-      replyTo = null;
-      replyPreview.style.display = "none";
-      // Sesuaikan padding kembali ke default input area
-      updateInputAreaHeight();
-    }
-
-    function renderMessage(key, data) {
-      const div = document.createElement("div");
-      const isOwn = data.user === currentDisplayName;
-      div.classList.add("msg", isOwn ? "own" : "other");
-      div.id = "msg-" + key;
-
-      const time = new Date(data.timestamp || Date.now());
-      const timeStr = time.getHours().toString().padStart(2, "0") + ":" +
-                      time.getMinutes().toString().padStart(2, "0");
-
-      if (data.deleted) {
-        div.textContent = "Pesan ini telah dihapus";
-        div.style.fontStyle = "italic";
-        div.style.color = "#8696a0"; /* Warna abu-abu untuk pesan dihapus */
-        chatContainer.appendChild(div);
-        scrollToBottom();
-        return;
-      }
-
-      if (data.reply) {
-        const replyDiv = document.createElement("div");
-        replyDiv.className = "reply";
-        replyDiv.textContent = data.reply.user + ": " + data.reply.message;
-        div.appendChild(replyDiv);
-      }
-
-      const contentDiv = document.createElement("div");
-
-      if (!isOwn) {
-        const label = document.createElement("strong");
-        label.textContent = data.user;
-        contentDiv.appendChild(label);
-        contentDiv.appendChild(document.createElement("br"));
-      }
-
-      if (data.imageURL) {
-        const img = document.createElement("img");
-        img.src = data.imageURL;
-        img.alt = "gambar";
-        contentDiv.appendChild(img);
-      } else {
-        const p = document.createElement("div");
-        p.textContent = data.message;
-        contentDiv.appendChild(p);
-      }
-
-      const timeEl = document.createElement("span");
-      timeEl.className = "time";
-      timeEl.textContent = timeStr;
-      contentDiv.appendChild(document.createElement("br"));
-      contentDiv.appendChild(timeEl);
-
-      div.appendChild(contentDiv);
-      chatContainer.appendChild(div);
-      scrollToBottom();
-
-      // Reply gesture (swipe right)
-      let startX = 0, startY = 0, moved = false;
-      div.addEventListener("touchstart", e => {
-        startX = e.touches[0].clientX;
-        startY = e.touches[0].clientY;
-        moved = false; // Reset moved flag on new touch start
-      });
-      div.addEventListener("touchmove", e => {
-        const dx = e.touches[0].clientX - startX;
-        const dy = e.touches[0].clientY - startY;
-        // Hanya geser jika gerakan horizontal lebih dominan
-        if (Math.abs(dy) > Math.abs(dx) * 0.5) return; // Mengurangi sensitivitas vertikal
-        if (dx > 0 && dx < 100) { // Hanya geser ke kanan
-          moved = true;
-          div.style.transform = `translateX(${dx}px)`;
-        }
-      });
-      div.addEventListener("touchend", e => {
-        const dx = e.changedTouches[0].clientX - startX;
-        if (moved && dx > 60) {
-          replyTo = { id: key, user: data.user, message: data.message || 'Gambar' }; // Simpan ID pesan untuk deteksi penghapusan
-          replyText.textContent = "Balas: " + replyTo.user + ": " + (data.message || 'Gambar');
-          replyPreview.style.display = "flex";
-          updateInputAreaHeight(); // Perbarui tinggi padding
-        }
-        div.style.transform = "translateX(0)";
-        moved = false; // Pastikan moved direset setelah touchend
-      });
-      div.addEventListener("touchcancel", () => { // Tambahkan touchcancel
-          div.style.transform = "translateX(0)";
-          moved = false;
-      });
-
-      // Delete message (long press) - sekarang bisa untuk semua pesan sendiri
-      if (isOwn) {
-        let timeout = null;
-        div.addEventListener("touchstart", (e) => {
-          if (!moved) { // Hanya jika tidak sedang melakukan swipe
-            timeout = setTimeout(() => {
-              if (confirm("Hapus pesan ini?")) {
-                db.ref(`${PUBLIC_CHAT_ID}/messages/${key}`).update({ deleted: true })
-                  .then(() => {
-                    console.log("Pesan berhasil dihapus");
-                  })
-                  .catch(err => console.error("Gagal menghapus pesan:", err));
-              }
-            }, 600); // Tahan 600ms untuk menghapus
-          }
-        });
-        div.addEventListener("touchend", () => clearTimeout(timeout));
-        div.addEventListener("touchcancel", () => clearTimeout(timeout));
-      }
-    }
-
-    sendBtn.onclick = () => {
-      if (!currentLoggedInUser || !currentDisplayName || currentDisplayName === "Anonim") {
-        alert("Anda belum login atau belum memiliki nama pengguna! Silakan login dan atur nama pengguna Anda di profil.");
-        return;
-      }
-      const message = input.value.trim();
-      if (!message && !fileInput.files[0]) return;
-
-      if (message) {
-        const msgData = {
-          user: currentDisplayName,
-          message,
-          timestamp: firebase.database.ServerValue.TIMESTAMP
-        };
-        if (replyTo) msgData.reply = replyTo;
-
-        db.ref(`${PUBLIC_CHAT_ID}/messages`).push(msgData)
-          .then(() => {
-              console.log("Pesan teks berhasil dikirim!");
-              input.value = "";
-              input.style.height = 'auto'; // Reset tinggi textarea
-              updateInputAreaHeight(); // Perbarui tinggi area input
-              cancelReply();
-          })
-          .catch(error => {
-              console.error("Error mengirim pesan teks:", error);
-              alert("Gagal mengirim pesan: " + error.message);
-          });
-      }
-    };
-
-    uploadBtn.onclick = () => fileInput.click();
-
-    fileInput.onchange = () => {
-      if (!currentLoggedInUser || !currentDisplayName || currentDisplayName === "Anonim") {
-        alert("Anda belum login atau belum memiliki nama pengguna! Silakan login dan atur nama pengguna Anda di profil.");
-        return;
-      }
-      const file = fileInput.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = function () {
-        const base64 = reader.result.split(',')[1];
-        fetch(`https://api.imgbb.com/1/upload?key=${imgbbKey}`, {
-          method: 'POST',
-          body: new URLSearchParams({ image: base64 })
-        })
-        .then(res => res.json())
-        .then(result => {
-          if (result.data && result.data.url) {
-            const msgData = {
-              user: currentDisplayName,
-              imageURL: result.data.url,
-              timestamp: firebase.database.ServerValue.TIMESTAMP
+        // --- Reply Functions ---
+        function startReply(msgId, msgText, senderName, senderUid) {
+            replyTo = {
+                id: "msg-" + msgId,
+                text: msgText,
+                sender: senderName,
+                senderUid: senderUid
             };
-            if (replyTo) msgData.reply = replyTo;
+            replyText.textContent = `Membalas ${senderName}: ${msgText}`;
+            replyPreview.style.display = 'flex';
+            updateInputAreaHeight(); // Adjust input area height
+            input.focus();
+        }
 
-            db.ref(`${PUBLIC_CHAT_ID}/messages`).push(msgData)
-              .then(() => {
-                console.log("Gambar berhasil dikirim!");
-                cancelReply();
-                fileInput.value = '';
-              })
-              .catch(error => {
-                console.error("Error mengirim gambar ke Firebase:", error);
-                alert("Gagal mengirim gambar: " + error.message);
-              });
-          } else {
-            alert("Gagal mendapatkan URL gambar dari ImgBB.");
-            console.error("ImgBB Response:", result);
-          }
-        })
-        .catch(err => {
-            alert("Gagal upload gambar ke ImgBB: " + err.message);
-            console.error("ImgBB Upload Error:", err);
+        function cancelReply() {
+            replyTo = null;
+            replyPreview.style.display = 'none';
+            updateInputAreaHeight(); // Adjust input area height back
+        }
+
+        // --- Dynamic Input Area Height Adjustment ---
+        function updateInputAreaHeight() {
+            // Reset height to calculate scrollHeight correctly
+            input.style.height = 'auto';
+            // Set min height to default for one row
+            let newHeight = input.scrollHeight;
+
+            // Constrain the height to max 150px
+            if (newHeight > 150) {
+                newHeight = 150;
+            }
+
+            input.style.height = `${newHeight}px`;
+
+            // Calculate total input area height
+            // Get current padding and border from input_area element
+            const inputAreaComputedStyle = window.getComputedStyle(input_area);
+            const inputAreaPaddingTop = parseFloat(inputAreaComputedStyle.paddingTop);
+            const inputAreaPaddingBottom = parseFloat(inputAreaComputedStyle.paddingBottom);
+            const inputAreaGap = parseFloat(inputAreaComputedStyle.gap); // Assuming gap is applied to children
+
+            let totalHeight = newHeight + inputAreaPaddingTop + inputAreaPaddingBottom;
+
+            // Add space for the buttons (assuming they contribute to the total height of the flex container)
+            // A rough estimate, adjust if needed
+            totalHeight += 10; // Extra buffer for button/gap
+
+            if (replyPreview.style.display === 'flex') {
+                totalHeight += parseFloat(getComputedStyle(root).getPropertyValue('--reply-preview-height'));
+            }
+
+            // Update CSS variable
+            root.style.setProperty('--input-area-total-height', `${totalHeight}px`);
+            scrollToBottom(); // Always scroll to bottom when input area changes size
+        }
+
+        input.addEventListener('input', updateInputAreaHeight);
+        input.addEventListener('focus', updateInputAreaHeight);
+
+
+        // --- Send Message and Upload Logic ---
+        sendBtn.addEventListener("click", () => {
+            const text = input.value.trim();
+            if (text === "" && !fileInput.files[0]) return; // No text and no image
+
+            const messageData = {
+                sender: currentDisplayName,
+                senderUid: currentLoggedInUser.uid,
+                timestamp: firebase.database.ServerValue.TIMESTAMP
+            };
+
+            if (replyTo) {
+                messageData.replyTo = {
+                    id: replyTo.id,
+                    text: replyTo.text,
+                    sender: replyTo.sender,
+                    senderUid: replyTo.senderUid
+                };
+            }
+
+            if (text.startsWith("-report ")) {
+                if (currentChatId !== PUBLIC_CHAT_ID) {
+                    showToast("Perintah -report hanya bisa digunakan di ZedxChat (Publik).");
+                    input.value = "";
+                    cancelReply();
+                    return;
+                }
+                const reportText = text.substring("-report ".length).trim();
+                if (reportText === "") {
+                    showToast("Pesan laporan tidak boleh kosong!");
+                    input.value = "";
+                    cancelReply();
+                    return;
+                }
+
+                // Send to reports chat
+                db.ref(`${REPORT_CHAT_ID}/messages`).push({
+                    ...messageData,
+                    text: reportText,
+                    originalSenderEmail: currentLoggedInUser.email // Simpan email pelapor
+                }).then(() => {
+                    console.log("Pesan laporan dikirim!");
+                    // Send bot message to public chat
+                    db.ref(`${PUBLIC_CHAT_ID}/messages`).push({
+                        sender: "ZedxBot",
+                        senderUid: "zedxbot_uid", // UID unik untuk bot
+                        text: "Pesan Anda akan dikirim ke admin, mohon tunggu yaa.",
+                        timestamp: firebase.database.ServerValue.TIMESTAMP
+                    });
+                }).catch(error => {
+                    console.error("Gagal mengirim pesan laporan:", error);
+                    showToast("Gagal mengirim laporan: " + error.message);
+                });
+
+            } else {
+                // Normal message logic
+                if (!currentChatId) { // Prevent sending if no chat is active
+                    showToast("Tidak ada chat yang aktif.");
+                    return;
+                }
+                if (fileInput.files[0]) {
+                    uploadImage(fileInput.files[0], (imageUrl) => {
+                        db.ref(`${currentChatId}/messages`).push({
+                            ...messageData,
+                            text: text, // Tetap kirim teks jika ada bersama gambar
+                            imageUrl: imageUrl
+                        });
+                        fileInput.value = ""; // Clear file input after sending
+                    });
+                } else {
+                    db.ref(`${currentChatId}/messages`).push({
+                        ...messageData,
+                        text: text
+                    });
+                }
+            }
+
+            input.value = ""; // Clear input after sending
+            cancelReply(); // Clear reply preview
         });
-      };
-      reader.readAsDataURL(file);
-    };
 
-    // Auto-resize textarea
-    input.addEventListener("input", () => {
-        input.style.height = 'auto';
-        input.style.height = (input.scrollHeight) + 'px';
-        updateInputAreaHeight(); // Perbarui tinggi area input setiap kali textarea berubah tinggi
-    });
+        uploadBtn.addEventListener("click", () => {
+            fileInput.click();
+        });
 
-    // Panggil updateInputAreaHeight saat window diresize
-    window.addEventListener('resize', updateInputAreaHeight);
+        fileInput.addEventListener("change", (event) => {
+            if (event.target.files.length > 0) {
+                showToast("Gambar siap dikirim!");
+                // You might want to preview the image here
+            }
+        });
+
+        function uploadImage(file, callback) {
+            if (!imgbbKey) {
+                showToast("Kunci ImgBB tidak dikonfigurasi. Unggah gambar dinonaktifkan.");
+                console.error("ImgBB API Key is not set. Image upload will not work.");
+                return;
+            }
+
+            showToast("Mengunggah gambar...");
+            const formData = new FormData();
+            formData.append("image", file);
+
+            fetch(`https://api.imgbb.com/1/upload?key=${imgbbKey}`, {
+                    method: "POST",
+                    body: formData,
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.data && data.data.url) {
+                        callback(data.data.url);
+                        showToast("Gambar berhasil diunggah!");
+                    } else {
+                        console.error("ImgBB upload error:", data);
+                        showToast("Gagal mengunggah gambar.");
+                    }
+                })
+                .catch(error => {
+                    console.error("ImgBB fetch error:", error);
+                    showToast("Gagal mengunggah gambar.");
+                });
+        }
 
 
-    input.addEventListener("keypress", e => {
-      if (e.key === "Enter" && !e.shiftKey) { // Kirim saat Enter, bukan Shift+Enter
-          e.preventDefault(); // Mencegah baris baru di textarea
-          sendBtn.click();
-      }
-    });
+        // --- Sidebar Functions ---
+        function openNav() {
+            sidebar.classList.add('open');
+            fullScreenOverlay.classList.add('active');
+            // Push sidebar open state to history for back button handling
+            history.pushState({ screen: currentScreen, sidebarOpen: true, chatId: currentChatId }, '', window.location.hash);
+        }
 
-    // --- Sidebar Functions ---
-    function openNav() {
-      sidebar.classList.add("open");
-      fullScreenOverlay.classList.add("active");
-    }
+        function closeNav() {
+            sidebar.classList.remove('open');
+            fullScreenOverlay.classList.remove('active');
+            // When closing sidebar, remove its state from history if it was the last state
+            if (history.state && history.state.sidebarOpen) {
+                history.back(); // Go back to the previous screen state
+            }
+        }
 
-    function closeNav() {
-      sidebar.classList.remove("open");
-      fullScreenOverlay.classList.remove("active");
-    }
-  </script>
+        // --- Profile Modal Functions ---
+        function openProfileModal() {
+            if (currentLoggedInUser) {
+                profileEmailEl.textContent = currentLoggedInUser.email;
+                profileDisplayNameInput.value = currentDisplayName;
+                profileModal.style.display = 'block';
+                fullScreenOverlay.classList.add('active');
+                // Push profile modal open state to history
+                history.pushState({ screen: currentScreen, profileModalOpen: true, chatId: currentChatId }, '', window.location.hash);
+            }
+        }
 
+        function closeProfileModal() {
+            profileModal.style.display = 'none';
+            fullScreenOverlay.classList.remove('active');
+            profileMessageEl.textContent = "";
+            // When closing modal, remove its state from history if it was the last state
+            if (history.state && history.state.profileModalOpen) {
+                history.back(); // Go back to the previous screen state
+            }
+        }
+
+        saveProfileBtn.addEventListener("click", () => {
+            const newDisplayName = profileDisplayNameInput.value.trim();
+            if (newDisplayName && currentLoggedInUser) {
+                db.ref('users/' + currentLoggedInUser.uid).update({ displayName: newDisplayName })
+                    .then(() => {
+                        currentDisplayName = newDisplayName;
+                        profileMessageEl.textContent = "Nama pengguna berhasil disimpan!";
+                        profileMessageEl.style.color = 'green';
+                        setTimeout(closeProfileModal, 1500); // Close after a short delay
+                    })
+                    .catch(error => {
+                        profileMessageEl.textContent = "Gagal menyimpan nama pengguna: " + error.message;
+                        profileMessageEl.style.color = 'red';
+                        console.error("Error saving display name:", error);
+                    });
+            } else {
+                profileMessageEl.textContent = "Nama pengguna tidak boleh kosong.";
+                profileMessageEl.style.color = 'red';
+            }
+        });
+
+        viewProfileBtn.addEventListener("click", openProfileModal);
+
+        // --- Logout Function ---
+        function logout() {
+            auth.signOut()
+                .then(() => {
+                    console.log("User signed out.");
+                    showToast("Anda telah logout.");
+                    // Firebase onAuthStateChanged will handle redirect to login
+                })
+                .catch((error) => {
+                    console.error("Logout Error:", error);
+                    showToast("Gagal logout: " + error.message);
+                });
+        }
+
+        lobbyLogoutBtn.addEventListener("click", logout);
+
+        backToChatListBtn.addEventListener("click", () => {
+            // When pressing back from chat detail, use history.back()
+            // This will trigger the popstate event, which then calls showScreen('chatList', false)
+            history.back();
+        });
+
+        // Event listener for profile modal/sidebar closing via overlay
+        fullScreenOverlay.addEventListener("click", () => {
+            if (profileModal.style.display === 'block') {
+                closeProfileModal();
+            }
+            if (sidebar.classList.contains('open')) {
+                closeNav();
+            }
+        });
+
+    </script>
 </body>
 </html>
