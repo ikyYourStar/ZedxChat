@@ -10,9 +10,12 @@
   <style>
     /* Global Styles */
     :root {
-        /* Variabel CSS untuk tinggi input area, akan diatur oleh JS */
-        --input-area-height: 70px; /* Default: Tinggi input area tanpa reply preview */
-        --reply-preview-min-height: 50px; /* Estimasi tinggi minimum reply preview */
+        /* Variabel CSS untuk tinggi total input area (input + reply preview) */
+        --input-area-total-height: 70px; /* Default: Tinggi input area tanpa reply preview */
+        --input-area-min-height: 50px; /* Tinggi minimum untuk #input-area */
+        --reply-preview-height: 50px; /* Tinggi tetap untuk reply preview */
+        --chat-message-spacing: 8px; /* Spasi antar pesan */
+        --extra-bottom-padding: 10px; /* Tambahan padding di bawah pesan terakhir */
     }
 
     * { box-sizing: border-box; }
@@ -23,7 +26,7 @@
       color: #e9edef; /* Light text color */
       overflow: hidden; /* Prevent body scroll */
     }
-    body { display: flex; flex-direction: column; }
+    body { display: flex; flex-direction: column; } /* Menggunakan flexbox untuk layout utama */
 
     /* --- Loading Screen Styles --- */
     #loadingScreen {
@@ -283,21 +286,21 @@
     }
 
     #chat-container {
-      flex: 1;
+      flex: 1; /* Penting agar container mengisi sisa ruang */
       overflow-y: auto;
-      padding: 10px 15px; /* Adjust padding for chat messages */
+      padding: 10px 15px; /* Padding samping dan atas */
       background-image: url('https://raw.githubusercontent.com/ikyYourStar/ZedxChat/refs/heads/main/assets/Tak%20berjudul134_20250707192207.png'); /* Your background image */
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
       /* PERBAIKAN: Padding bawah dinamis agar pesan tidak tertutup input */
-      padding-bottom: var(--input-area-height);
+      padding-bottom: calc(var(--input-area-total-height) + var(--extra-bottom-padding));
     }
 
     .msg {
       max-width: 80%; /* Slightly wider messages */
       padding: 8px 12px; /* Adjust padding */
-      margin: 6px 0; /* Adjust margin */
+      margin-bottom: var(--chat-message-spacing); /* Spasi antar pesan */
       border-radius: 8px; /* Smaller border radius */
       word-wrap: break-word;
       font-size: 0.95em; /* Slightly smaller font for better fit */
@@ -338,13 +341,13 @@
       align-items: center;
       justify-content: space-between;
       border-top: 1px solid #2a3942;
-      /* PERBAIKAN: Pastikan ini juga fixed dan posisinya di atas input area */
       position: fixed;
-      bottom: var(--input-area-height); /* Ditempatkan di atas input area */
       left: 0;
       right: 0;
+      /* PERBAIKAN: Ditempatkan tepat di atas input-area */
+      bottom: var(--input-area-min-height);
       z-index: 101;
-      min-height: var(--reply-preview-min-height); /* Tinggi minimum */
+      height: var(--reply-preview-height); /* Tinggi tetap */
     }
 
     #reply-preview span {
@@ -375,22 +378,22 @@
       background: #202c33; /* Dark input area */
       border-top: 1px solid #2a3942;
       align-items: center;
-      z-index: 101; /* Pastikan di atas konten chat */
-      min-height: 50px; /* PERBAIKAN: Menjaga tinggi agar tidak gepeng */
+      z-index: 102; /* Pastikan di atas reply-preview dan konten chat */
+      min-height: var(--input-area-min-height); /* Tinggi minimum */
     }
 
     /* PERBAIKAN: Menggunakan textarea agar bisa multi-baris otomatis */
     #input {
       flex: 1;
       padding: 10px 15px; /* Adjust padding */
-      font-size: 1em; /* PERBAIKAN: Ukuran font relatif */
+      font-size: 1em; /* Ukuran font relatif */
       border: none; /* No border */
       border-radius: 20px; /* Pill shape */
       background-color: #2a3942; /* Darker input background */
       color: #e9edef;
       outline: none; /* No outline on focus */
-      min-height: 35px; /* PERBAIKAN: Menjaga tinggi input agar tidak gepeng */
-      line-height: 1.2; /* PERBAIKAN: Membantu teks agar tidak gepeng */
+      min-height: 35px; /* Menjaga tinggi input agar tidak gepeng */
+      line-height: 1.2; /* Membantu teks agar tidak gepeng */
       resize: none; /* Mencegah user resize textarea */
       overflow-y: auto; /* Izinkan scrollbar jika teks terlalu panjang */
       max-height: 150px; /* Batasi tinggi maksimal textarea agar tidak terlalu besar */
@@ -402,7 +405,7 @@
       border-radius: 50%;
       background: #008069; /* WhatsApp Green */
       color: white;
-      font-size: 1.5em; /* PERBAIKAN: Ukuran font relatif */
+      font-size: 1.5em; /* Ukuran font relatif */
       border: none;
       cursor: pointer;
       display: flex;
@@ -727,7 +730,7 @@
     const backToChatListBtn = document.getElementById("backToChatListBtn");
     const currentChatNameEl = document.getElementById("currentChatName");
     const chatContainer = document.getElementById("chat-container");
-    const input_area = document.getElementById("input-area"); /* PERBAIKAN: Mendefinisikan input_area */
+    const input_area = document.getElementById("input-area"); /* Mendefinisikan input_area */
     const input = document.getElementById("input"); /* Ini adalah textarea */
     const sendBtn = document.getElementById("send");
     const fileInput = document.getElementById("fileInput");
@@ -793,8 +796,7 @@
             sidebarToggle.style.display = "block";
             chatContainer.innerHTML = ""; // Clear previous chat messages
 
-            // PERBAIKAN: Update input area height untuk padding
-            // Panggil ini di sini agar padding awal sesuai saat layar chat dimuat
+            // Panggil ini agar padding awal sesuai saat layar chat dimuat
             updateInputAreaHeight();
 
             // Attach listener for the public chat messages
@@ -803,14 +805,21 @@
             db.ref(`${PUBLIC_CHAT_ID}/messages`).on("child_changed", snap => {
                 const el = document.getElementById("msg-" + snap.key);
                 if (el) {
+                    // Check if user is near the bottom before removing/re-adding
                     const scrollAtBottom = chatContainer.scrollHeight - chatContainer.clientHeight <= chatContainer.scrollTop + 50; // Toleransi 50px
-                    el.remove(); // Hapus elemen lama
-                    // Jika pesan yang dihapus adalah pesan replyTo, batalkan reply
+
+                    // Remove old element
+                    el.remove();
+
+                    // If the deleted message was the one being replied to, cancel reply
                     if (replyTo && "msg-" + snap.key === replyTo.id) {
                       cancelReply();
                     }
-                    renderMessage(snap.key, snap.val()); // Render elemen baru
-                    if (scrollAtBottom) { // Hanya scroll jika user sebelumnya di bagian bawah
+                    
+                    // Re-render the message with updated data
+                    renderMessage(snap.key, snap.val()); 
+
+                    if (scrollAtBottom) { // Only scroll if user was at the bottom
                         scrollToBottom();
                     }
                 }
@@ -834,10 +843,14 @@
             if (backButtonPressedOnce) {
                 clearTimeout(backButtonTimeout);
                 backButtonPressedOnce = false;
+                // Allow browser to exit
+                // Note: For actual Android app behavior, you might need specific Cordova/ Capacitor plugins
             } else {
                 showToast("Tekan kembali sekali lagi untuk keluar");
                 backButtonPressedOnce = true;
-                history.pushState({ screen: 'chatList' }, '', '#chatList'); // Push current state back to prevent immediate exit
+                // Push current state back to prevent immediate exit
+                // This is a common trick for double-tap to exit in web apps
+                history.pushState({ screen: 'chatList' }, '', '#chatList'); 
                 backButtonTimeout = setTimeout(() => {
                     backButtonPressedOnce = false;
                     hideToast();
@@ -1063,29 +1076,33 @@
 
 
     // --- Chat Detail Functions ---
-    // PERBAIKAN: Fungsi untuk memperbarui tinggi input area dinamis
+    // Fungsi untuk memperbarui tinggi input area dinamis
     function updateInputAreaHeight() {
-        // Menggunakan offsetHeight untuk mendapatkan tinggi aktual termasuk padding dan border
         let totalHeight = input_area.offsetHeight;
 
         // Jika reply preview aktif, tambahkan tingginya
         if (replyPreview.style.display === "flex") {
-            totalHeight += replyPreview.offsetHeight;
+            // Kita menggunakan tinggi yang sudah didefinisikan di CSS untuk reply-preview
+            // Karena reply-preview punya tinggi fixed (--reply-preview-height)
+            totalHeight += parseFloat(getComputedStyle(root).getPropertyValue('--reply-preview-height'));
         }
-        root.style.setProperty('--input-area-height', `${totalHeight}px`);
+        
+        // Atur variabel CSS untuk padding bawah chat-container
+        root.style.setProperty('--input-area-total-height', `${totalHeight}px`);
         scrollToBottom(); // Scroll setelah update padding
     }
 
     function scrollToBottom() {
+      // Pastikan ada sedikit delay agar DOM selesai dirender setelah update
       setTimeout(() => {
         chatContainer.scrollTop = chatContainer.scrollHeight;
-      }, 100);
+      }, 50); // Mengurangi delay menjadi 50ms
     }
 
     function cancelReply() {
       replyTo = null;
       replyPreview.style.display = "none";
-      // PERBAIKAN: Sesuaikan padding kembali ke default input area
+      // Sesuaikan padding kembali ke default input area
       updateInputAreaHeight();
     }
 
@@ -1145,7 +1162,7 @@
       chatContainer.appendChild(div);
       scrollToBottom();
 
-      // PERBAIKAN: Reply gesture (swipe right)
+      // Reply gesture (swipe right)
       let startX = 0, startY = 0, moved = false;
       div.addEventListener("touchstart", e => {
         startX = e.touches[0].clientX;
@@ -1155,8 +1172,9 @@
       div.addEventListener("touchmove", e => {
         const dx = e.touches[0].clientX - startX;
         const dy = e.touches[0].clientY - startY;
-        if (Math.abs(dy) > Math.abs(dx) * 2) return;
-        if (dx > 0 && dx < 100) {
+        // Hanya geser jika gerakan horizontal lebih dominan
+        if (Math.abs(dy) > Math.abs(dx) * 0.5) return; // Mengurangi sensitivitas vertikal
+        if (dx > 0 && dx < 100) { // Hanya geser ke kanan
           moved = true;
           div.style.transform = `translateX(${dx}px)`;
         }
@@ -1170,14 +1188,14 @@
           updateInputAreaHeight(); // Perbarui tinggi padding
         }
         div.style.transform = "translateX(0)";
-        moved = false; // PERBAIKAN: Pastikan moved direset setelah touchend
+        moved = false; // Pastikan moved direset setelah touchend
       });
       div.addEventListener("touchcancel", () => { // Tambahkan touchcancel
           div.style.transform = "translateX(0)";
           moved = false;
       });
 
-      // PERBAIKAN: Delete message (long press) - sekarang bisa untuk semua pesan sendiri
+      // Delete message (long press) - sekarang bisa untuk semua pesan sendiri
       if (isOwn) {
         let timeout = null;
         div.addEventListener("touchstart", (e) => {
@@ -1279,14 +1297,14 @@
       reader.readAsDataURL(file);
     };
 
-    // PERBAIKAN: Auto-resize textarea
+    // Auto-resize textarea
     input.addEventListener("input", () => {
         input.style.height = 'auto';
         input.style.height = (input.scrollHeight) + 'px';
         updateInputAreaHeight(); // Perbarui tinggi area input setiap kali textarea berubah tinggi
     });
 
-    // PERBAIKAN: Panggil updateInputAreaHeight saat window diresize
+    // Panggil updateInputAreaHeight saat window diresize
     window.addEventListener('resize', updateInputAreaHeight);
 
 
