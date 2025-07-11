@@ -9,6 +9,12 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <style>
     /* Global Styles */
+    :root {
+        /* Variabel CSS untuk tinggi input area, akan diatur oleh JS */
+        --input-area-height: 70px; /* Default: Tinggi input area tanpa reply preview */
+        --reply-preview-min-height: 50px; /* Estimasi tinggi minimum reply preview */
+    }
+
     * { box-sizing: border-box; }
     html, body {
       margin: 0; padding: 0; height: 100%;
@@ -79,13 +85,6 @@
     .input-group {
       margin-bottom: 20px;
       text-align: left;
-    }
-
-    .input-group label {
-      display: block;
-      margin-bottom: 8px;
-      font-weight: bold;
-      color: #bec7c1;
     }
 
     .input-group input {
@@ -291,8 +290,8 @@
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
-      /* PERBAIKAN: Tambahkan padding bawah agar pesan tidak tertutup input */
-      padding-bottom: 70px; /* Sesuaikan dengan tinggi area input. 70px adalah estimasi */
+      /* PERBAIKAN: Padding bawah dinamis agar pesan tidak tertutup input */
+      padding-bottom: var(--input-area-height);
     }
 
     .msg {
@@ -339,12 +338,13 @@
       align-items: center;
       justify-content: space-between;
       border-top: 1px solid #2a3942;
-      /* PERBAIKAN: Pastikan ini juga fixed agar tidak "gepeng" atau bergeser */
+      /* PERBAIKAN: Pastikan ini juga fixed dan posisinya di atas input area */
       position: fixed;
-      bottom: 60px; /* Di atas input area */
+      bottom: var(--input-area-height); /* Ditempatkan di atas input area */
       left: 0;
       right: 0;
       z-index: 101;
+      min-height: var(--reply-preview-min-height); /* Tinggi minimum */
     }
 
     #reply-preview span {
@@ -379,10 +379,11 @@
       min-height: 50px; /* PERBAIKAN: Menjaga tinggi agar tidak gepeng */
     }
 
+    /* PERBAIKAN: Menggunakan textarea agar bisa multi-baris otomatis */
     #input {
       flex: 1;
       padding: 10px 15px; /* Adjust padding */
-      font-size: 1em;
+      font-size: 1em; /* PERBAIKAN: Ukuran font relatif */
       border: none; /* No border */
       border-radius: 20px; /* Pill shape */
       background-color: #2a3942; /* Darker input background */
@@ -390,6 +391,9 @@
       outline: none; /* No outline on focus */
       min-height: 35px; /* PERBAIKAN: Menjaga tinggi input agar tidak gepeng */
       line-height: 1.2; /* PERBAIKAN: Membantu teks agar tidak gepeng */
+      resize: none; /* Mencegah user resize textarea */
+      overflow-y: auto; /* Izinkan scrollbar jika teks terlalu panjang */
+      max-height: 150px; /* Batasi tinggi maksimal textarea agar tidak terlalu besar */
     }
 
     #send, #uploadBtn {
@@ -398,7 +402,7 @@
       border-radius: 50%;
       background: #008069; /* WhatsApp Green */
       color: white;
-      font-size: 1.5em;
+      font-size: 1.5em; /* PERBAIKAN: Ukuran font relatif */
       border: none;
       cursor: pointer;
       display: flex;
@@ -651,7 +655,7 @@
     <div id="input-area">
       <button id="uploadBtn">📎</button>
       <input type="file" id="fileInput" accept="image/*" style="display:none;" />
-      <input type="text" id="input" placeholder="Ketik pesan..." />
+      <textarea id="input" placeholder="Ketik pesan..." rows="1"></textarea>
       <button id="send">Kirim</button>
     </div>
   </div>
@@ -723,7 +727,8 @@
     const backToChatListBtn = document.getElementById("backToChatListBtn");
     const currentChatNameEl = document.getElementById("currentChatName");
     const chatContainer = document.getElementById("chat-container");
-    const input = document.getElementById("input");
+    const input_area = document.getElementById("input-area"); /* PERBAIKAN: Mendefinisikan input_area */
+    const input = document.getElementById("input"); /* Ini adalah textarea */
     const sendBtn = document.getElementById("send");
     const fileInput = document.getElementById("fileInput");
     const uploadBtn = document.getElementById("uploadBtn");
@@ -732,6 +737,7 @@
     const sidebar = document.getElementById("sidebar");
     const fullScreenOverlay = document.getElementById("fullScreenOverlay");
     const sidebarToggle = document.getElementById("sidebar-toggle");
+    const root = document.documentElement; /* Untuk mengakses variabel CSS */
 
     // Toast Message
     const toastMessage = document.getElementById("toastMessage");
@@ -787,14 +793,22 @@
             sidebarToggle.style.display = "block";
             chatContainer.innerHTML = ""; // Clear previous chat messages
 
+            // PERBAIKAN: Update input area height untuk padding
+            // Panggil ini di sini agar padding awal sesuai saat layar chat dimuat
+            updateInputAreaHeight();
+
             // Attach listener for the public chat messages
             chatMessageListener = db.ref(`${PUBLIC_CHAT_ID}/messages`).on("child_added", snap => renderMessage(snap.key, snap.val()));
-            // PERBAIKAN: Menangani perubahan (misal: penghapusan) pada pesan
+            // Menangani perubahan (misal: penghapusan) pada pesan
             db.ref(`${PUBLIC_CHAT_ID}/messages`).on("child_changed", snap => {
                 const el = document.getElementById("msg-" + snap.key);
                 if (el) {
-                    const scrollAtBottom = chatContainer.scrollHeight - chatContainer.clientHeight <= chatContainer.scrollTop + 1; // Check if user is at bottom
+                    const scrollAtBottom = chatContainer.scrollHeight - chatContainer.clientHeight <= chatContainer.scrollTop + 50; // Toleransi 50px
                     el.remove(); // Hapus elemen lama
+                    // Jika pesan yang dihapus adalah pesan replyTo, batalkan reply
+                    if (replyTo && "msg-" + snap.key === replyTo.id) {
+                      cancelReply();
+                    }
                     renderMessage(snap.key, snap.val()); // Render elemen baru
                     if (scrollAtBottom) { // Hanya scroll jika user sebelumnya di bagian bawah
                         scrollToBottom();
@@ -811,46 +825,28 @@
 
     // --- History Management and Popstate Event Listener ---
     // Initial pushState to mark the application's start point
-    // This state will be used as the first "internal" screen in our history.
-    // We don't want to show 'loading' in the history.
     history.replaceState({ screen: 'loading' }, '', ''); // Replace initial empty state
 
     window.addEventListener('popstate', (event) => {
-        // event.state contains the state object pushed by pushState
         const targetScreen = event.state ? event.state.screen : null;
 
-        // Special handling for the lobby screen (double-tap to exit logic)
         if (currentScreen === 'chatList') {
             if (backButtonPressedOnce) {
-                // If back button was pressed once already, allow navigating away
                 clearTimeout(backButtonTimeout);
                 backButtonPressedOnce = false;
-                // Allow default browser back behavior to exit the app (or go to previous non-app page)
-                // No need to call history.back() again, popstate already handled it.
-                // If there's no more history, the browser will act according to its default for empty history.
             } else {
-                // First press on lobby screen
                 showToast("Tekan kembali sekali lagi untuk keluar");
                 backButtonPressedOnce = true;
                 history.pushState({ screen: 'chatList' }, '', '#chatList'); // Push current state back to prevent immediate exit
                 backButtonTimeout = setTimeout(() => {
                     backButtonPressedOnce = false;
                     hideToast();
-                }, 2000); // Reset after 2 seconds
+                }, 2000);
             }
         } else if (targetScreen) {
-            // Navigate to the screen indicated by the history state
-            showScreen(targetScreen, false); // Don't push state again, just navigate
-        } else {
-            // If event.state is null, it means we've gone back beyond our initial pushState.
-            // This usually means exiting the application context (e.g., going back to the page that linked to this app).
-            // We can add a confirmation here if desired, but for web, just letting it navigate back is typical.
-            // For now, no specific action, just let the browser handle it.
-            // Or you could force a return to login if you really want to keep users in the app until logout.
-            // showScreen('login', false);
+            showScreen(targetScreen, false);
         }
     });
-
 
     // --- Toast Message Functions ---
     function showToast(message) {
@@ -861,7 +857,6 @@
     function hideToast() {
         toastMessage.classList.remove('show');
     }
-
 
     // --- Authentication Functions ---
     loadingScreen.style.display = 'flex'; // Ensure loading screen is visible at start
@@ -1063,13 +1058,24 @@
     }
 
     backToChatListBtn.addEventListener("click", () => {
-        // Instead of directly calling showScreen, use history.back()
-        // This makes sure the browser's history is used for navigation
         history.back();
     });
 
 
     // --- Chat Detail Functions ---
+    // PERBAIKAN: Fungsi untuk memperbarui tinggi input area dinamis
+    function updateInputAreaHeight() {
+        // Menggunakan offsetHeight untuk mendapatkan tinggi aktual termasuk padding dan border
+        let totalHeight = input_area.offsetHeight;
+
+        // Jika reply preview aktif, tambahkan tingginya
+        if (replyPreview.style.display === "flex") {
+            totalHeight += replyPreview.offsetHeight;
+        }
+        root.style.setProperty('--input-area-height', `${totalHeight}px`);
+        scrollToBottom(); // Scroll setelah update padding
+    }
+
     function scrollToBottom() {
       setTimeout(() => {
         chatContainer.scrollTop = chatContainer.scrollHeight;
@@ -1079,8 +1085,8 @@
     function cancelReply() {
       replyTo = null;
       replyPreview.style.display = "none";
-      // PERBAIKAN: Adjust padding bottom when reply preview is hidden
-      chatContainer.style.paddingBottom = "70px"; // Default padding
+      // PERBAIKAN: Sesuaikan padding kembali ke default input area
+      updateInputAreaHeight();
     }
 
     function renderMessage(key, data) {
@@ -1144,37 +1150,38 @@
       div.addEventListener("touchstart", e => {
         startX = e.touches[0].clientX;
         startY = e.touches[0].clientY;
+        moved = false; // Reset moved flag on new touch start
       });
       div.addEventListener("touchmove", e => {
         const dx = e.touches[0].clientX - startX;
         const dy = e.touches[0].clientY - startY;
-        // Hanya memproses swipe horizontal yang cukup dominan
-        if (Math.abs(dy) > Math.abs(dx) * 2) return; // Mencegah swipe vertikal memicu
-        if (dx > 0 && dx < 100) { // Geser ke kanan
+        if (Math.abs(dy) > Math.abs(dx) * 2) return;
+        if (dx > 0 && dx < 100) {
           moved = true;
           div.style.transform = `translateX(${dx}px)`;
         }
       });
       div.addEventListener("touchend", e => {
         const dx = e.changedTouches[0].clientX - startX;
-        if (moved && dx > 60) { // Jika geser cukup jauh ke kanan
-          replyTo = { user: data.user, message: data.message || 'Gambar' };
+        if (moved && dx > 60) {
+          replyTo = { id: key, user: data.user, message: data.message || 'Gambar' }; // Simpan ID pesan untuk deteksi penghapusan
           replyText.textContent = "Balas: " + replyTo.user + ": " + (data.message || 'Gambar');
           replyPreview.style.display = "flex";
-          // PERBAIKAN: Adjust padding bottom when reply preview is active
-          chatContainer.style.paddingBottom = "120px"; // Sesuaikan dengan tinggi input + reply preview
-          scrollToBottom(); // Scroll ke bawah lagi setelah preview muncul
+          updateInputAreaHeight(); // Perbarui tinggi padding
         }
-        div.style.transform = "translateX(0)"; // Kembalikan posisi pesan
-        moved = false;
+        div.style.transform = "translateX(0)";
+        moved = false; // PERBAIKAN: Pastikan moved direset setelah touchend
+      });
+      div.addEventListener("touchcancel", () => { // Tambahkan touchcancel
+          div.style.transform = "translateX(0)";
+          moved = false;
       });
 
       // PERBAIKAN: Delete message (long press) - sekarang bisa untuk semua pesan sendiri
       if (isOwn) {
         let timeout = null;
         div.addEventListener("touchstart", (e) => {
-          // Hanya jika bukan swipe
-          if (!moved) {
+          if (!moved) { // Hanya jika tidak sedang melakukan swipe
             timeout = setTimeout(() => {
               if (confirm("Hapus pesan ini?")) {
                 db.ref(`${PUBLIC_CHAT_ID}/messages/${key}`).update({ deleted: true })
@@ -1197,9 +1204,9 @@
         return;
       }
       const message = input.value.trim();
-      if (!message && !fileInput.files[0]) return; // Tidak kirim jika kosong dan tidak ada file
+      if (!message && !fileInput.files[0]) return;
 
-      if (message) { // Kirim pesan teks
+      if (message) {
         const msgData = {
           user: currentDisplayName,
           message,
@@ -1211,6 +1218,8 @@
           .then(() => {
               console.log("Pesan teks berhasil dikirim!");
               input.value = "";
+              input.style.height = 'auto'; // Reset tinggi textarea
+              updateInputAreaHeight(); // Perbarui tinggi area input
               cancelReply();
           })
           .catch(error => {
@@ -1251,7 +1260,7 @@
               .then(() => {
                 console.log("Gambar berhasil dikirim!");
                 cancelReply();
-                fileInput.value = ''; // Reset input file setelah upload
+                fileInput.value = '';
               })
               .catch(error => {
                 console.error("Error mengirim gambar ke Firebase:", error);
@@ -1270,8 +1279,22 @@
       reader.readAsDataURL(file);
     };
 
+    // PERBAIKAN: Auto-resize textarea
+    input.addEventListener("input", () => {
+        input.style.height = 'auto';
+        input.style.height = (input.scrollHeight) + 'px';
+        updateInputAreaHeight(); // Perbarui tinggi area input setiap kali textarea berubah tinggi
+    });
+
+    // PERBAIKAN: Panggil updateInputAreaHeight saat window diresize
+    window.addEventListener('resize', updateInputAreaHeight);
+
+
     input.addEventListener("keypress", e => {
-      if (e.key === "Enter") sendBtn.click();
+      if (e.key === "Enter" && !e.shiftKey) { // Kirim saat Enter, bukan Shift+Enter
+          e.preventDefault(); // Mencegah baris baru di textarea
+          sendBtn.click();
+      }
     });
 
     // --- Sidebar Functions ---
