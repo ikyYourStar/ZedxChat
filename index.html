@@ -291,8 +291,8 @@
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
-      /* PENTING: Tambahkan padding bawah agar pesan tidak tertutup input */
-      padding-bottom: 70px; /* Sesuaikan dengan tinggi area input */
+      /* PERBAIKAN: Tambahkan padding bawah agar pesan tidak tertutup input */
+      padding-bottom: 70px; /* Sesuaikan dengan tinggi area input. 70px adalah estimasi */
     }
 
     .msg {
@@ -339,6 +339,12 @@
       align-items: center;
       justify-content: space-between;
       border-top: 1px solid #2a3942;
+      /* PERBAIKAN: Pastikan ini juga fixed agar tidak "gepeng" atau bergeser */
+      position: fixed;
+      bottom: 60px; /* Di atas input area */
+      left: 0;
+      right: 0;
+      z-index: 101;
     }
 
     #reply-preview span {
@@ -357,7 +363,7 @@
       cursor:pointer;
     }
 
-    /* FIX: Area input sekarang fixed di bagian bawah */
+    /* PERBAIKAN: Area input sekarang fixed di bagian bawah */
     #input-area {
       position: fixed;
       bottom: 0;
@@ -370,6 +376,7 @@
       border-top: 1px solid #2a3942;
       align-items: center;
       z-index: 101; /* Pastikan di atas konten chat */
+      min-height: 50px; /* PERBAIKAN: Menjaga tinggi agar tidak gepeng */
     }
 
     #input {
@@ -381,6 +388,8 @@
       background-color: #2a3942; /* Darker input background */
       color: #e9edef;
       outline: none; /* No outline on focus */
+      min-height: 35px; /* PERBAIKAN: Menjaga tinggi input agar tidak gepeng */
+      line-height: 1.2; /* PERBAIKAN: Membantu teks agar tidak gepeng */
     }
 
     #send, #uploadBtn {
@@ -636,7 +645,7 @@
 
     <div id="reply-preview">
       <span id="reply-text"></span>
-      <button onclick="cancelReply()" style="background:none;border:none;color:white;font-size:5vw;">×</button>
+      <button onclick="cancelReply()" style="background:none;border:none;color:white;font-size:1.5em;">×</button>
     </div>
 
     <div id="input-area">
@@ -780,10 +789,17 @@
 
             // Attach listener for the public chat messages
             chatMessageListener = db.ref(`${PUBLIC_CHAT_ID}/messages`).on("child_added", snap => renderMessage(snap.key, snap.val()));
+            // PERBAIKAN: Menangani perubahan (misal: penghapusan) pada pesan
             db.ref(`${PUBLIC_CHAT_ID}/messages`).on("child_changed", snap => {
                 const el = document.getElementById("msg-" + snap.key);
-                if (el) el.remove();
-                renderMessage(snap.key, snap.val());
+                if (el) {
+                    const scrollAtBottom = chatContainer.scrollHeight - chatContainer.clientHeight <= chatContainer.scrollTop + 1; // Check if user is at bottom
+                    el.remove(); // Hapus elemen lama
+                    renderMessage(snap.key, snap.val()); // Render elemen baru
+                    if (scrollAtBottom) { // Hanya scroll jika user sebelumnya di bagian bawah
+                        scrollToBottom();
+                    }
+                }
             });
             scrollToBottom();
         }
@@ -1063,6 +1079,8 @@
     function cancelReply() {
       replyTo = null;
       replyPreview.style.display = "none";
+      // PERBAIKAN: Adjust padding bottom when reply preview is hidden
+      chatContainer.style.paddingBottom = "70px"; // Default padding
     }
 
     function renderMessage(key, data) {
@@ -1078,6 +1096,7 @@
       if (data.deleted) {
         div.textContent = "Pesan ini telah dihapus";
         div.style.fontStyle = "italic";
+        div.style.color = "#8696a0"; /* Warna abu-abu untuk pesan dihapus */
         chatContainer.appendChild(div);
         scrollToBottom();
         return;
@@ -1120,6 +1139,7 @@
       chatContainer.appendChild(div);
       scrollToBottom();
 
+      // PERBAIKAN: Reply gesture (swipe right)
       let startX = 0, startY = 0, moved = false;
       div.addEventListener("touchstart", e => {
         startX = e.touches[0].clientX;
@@ -1128,33 +1148,43 @@
       div.addEventListener("touchmove", e => {
         const dx = e.touches[0].clientX - startX;
         const dy = e.touches[0].clientY - startY;
-        if (Math.abs(dy) > Math.abs(dx)) return;
-        if (dx > 0 && dx < 100) {
+        // Hanya memproses swipe horizontal yang cukup dominan
+        if (Math.abs(dy) > Math.abs(dx) * 2) return; // Mencegah swipe vertikal memicu
+        if (dx > 0 && dx < 100) { // Geser ke kanan
           moved = true;
           div.style.transform = `translateX(${dx}px)`;
         }
       });
       div.addEventListener("touchend", e => {
         const dx = e.changedTouches[0].clientX - startX;
-        if (moved && dx > 60) {
+        if (moved && dx > 60) { // Jika geser cukup jauh ke kanan
           replyTo = { user: data.user, message: data.message || 'Gambar' };
           replyText.textContent = "Balas: " + replyTo.user + ": " + (data.message || 'Gambar');
           replyPreview.style.display = "flex";
+          // PERBAIKAN: Adjust padding bottom when reply preview is active
+          chatContainer.style.paddingBottom = "120px"; // Sesuaikan dengan tinggi input + reply preview
+          scrollToBottom(); // Scroll ke bawah lagi setelah preview muncul
         }
-        div.style.transform = "translateX(0)";
+        div.style.transform = "translateX(0)"; // Kembalikan posisi pesan
         moved = false;
       });
 
+      // PERBAIKAN: Delete message (long press) - sekarang bisa untuk semua pesan sendiri
       if (isOwn) {
         let timeout = null;
         div.addEventListener("touchstart", (e) => {
-          timeout = setTimeout(() => {
-            if (confirm("Hapus pesan ini?")) {
-              db.ref(`${PUBLIC_CHAT_ID}/messages/${key}`).update({ deleted: true })
-                .then(() => console.log("Pesan berhasil dihapus"))
-                .catch(err => console.error("Gagal menghapus pesan:", err));
-            }
-          }, 600);
+          // Hanya jika bukan swipe
+          if (!moved) {
+            timeout = setTimeout(() => {
+              if (confirm("Hapus pesan ini?")) {
+                db.ref(`${PUBLIC_CHAT_ID}/messages/${key}`).update({ deleted: true })
+                  .then(() => {
+                    console.log("Pesan berhasil dihapus");
+                  })
+                  .catch(err => console.error("Gagal menghapus pesan:", err));
+              }
+            }, 600); // Tahan 600ms untuk menghapus
+          }
         });
         div.addEventListener("touchend", () => clearTimeout(timeout));
         div.addEventListener("touchcancel", () => clearTimeout(timeout));
@@ -1167,25 +1197,27 @@
         return;
       }
       const message = input.value.trim();
-      if (!message) return;
+      if (!message && !fileInput.files[0]) return; // Tidak kirim jika kosong dan tidak ada file
 
-      const msgData = {
-        user: currentDisplayName,
-        message,
-        timestamp: firebase.database.ServerValue.TIMESTAMP
-      };
-      if (replyTo) msgData.reply = replyTo;
+      if (message) { // Kirim pesan teks
+        const msgData = {
+          user: currentDisplayName,
+          message,
+          timestamp: firebase.database.ServerValue.TIMESTAMP
+        };
+        if (replyTo) msgData.reply = replyTo;
 
-      db.ref(`${PUBLIC_CHAT_ID}/messages`).push(msgData)
-        .then(() => {
-            console.log("Pesan teks berhasil dikirim!");
-            input.value = "";
-            cancelReply();
-        })
-        .catch(error => {
-            console.error("Error mengirim pesan teks:", error);
-            alert("Gagal mengirim pesan: " + error.message);
-        });
+        db.ref(`${PUBLIC_CHAT_ID}/messages`).push(msgData)
+          .then(() => {
+              console.log("Pesan teks berhasil dikirim!");
+              input.value = "";
+              cancelReply();
+          })
+          .catch(error => {
+              console.error("Error mengirim pesan teks:", error);
+              alert("Gagal mengirim pesan: " + error.message);
+          });
+      }
     };
 
     uploadBtn.onclick = () => fileInput.click();
@@ -1219,7 +1251,7 @@
               .then(() => {
                 console.log("Gambar berhasil dikirim!");
                 cancelReply();
-                fileInput.value = '';
+                fileInput.value = ''; // Reset input file setelah upload
               })
               .catch(error => {
                 console.error("Error mengirim gambar ke Firebase:", error);
