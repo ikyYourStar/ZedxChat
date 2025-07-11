@@ -19,6 +19,40 @@
     }
     body { display: flex; flex-direction: column; }
 
+    /* --- Loading Screen Styles --- */
+    #loadingScreen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #111b21; /* Match app background */
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: #008069; /* WhatsApp Green */
+      font-size: 1.5em;
+      z-index: 9999; /* Ensure it's on top */
+      transition: opacity 0.5s ease-out;
+      opacity: 1;
+    }
+
+    #loadingSpinner {
+      border: 4px solid rgba(0, 128, 105, 0.3);
+      border-top: 4px solid #008069;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
     /* --- Auth Container Styles (Login/Register) --- */
     .auth-container {
       background-color: rgba(32, 44, 51, 0.9); /* Darker, slightly transparent */
@@ -82,20 +116,24 @@
       color: white;
     }
 
-    #loginBtn {
+    .auth-button { /* General style for login/register buttons */
       background-color: #008069; /* WhatsApp Green */
     }
 
-    #loginBtn:hover {
+    .auth-button:hover {
       background-color: #006b5a;
     }
 
-    #registerBtn {
-      background-color: #075e54; /* Darker WhatsApp Green */
+    .switch-auth-mode {
+      margin-top: 20px;
+      font-size: 0.9em;
+      color: #aebac1;
     }
 
-    #registerBtn:hover {
-      background-color: #064c44;
+    .switch-auth-mode a {
+      color: #008069;
+      text-decoration: none;
+      font-weight: bold;
     }
 
     #authMessage {
@@ -483,21 +521,43 @@
 </head>
 <body>
 
-  <div class="auth-container" id="authContainer">
-    <h2>Login / Daftar ZedxChat</h2>
+  <div id="loadingScreen">
+    <div id="loadingSpinner"></div>
+    <span>Memuat ZedxChat...</span>
+  </div>
+
+  <div class="auth-container" id="loginScreen">
+    <h2>Login ke ZedxChat</h2>
     <div class="input-group">
-      <label for="authEmail">Email:</label>
-      <input type="email" id="authEmail" placeholder="Masukkan email Anda" required />
+      <label for="loginEmail">Email:</label>
+      <input type="email" id="loginEmail" placeholder="Masukkan email Anda" required />
     </div>
     <div class="input-group">
-      <label for="authPassword">Password:</label>
-      <input type="password" id="authPassword" placeholder="Masukkan password Anda" required />
+      <label for="loginPassword">Password:</label>
+      <input type="password" id="loginPassword" placeholder="Masukkan password Anda" required />
     </div>
     <div class="button-group">
-      <button id="loginBtn">Login</button>
-      <button id="registerBtn">Daftar</button>
+      <button id="loginBtn" class="auth-button">Login</button>
     </div>
-    <p id="authMessage"></p>
+    <p id="loginMessage" class="auth-message"></p>
+    <p class="switch-auth-mode">Belum punya akun? <a href="#" id="goToRegister">Buat Akun di sini</a></p>
+  </div>
+
+  <div class="auth-container" id="registerScreen">
+    <h2>Daftar Akun Baru</h2>
+    <div class="input-group">
+      <label for="registerEmail">Email:</label>
+      <input type="email" id="registerEmail" placeholder="Masukkan email Anda" required />
+    </div>
+    <div class="input-group">
+      <label for="registerPassword">Password:</label>
+      <input type="password" id="registerPassword" placeholder="Minimal 6 karakter" required />
+    </div>
+    <div class="button-group">
+      <button id="registerBtn" class="auth-button">Daftar</button>
+    </div>
+    <p id="registerMessage" class="auth-message"></p>
+    <p class="switch-auth-mode">Sudah punya akun? <a href="#" id="goToLogin">Login di sini</a></p>
   </div>
 
   <div id="chatListContainer">
@@ -508,7 +568,7 @@
     </div>
     <div id="chatListContent">
       </div>
-    </div>
+  </div>
 
   <div class="auth-container" id="profileModal" style="display:none;">
     <h2>Profil Anda</h2>
@@ -559,9 +619,12 @@
   </div>
 
   <script>
-    const imgbbKey = "a12e3657b8edd041c13eda8c12ff5925";
+    // GANTI DENGAN KUNCI API IMGBB ANDA
+    const imgbbKey = "a12e3657b8edd041c13eda8c12ff5925"; // Example key, get yours from imgbb.com/api
+
+    // GANTI DENGAN KONFIGURASI FIREBASE ANDA
     const firebaseConfig = {
-      apiKey: "AIzaSyCTjBsKdHmmTELY3wnfGYANEzzDBEF2BIo",
+      apiKey: "AIzaSyCTjBsKdHmmTELY3wnfGYANEzzDBEF2BIo", // Your Firebase API Key
       authDomain: "realtime-df5d0.firebaseapp.com",
       databaseURL: "https://realtime-df5d0-default-rtdb.asia-southeast1.firebasedatabase.app",
       projectId: "realtime-df5d0",
@@ -574,19 +637,29 @@
     const db = firebase.database();
     const auth = firebase.auth();
 
-    const PUBLIC_CHAT_ID = "publicChat"; // Fixed ID for the public chat
+    const PUBLIC_CHAT_ID = "publicChat"; // Fixed ID for the public chat in Firebase DB
 
     let currentLoggedInUser = null; // Firebase User Object
     let currentDisplayName = "Anonim"; // Display Name for chat
 
     // --- UI Elements ---
-    // Auth UI
-    const authContainer = document.getElementById("authContainer");
-    const authEmailInput = document.getElementById("authEmail");
-    const authPasswordInput = document.getElementById("authPassword");
+    // Loading Screen
+    const loadingScreen = document.getElementById("loadingScreen");
+
+    // Auth UI - Separated
+    const loginScreen = document.getElementById("loginScreen");
+    const loginEmailInput = document.getElementById("loginEmail");
+    const loginPasswordInput = document.getElementById("loginPassword");
     const loginBtn = document.getElementById("loginBtn");
+    const loginMessageEl = document.getElementById("loginMessage");
+    const goToRegisterLink = document.getElementById("goToRegister");
+
+    const registerScreen = document.getElementById("registerScreen");
+    const registerEmailInput = document.getElementById("registerEmail");
+    const registerPasswordInput = document.getElementById("registerPassword");
     const registerBtn = document.getElementById("registerBtn");
-    const authMessageEl = document.getElementById("authMessage");
+    const registerMessageEl = document.getElementById("registerMessage");
+    const goToLoginLink = document.getElementById("goToLogin");
 
     // Chat List (Lobby) UI
     const chatListContainer = document.getElementById("chatListContainer");
@@ -605,7 +678,7 @@
     const mainContent = document.getElementById("main-content");
     const chatHeader = document.getElementById("chat-header");
     const backToChatListBtn = document.getElementById("backToChatListBtn");
-    const currentChatNameEl = document.getElementById("currentChatName"); // Hardcoded "ZedxChat" in HTML
+    const currentChatNameEl = document.getElementById("currentChatName");
     const chatContainer = document.getElementById("chat-container");
     const input = document.getElementById("input");
     const sendBtn = document.getElementById("send");
@@ -618,50 +691,65 @@
     const sidebarToggle = document.getElementById("sidebar-toggle");
 
     let replyTo = null;
-    let chatMessageListener = null; // Keep track of the chat message listener
+    let chatMessageListener = null;
 
     // --- Screen Navigation Functions ---
     function showScreen(screen) {
-        authContainer.style.display = "none";
+        // Hide all main screens initially
+        loginScreen.style.display = "none";
+        registerScreen.style.display = "none";
         chatListContainer.style.display = "none";
         mainContent.style.display = "none";
-        sidebarToggle.style.display = "none"; // Hide sidebar toggle by default
-        profileModal.style.display = "none"; // Hide profile modal by default
+        sidebarToggle.style.display = "none";
+        profileModal.style.display = "none";
         fullScreenOverlay.classList.remove("active");
+        closeNav(); // Ensure sidebar is closed when changing screens
 
         // Detach previous chat message listener if moving away from chat detail
         if (chatMessageListener) {
-            db.ref(`publicChat/messages`).off('child_added', chatMessageListener);
-            db.ref(`publicChat/messages`).off('child_changed', chatMessageListener);
+            db.ref(`${PUBLIC_CHAT_ID}/messages`).off('child_added', chatMessageListener);
+            db.ref(`${PUBLIC_CHAT_ID}/messages`).off('child_changed', chatMessageListener);
             chatMessageListener = null;
         }
 
-        if (screen === 'auth') {
-            authContainer.style.display = "block";
-            authEmailInput.value = "";
-            authPasswordInput.value = "";
-            authMessageEl.textContent = "";
+        if (screen === 'login') {
+            loginScreen.style.display = "block";
+            loginEmailInput.value = "";
+            loginPasswordInput.value = "";
+            loginMessageEl.textContent = "";
+        } else if (screen === 'register') {
+            registerScreen.style.display = "block";
+            registerEmailInput.value = "";
+            registerPasswordInput.value = "";
+            registerMessageEl.textContent = "";
         } else if (screen === 'chatList') {
             chatListContainer.style.display = "flex";
-            sidebarToggle.style.display = "block"; // Sidebar toggle visible on chat list
-            renderPublicChatItem(); // Always show public chat
+            sidebarToggle.style.display = "block";
+            renderPublicChatItem();
         } else if (screen === 'chatDetail') {
             mainContent.style.display = "flex";
-            sidebarToggle.style.display = "block"; // Sidebar toggle visible on chat detail
+            sidebarToggle.style.display = "block";
             chatContainer.innerHTML = ""; // Clear previous chat messages
 
             // Attach listener for the public chat messages
-            chatMessageListener = db.ref(`publicChat/messages`).on("child_added", snap => renderMessage(snap.key, snap.val()));
-            db.ref(`publicChat/messages`).on("child_changed", snap => {
+            chatMessageListener = db.ref(`${PUBLIC_CHAT_ID}/messages`).on("child_added", snap => renderMessage(snap.key, snap.val()));
+            db.ref(`${PUBLIC_CHAT_ID}/messages`).on("child_changed", snap => {
                 const el = document.getElementById("msg-" + snap.key);
                 if (el) el.remove();
                 renderMessage(snap.key, snap.val());
             });
             scrollToBottom();
         }
+
+        // Hide loading screen after the target screen is displayed
+        loadingScreen.style.opacity = 0;
+        setTimeout(() => { loadingScreen.style.display = 'none'; }, 500); // Wait for fade out
     }
 
     // --- Authentication Functions ---
+    // Start with showing loading screen until auth state is determined
+    loadingScreen.style.display = 'flex'; // Ensure loading screen is visible at start
+
     auth.onAuthStateChanged(user => {
       if (user) {
         currentLoggedInUser = user;
@@ -672,45 +760,53 @@
               currentDisplayName = userData.displayName;
             } else {
               currentDisplayName = user.email.split('@')[0];
-              db.ref('users/' + user.uid).update({ displayName: currentDisplayName, email: user.email });
+              // Ensure displayName is saved for new users or if missing
+              db.ref('users/' + user.uid).update({ displayName: currentDisplayName, email: user.email, createdAt: firebase.database.ServerValue.TIMESTAMP });
             }
-            showScreen('chatList'); // Go to public chat lobby
+            showScreen('chatList');
           })
           .catch(error => {
             console.error("Error fetching user data:", error);
             currentDisplayName = user.email.split('@')[0]; // Fallback
-            showScreen('chatList');
+            showScreen('chatList'); // Still try to show chat list
           });
 
       } else {
         currentLoggedInUser = null;
         currentDisplayName = "Anonim";
-        showScreen('auth');
+        showScreen('login'); // Show login screen if not authenticated
       }
     });
 
+    // --- Login Logic ---
     loginBtn.addEventListener("click", () => {
-      const email = authEmailInput.value.trim();
-      const password = authPasswordInput.value.trim();
-      if (!email || !password) { authMessageEl.textContent = "Email dan password harus diisi!"; return; }
+      const email = loginEmailInput.value.trim();
+      const password = loginPasswordInput.value.trim();
+      if (!email || !password) { loginMessageEl.textContent = "Email dan password harus diisi!"; return; }
 
       auth.signInWithEmailAndPassword(email, password)
-        .then(() => { authMessageEl.textContent = "Login berhasil!"; })
+        .then(() => { loginMessageEl.textContent = "Login berhasil!"; })
         .catch((error) => {
           let errorMessage = "Login gagal.";
           if (error.code === 'auth/wrong-password') errorMessage = "Password salah.";
           else if (error.code === 'auth/user-not-found') errorMessage = "Pengguna tidak ditemukan.";
           else if (error.code === 'auth/invalid-email') errorMessage = "Format email tidak valid.";
-          authMessageEl.textContent = errorMessage + " (" + error.message + ")";
+          loginMessageEl.textContent = errorMessage + " (" + error.message + ")";
           console.error("Login Error:", error);
         });
     });
 
+    goToRegisterLink.addEventListener("click", (e) => {
+      e.preventDefault(); // Prevent page reload
+      showScreen('register');
+    });
+
+    // --- Register Logic ---
     registerBtn.addEventListener("click", () => {
-      const email = authEmailInput.value.trim();
-      const password = authPasswordInput.value.trim();
-      if (!email || !password) { authMessageEl.textContent = "Email dan password harus diisi!"; return; }
-      if (password.length < 6) { authMessageEl.textContent = "Password minimal 6 karakter!"; return; }
+      const email = registerEmailInput.value.trim();
+      const password = registerPasswordInput.value.trim();
+      if (!email || !password) { registerMessageEl.textContent = "Email dan password harus diisi!"; return; }
+      if (password.length < 6) { registerMessageEl.textContent = "Password minimal 6 karakter!"; return; }
 
       auth.createUserWithEmailAndPassword(email, password)
         .then((userCredential) => {
@@ -720,8 +816,10 @@
             displayName: defaultDisplayName,
             createdAt: firebase.database.ServerValue.TIMESTAMP
           }).then(() => {
-            authMessageEl.textContent = "Pendaftaran berhasil! Nama pengguna Anda diatur sebagai '" + defaultDisplayName + "'. Silakan login.";
-            authPasswordInput.value = "";
+            registerMessageEl.textContent = "Pendaftaran berhasil! Nama pengguna Anda diatur sebagai '" + defaultDisplayName + "'. Silakan login.";
+            registerPasswordInput.value = ""; // Clear password for security
+            // Optionally, auto-redirect to login after successful registration
+            setTimeout(() => showScreen('login'), 2000);
           });
         })
         .catch((error) => {
@@ -729,9 +827,14 @@
           if (error.code === 'auth/email-already-in-use') errorMessage = "Email ini sudah terdaftar. Silakan login atau gunakan email lain.";
           else if (error.code === 'auth/invalid-email') errorMessage = "Format email tidak valid.";
           else if (error.code === 'auth/weak-password') errorMessage = "Password terlalu lemah (minimal 6 karakter).";
-          authMessageEl.textContent = errorMessage + " (" + error.message + ")";
+          registerMessageEl.textContent = errorMessage + " (" + error.message + ")";
           console.error("Register Error:", error);
         });
+    });
+
+    goToLoginLink.addEventListener("click", (e) => {
+      e.preventDefault(); // Prevent page reload
+      showScreen('login');
     });
 
     function logout() {
@@ -780,7 +883,7 @@
         }).then(() => {
             currentDisplayName = newDisplayName;
             profileMessageEl.textContent = "Nama pengguna berhasil diperbarui!";
-            setTimeout(closeProfileModal, 1500); // Auto-close after a delay
+            setTimeout(closeProfileModal, 1500);
         }).catch(error => {
             profileMessageEl.textContent = "Gagal memperbarui nama pengguna: " + error.message;
             console.error("Error updating display name:", error);
@@ -796,16 +899,14 @@
         const chatName = "ZedxChat";
         const div = document.createElement("div");
         div.classList.add("chat-list-item");
-        div.id = `chat-list-item-public`; // Unique ID for public chat item
-        div.dataset.chatId = PUBLIC_CHAT_ID; // Store public chat ID
+        div.id = `chat-list-item-public`;
+        div.dataset.chatId = PUBLIC_CHAT_ID;
 
-        // Avatar
         const avatar = document.createElement("div");
         avatar.classList.add("chat-avatar");
         avatar.textContent = chatName.charAt(0).toUpperCase();
         div.appendChild(avatar);
 
-        // Chat Info
         const info = document.createElement("div");
         info.classList.add("chat-info");
 
@@ -821,17 +922,15 @@
 
         div.appendChild(info);
 
-        // Last message time
         const timeEl = document.createElement("div");
         timeEl.classList.add("chat-time");
         div.appendChild(timeEl);
 
-        div.addEventListener("click", () => enterChat()); // Handle click to enter public chat
+        div.addEventListener("click", () => enterChat());
 
         chatListContent.appendChild(div);
 
-        // Fetch last message for public chat
-        db.ref(`publicChat/messages`).limitToLast(1).on('child_added', (snapshot) => {
+        db.ref(`${PUBLIC_CHAT_ID}/messages`).limitToLast(1).on('child_added', (snapshot) => {
             const messageData = snapshot.val();
             if (messageData) {
                 lastMessageEl.textContent = `${messageData.user}: ${messageData.message || '[Gambar]'}`;
@@ -845,8 +944,6 @@
     }
 
     function enterChat() {
-        // Set the current chat ID to the public one
-        // The currentChatNameEl is already hardcoded in HTML for ZedxChat
         showScreen('chatDetail');
     }
 
@@ -922,7 +1019,6 @@
       chatContainer.appendChild(div);
       scrollToBottom();
 
-      // Swipe to reply (touch events)
       let startX = 0, startY = 0, moved = false;
       div.addEventListener("touchstart", e => {
         startX = e.touches[0].clientX;
@@ -948,23 +1044,25 @@
         moved = false;
       });
 
-      // Long press to delete message (only for own messages)
       if (isOwn) {
         let timeout = null;
-        div.addEventListener("touchstart", () => {
+        div.addEventListener("touchstart", (e) => {
           timeout = setTimeout(() => {
             if (confirm("Hapus pesan ini?")) {
-              db.ref(`publicChat/messages/${key}`).update({ deleted: true });
+              db.ref(`${PUBLIC_CHAT_ID}/messages/${key}`).update({ deleted: true })
+                .then(() => console.log("Pesan berhasil dihapus"))
+                .catch(err => console.error("Gagal menghapus pesan:", err));
             }
           }, 600);
         });
         div.addEventListener("touchend", () => clearTimeout(timeout));
+        div.addEventListener("touchcancel", () => clearTimeout(timeout));
       }
     }
 
     sendBtn.onclick = () => {
       if (!currentLoggedInUser || !currentDisplayName || currentDisplayName === "Anonim") {
-        alert("Anda belum login atau belum memiliki nama pengguna!");
+        alert("Anda belum login atau belum memiliki nama pengguna! Silakan login dan atur nama pengguna Anda di profil.");
         return;
       }
       const message = input.value.trim();
@@ -977,16 +1075,23 @@
       };
       if (replyTo) msgData.reply = replyTo;
 
-      db.ref(`publicChat/messages`).push(msgData);
-      input.value = "";
-      cancelReply();
+      db.ref(`${PUBLIC_CHAT_ID}/messages`).push(msgData)
+        .then(() => {
+            console.log("Pesan teks berhasil dikirim!");
+            input.value = "";
+            cancelReply();
+        })
+        .catch(error => {
+            console.error("Error mengirim pesan teks:", error);
+            alert("Gagal mengirim pesan: " + error.message);
+        });
     };
 
     uploadBtn.onclick = () => fileInput.click();
 
     fileInput.onchange = () => {
       if (!currentLoggedInUser || !currentDisplayName || currentDisplayName === "Anonim") {
-        alert("Anda belum login atau belum memiliki nama pengguna!");
+        alert("Anda belum login atau belum memiliki nama pengguna! Silakan login dan atur nama pengguna Anda di profil.");
         return;
       }
       const file = fileInput.files[0];
@@ -1001,17 +1106,33 @@
         })
         .then(res => res.json())
         .then(result => {
-          const msgData = {
-            user: currentDisplayName,
-            imageURL: result.data.url,
-            timestamp: firebase.database.ServerValue.TIMESTAMP
-          };
-          if (replyTo) msgData.reply = replyTo;
+          if (result.data && result.data.url) {
+            const msgData = {
+              user: currentDisplayName,
+              imageURL: result.data.url,
+              timestamp: firebase.database.ServerValue.TIMESTAMP
+            };
+            if (replyTo) msgData.reply = replyTo;
 
-          db.ref(`publicChat/messages`).push(msgData);
-          cancelReply();
+            db.ref(`${PUBLIC_CHAT_ID}/messages`).push(msgData)
+              .then(() => {
+                console.log("Gambar berhasil dikirim!");
+                cancelReply();
+                fileInput.value = '';
+              })
+              .catch(error => {
+                console.error("Error mengirim gambar ke Firebase:", error);
+                alert("Gagal mengirim gambar: " + error.message);
+              });
+          } else {
+            alert("Gagal mendapatkan URL gambar dari ImgBB.");
+            console.error("ImgBB Response:", result);
+          }
         })
-        .catch(err => alert("Gagal upload gambar: " + err.message));
+        .catch(err => {
+            alert("Gagal upload gambar ke ImgBB: " + err.message);
+            console.error("ImgBB Upload Error:", err);
+        });
       };
       reader.readAsDataURL(file);
     };
