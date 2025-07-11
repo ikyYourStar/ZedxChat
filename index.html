@@ -136,7 +136,7 @@
       font-weight: bold;
     }
 
-    #authMessage {
+    .auth-message { /* Combined style for login/register messages */
       margin-top: 20px;
       font-weight: bold;
       color: #ff6b6b; /* Error red */
@@ -517,6 +517,27 @@
       #sidebar-toggle { top: 20px; left: 20px; font-size: 36px;}
       .auth-container, .profile-modal { padding: 40px; }
     }
+
+    /* Toast Message for "Press back again to exit" */
+    #toastMessage {
+        position: fixed;
+        bottom: 50px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 10px 20px;
+        border-radius: 5px;
+        font-size: 0.9em;
+        z-index: 10000;
+        opacity: 0;
+        transition: opacity 0.3s ease-in-out;
+        pointer-events: none; /* Allows clicks to pass through */
+    }
+
+    #toastMessage.show {
+        opacity: 1;
+    }
   </style>
 </head>
 <body>
@@ -618,6 +639,8 @@
     </div>
   </div>
 
+  <div id="toastMessage">Tekan kembali sekali lagi untuk keluar</div>
+
   <script>
     // GANTI DENGAN KUNCI API IMGBB ANDA
     const imgbbKey = "a12e3657b8edd041c13eda8c12ff5925"; // Example key, get yours from imgbb.com/api
@@ -641,6 +664,9 @@
 
     let currentLoggedInUser = null; // Firebase User Object
     let currentDisplayName = "Anonim"; // Display Name for chat
+    let currentScreen = 'loading'; // Keep track of the current active screen
+    let backButtonPressedOnce = false; // For double-tap to exit logic
+    let backButtonTimeout; // To clear the double-tap timeout
 
     // --- UI Elements ---
     // Loading Screen
@@ -690,11 +716,15 @@
     const fullScreenOverlay = document.getElementById("fullScreenOverlay");
     const sidebarToggle = document.getElementById("sidebar-toggle");
 
+    // Toast Message
+    const toastMessage = document.getElementById("toastMessage");
+
     let replyTo = null;
     let chatMessageListener = null;
 
     // --- Screen Navigation Functions ---
-    function showScreen(screen) {
+    // This function now manages browser history for proper back button behavior
+    function showScreen(screen, pushState = true) {
         // Hide all main screens initially
         loginScreen.style.display = "none";
         registerScreen.style.display = "none";
@@ -704,12 +734,21 @@
         profileModal.style.display = "none";
         fullScreenOverlay.classList.remove("active");
         closeNav(); // Ensure sidebar is closed when changing screens
+        hideToast(); // Hide any active toast message
 
         // Detach previous chat message listener if moving away from chat detail
         if (chatMessageListener) {
             db.ref(`${PUBLIC_CHAT_ID}/messages`).off('child_added', chatMessageListener);
             db.ref(`${PUBLIC_CHAT_ID}/messages`).off('child_changed', chatMessageListener);
             chatMessageListener = null;
+        }
+
+        currentScreen = screen; // Update current screen state
+
+        if (pushState) {
+            // Push the new screen state to browser history
+            // We're pushing a 'data' object which includes the screen name
+            history.pushState({ screen: screen }, '', `#${screen}`);
         }
 
         if (screen === 'login') {
@@ -746,8 +785,61 @@
         setTimeout(() => { loadingScreen.style.display = 'none'; }, 500); // Wait for fade out
     }
 
+    // --- History Management and Popstate Event Listener ---
+    // Initial pushState to mark the application's start point
+    // This state will be used as the first "internal" screen in our history.
+    // We don't want to show 'loading' in the history.
+    history.replaceState({ screen: 'loading' }, '', ''); // Replace initial empty state
+
+    window.addEventListener('popstate', (event) => {
+        // event.state contains the state object pushed by pushState
+        const targetScreen = event.state ? event.state.screen : null;
+
+        // Special handling for the lobby screen (double-tap to exit logic)
+        if (currentScreen === 'chatList') {
+            if (backButtonPressedOnce) {
+                // If back button was pressed once already, allow navigating away
+                clearTimeout(backButtonTimeout);
+                backButtonPressedOnce = false;
+                // Allow default browser back behavior to exit the app (or go to previous non-app page)
+                // No need to call history.back() again, popstate already handled it.
+                // If there's no more history, the browser will act according to its default for empty history.
+            } else {
+                // First press on lobby screen
+                showToast("Tekan kembali sekali lagi untuk keluar");
+                backButtonPressedOnce = true;
+                history.pushState({ screen: 'chatList' }, '', '#chatList'); // Push current state back to prevent immediate exit
+                backButtonTimeout = setTimeout(() => {
+                    backButtonPressedOnce = false;
+                    hideToast();
+                }, 2000); // Reset after 2 seconds
+            }
+        } else if (targetScreen) {
+            // Navigate to the screen indicated by the history state
+            showScreen(targetScreen, false); // Don't push state again, just navigate
+        } else {
+            // If event.state is null, it means we've gone back beyond our initial pushState.
+            // This usually means exiting the application context (e.g., going back to the page that linked to this app).
+            // We can add a confirmation here if desired, but for web, just letting it navigate back is typical.
+            // For now, no specific action, just let the browser handle it.
+            // Or you could force a return to login if you really want to keep users in the app until logout.
+            // showScreen('login', false);
+        }
+    });
+
+
+    // --- Toast Message Functions ---
+    function showToast(message) {
+        toastMessage.textContent = message;
+        toastMessage.classList.add('show');
+    }
+
+    function hideToast() {
+        toastMessage.classList.remove('show');
+    }
+
+
     // --- Authentication Functions ---
-    // Start with showing loading screen until auth state is determined
     loadingScreen.style.display = 'flex'; // Ensure loading screen is visible at start
 
     auth.onAuthStateChanged(user => {
@@ -760,15 +852,14 @@
               currentDisplayName = userData.displayName;
             } else {
               currentDisplayName = user.email.split('@')[0];
-              // Ensure displayName is saved for new users or if missing
               db.ref('users/' + user.uid).update({ displayName: currentDisplayName, email: user.email, createdAt: firebase.database.ServerValue.TIMESTAMP });
             }
             showScreen('chatList');
           })
           .catch(error => {
             console.error("Error fetching user data:", error);
-            currentDisplayName = user.email.split('@')[0]; // Fallback
-            showScreen('chatList'); // Still try to show chat list
+            currentDisplayName = user.email.split('@')[0];
+            showScreen('chatList'); // Fallback to chat list even on error
           });
 
       } else {
@@ -818,8 +909,7 @@
           }).then(() => {
             registerMessageEl.textContent = "Pendaftaran berhasil! Nama pengguna Anda diatur sebagai '" + defaultDisplayName + "'. Silakan login.";
             registerPasswordInput.value = ""; // Clear password for security
-            // Optionally, auto-redirect to login after successful registration
-            setTimeout(() => showScreen('login'), 2000);
+            setTimeout(() => showScreen('login'), 2000); // Auto-redirect to login after successful registration
           });
         })
         .catch((error) => {
@@ -840,6 +930,7 @@
     function logout() {
         auth.signOut().then(() => {
             closeNav();
+            showScreen('login'); // Redirect to login after logout
         }).catch((error) => {
             console.error("Logout error:", error);
             alert("Gagal logout: " + error.message);
@@ -948,7 +1039,9 @@
     }
 
     backToChatListBtn.addEventListener("click", () => {
-        showScreen('chatList');
+        // Instead of directly calling showScreen, use history.back()
+        // This makes sure the browser's history is used for navigation
+        history.back();
     });
 
 
