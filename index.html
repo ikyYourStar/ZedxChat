@@ -1,119 +1,2418 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ZedxChat</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-storage-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <style>
+        /* Your existing CSS here */
+        :root {
+            /* Variabel CSS untuk tinggi total input area (input + reply preview) */
+            --input-area-total-height: 70px; /* Default: Tinggi input area tanpa reply preview */
+            --input-area-min-height: 50px; /* Tinggi minimum untuk #input-area */
+            --reply-preview-height: 50px; /* Tinggi tetap untuk reply preview */
+            --chat-message-spacing: 8px; /* Spasi antar pesan */
+            --extra-bottom-padding: 10px; /* Tambahan padding di bawah pesan terakhir */
+            --bottom-nav-height: 60px; /* Tinggi navigasi bawah */
+        }
+
+        * { box-sizing: border-box; }
+        html, body {
+            margin: 0; padding: 0; height: 100%;
+            font-family: Arial, sans-serif;
+            background: #202c33; /* Dark background like WhatsApp */
+            color: #e9edef; /* Light text color */
+            overflow: hidden; /* Prevent body scroll */
+        }
+        body { display: flex; flex-direction: column; } /* Menggunakan flexbox untuk layout utama */
+
+        /* --- Loading Screen Styles --- */
+        #loadingScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #111b21; /* Match app background */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #008069; /* WhatsApp Green */
+            font-size: 1.5em;
+            z-index: 9999; /* Ensure it's on top */
+            transition: opacity 0.5s ease-out;
+            opacity: 1;
+        }
+
+        #loadingSpinner {
+            border: 4px solid rgba(0, 128, 105, 0.3);
+            border-top: 4px solid #008069;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* --- Auth Container Styles (Login/Register) --- */
+        .auth-container {
+            background-color: rgba(32, 44, 51, 0.9); /* Darker, slightly transparent */
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            box-sizing: border-box;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 102;
+            display: none;
+        }
+
+        .auth-container h2 {
+            margin-bottom: 25px;
+            color: #e9edef;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #555;
+            border-radius: 5px;
+            font-size: 16px;
+            background-color: #33444d; /* Darker input background */
+            color: #e9edef;
+            box-sizing: border-box;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 25px;
+        }
+
+        .button-group button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            color: white;
+        }
+
+        .auth-button { /* General style for login/register buttons */
+            background-color: #008069; /* WhatsApp Green */
+        }
+
+        .auth-button:hover {
+            background-color: #006b5a;
+        }
+
+        .switch-auth-mode {
+            margin-top: 20px;
+            font-size: 0.9em;
+            color: #aebac1;
+        }
+
+        .switch-auth-mode a {
+            color: #008069;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .auth-message { /* Combined style for login/register messages */
+            margin-top: 20px;
+            font-weight: bold;
+            color: #ff6b6b; /* Error red */
+        }
+
+        /* --- Chat List (Lobby) Styles --- */
+        #chatListContainer {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100%;
+            background-color: #111b21; /* WhatsApp dark background */
+            position: relative;
+            overflow: hidden;
+            display: none; /* Hidden by default */
+        }
+
+        #chatListHeader {
+            display: flex;
+            align-items: center;
+            padding: 15px 20px;
+            background-color: #202c33;
+            color: #e9edef;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 10;
+        }
+
+        #chatListHeader h1 {
+            flex-grow: 1;
+            margin: 0;
+            font-size: 1.5em;
+            text-align: left;
+        }
+
+        #chatListHeader button {
+            background: none;
+            border: none;
+            color: #e9edef;
+            font-size: 1.2em;
+            cursor: pointer;
+            margin-left: 15px;
+        }
+
+        #chatListContent {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0;
+            padding-bottom: var(--bottom-nav-height); /* Add padding for bottom nav */
+        }
+
+        .chat-list-item {
+            display: flex;
+            align-items: center;
+            padding: 15px 20px;
+            border-bottom: 1px solid #2a3942; /* Darker separator */
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .chat-list-item:hover {
+            background-color: #2a3942; /* Hover effect */
+        }
+
+        .chat-list-item:last-child {
+            border-bottom: none;
+        }
+
+        .chat-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: #008069; /* Default avatar background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5em;
+            color: white;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+
+        /* --- Money Display in Lobby --- */
+        #moneyDisplay {
+            padding: 10px 20px;
+            background-color: #1a252e;
+            color: #e9edef;
+            font-size: 1.1em;
+            font-weight: bold;
+            text-align: right;
+            border-bottom: 1px solid #2a3942;
+        }
+
+        /* --- Bottom Navigation --- */
+        #bottomNav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: var(--bottom-nav-height);
+            background-color: #202c33; /* Darker header */
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            box-shadow: 0 -2px 5px rgba(0,0,0,0.2);
+            z-index: 100;
+            border-top: 1px solid #2a3942;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            color: #aebac1; /* Default color */
+            font-size: 0.8em;
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+
+        .nav-item.active {
+            color: #008069; /* Active color */
+        }
+
+        .nav-item i {
+            font-size: 1.5em;
+            margin-bottom: 3px;
+        }
+
+        /* --- Main Chat Content Styles --- */
+        #main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100vh; /* Use 100vh for full screen chat */
+            width: 100%;
+            position: relative;
+            background-color: #0b141a; /* WhatsApp chat background */
+            display: none; /* Hidden by default */
+        }
+
+        #chat-header {
+            display: flex;
+            align-items: center;
+            padding: 10px 15px;
+            background-color: #202c33; /* Darker header */
+            color: #e9edef;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 10;
+        }
+
+        #chat-header button {
+            background: none;
+            border: none;
+            color: #e9edef;
+            font-size: 1.5em;
+            cursor: pointer;
+            margin-right: 15px;
+        }
+
+        #chat-header h2 {
+            flex-grow: 1;
+            margin: 0;
+            font-size: 1.2em;
+        }
+
+        #chat-container {
+            flex: 1; /* Penting agar container mengisi sisa ruang */
+            overflow-y: auto;
+            padding: 10px 15px; /* Padding samping dan atas */
+            background-image: url('https://raw.githubusercontent.com/ikyYourStar/ZedxChat/refs/heads/main/assets/Tak%20berjudul134_20250707192207.png'); /* Your background image */
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            /* PERBAIKAN: Padding bawah dinamis agar pesan tidak tertutup input */
+            padding-bottom: calc(var(--input-area-total-height) + var(--extra-bottom-padding));
+        }
+
+        .msg {
+            max-width: 80%; /* Slightly wider messages */
+            padding: 8px 12px; /* Adjust padding */
+            margin-bottom: var(--chat-message-spacing); /* Spasi antar pesan */
+            border-radius: 8px; /* Smaller border radius */
+            word-wrap: break-word;
+            font-size: 0.95em; /* Slightly smaller font for better fit */
+            position: relative;
+            transition: transform 0.2s ease; /* For swipe animation */
+            will-change: transform;
+            box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+        }
+
+        .own {
+            background: #005c4b; /* Darker green for own messages */
+            margin-left: auto;
+            text-align: right;
+        }
+
+        .other {
+            background: #202c33; /* Dark grey for other messages */
+            margin-right: auto;
+            text-align: left;
+        }
+
+        /* MODIFIKASI: Gaya khusus untuk pesan yang dihapus */
+        .deleted-message {
+            background-color: #303f4a; /* Slightly different background for deleted */
+            opacity: 0.7;
+            font-style: italic;
+            color: #aebac1;
+            /* Pastikan margin-left/right tidak auto jika ingin di tengah atau sesuai asal */
+            margin-left: unset; /* Reset margin-left */
+            margin-right: unset; /* Reset margin-right */
+            text-align: center; /* Teks "Pesan ini telah dihapus" bisa di tengah */
+            max-width: 80%; /* Tetap batasi lebar */
+            /* Kita perlu mempertahankan posisi asli (own/other) */
+        }
+        /* Overrides for deleted messages to keep their original alignment */
+        .deleted-message.own {
+            margin-left: auto;
+            margin-right: 0;
+            text-align: right; /* Teks tetap di kanan untuk pesan sendiri yang dihapus */
+        }
+        .deleted-message.other {
+            margin-right: auto;
+            margin-left: 0;
+            text-align: left; /* Teks tetap di kiri untuk pesan orang lain yang dihapus */
+        }
+
+
+        .reply {
+            font-size: 0.75em;
+            opacity: 0.7;
+            margin-bottom: 5px;
+            font-style: italic;
+            border-left: 3px solid #075e54;
+            padding-left: 5px;
+            color: #aebac1;
+        }
+
+        #reply-preview {
+            background: #202c33;
+            color: #e9edef;
+            padding: 10px 15px;
+            font-size: 0.9em;
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            border-top: 1px solid #2a3942;
+            position: fixed;
+            left: 0;
+            right: 0;
+            /* PERBAIKAN: Ditempatkan tepat di atas input-area */
+            bottom: var(--input-area-min-height);
+            z-index: 101;
+            height: var(--reply-preview-height); /* Tinggi tetap */
+        }
+
+        #reply-preview span {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-right: 10px;
+        }
+
+        #reply-preview button {
+            background:none;
+            border:none;
+            color:#e9edef;
+            font-size:1.5em;
+            cursor:pointer;
+        }
+
+        /* PERBAIKAN: Area input sekarang fixed di bagian bawah */
+        #input-area {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            gap: 8px; /* Smaller gap */
+            padding: 8px 15px; /* Adjust padding */
+            background: #202c33; /* Dark input area */
+            border-top: 1px solid #2a3942;
+            align-items: center;
+            z-index: 102; /* Pastikan di atas reply-preview dan konten chat */
+            min-height: var(--input-area-min-height); /* Tinggi minimum */
+        }
+
+        /* PERBAIKAN: Menggunakan textarea agar bisa multi-baris otomatis */
+        #input {
+            flex: 1;
+            padding: 10px 15px; /* Adjust padding */
+            font-size: 1em; /* Ukuran font relatif */
+            border: none; /* No border */
+            border-radius: 20px; /* Pill shape */
+            background-color: #2a3942; /* Darker input background */
+            color: #e9edef;
+            outline: none; /* No outline on focus */
+            min-height: 35px; /* Menjaga tinggi input agar tidak gepeng */
+            line-height: 1.2; /* Membantu teks agar tidak gepeng */
+            resize: none; /* Mencegah user resize textarea */
+            overflow-y: auto; /* Izinkan scrollbar jika teks terlalu panjang */
+            max-height: 150px; /* Batasi tinggi maksimal textarea agar tidak terlalu besar */
+        }
+
+        #send, #uploadBtn {
+            width: 45px; /* Round buttons */
+            height: 45px;
+            border-radius: 50%;
+            background: #008069; /* WhatsApp Green */
+            color: white;
+            font-size: 1.5em; /* Ukuran font relatif */
+            border: none;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: background-color 0.3s ease;
+        }
+
+        #send:hover, #uploadBtn:hover {
+            background-color: #006b5a;
+        }
+
+        #uploadBtn {
+            font-size: 1.2em; /* Smaller icon */
+        }
+
+        .msg img {
+            max-width: 100%;
+            border-radius: 5px;
+            margin-top: 5px;
+        }
+
+        .time {
+            font-size: 0.7em;
+            opacity: 0.6;
+            display: block;
+            margin-top: 3px;
+            color: #aebac1;
+        }
+
+        .own .time {
+            text-align: right;
+        }
+
+        .other .time {
+            text-align: left;
+        }
+
+        .sender-name { /* New style for sender name in 'other' messages */
+            font-weight: bold;
+            color: #075e54; /* A distinct color for sender name */
+            margin-right: 5px;
+        }
+
+        /* Sidebar Styles */
+        #sidebar {
+            width: 0;
+            background-color: #1f2c33; /* Darker sidebar */
+            overflow-x: hidden;
+            transition: 0.5s;
+            padding-top: 60px;
+            position: fixed;
+            height: 100%;
+            z-index: 100;
+            top: 0;
+            left: 0;
+            color: #e9edef;
+        }
+
+        #sidebar.open {
+            width: 250px;
+        }
+
+        #sidebar a {
+            padding: 8px 8px 8px 32px;
+            text-decoration: none;
+            font-size: 25px;
+            color: #818181;
+            display: block;
+            transition: 0.3s;
+        }
+
+        #sidebar a:hover {
+            color: #f1f1f1;
+        }
+
+        #sidebar .closebtn {
+            position: absolute;
+            top: 0;
+            right: 25px;
+            font-size: 36px;
+            margin-left: 50px;
+        }
+
+        #sidebar-menu-list ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        #sidebar-menu-list li {
+            padding: 10px 32px;
+            font-size: 18px;
+            border-bottom: 1px solid #2a3942;
+        }
+
+        #sidebar-menu-list li:last-child {
+            border-bottom: none;
+        }
+
+        #sidebar-menu-list li a {
+            color: #e9edef;
+            text-decoration: none;
+            display: block;
+            padding: 0;
+            font-size: 18px;
+        }
+
+        #sidebar-menu-list li a:hover {
+            color: #008069;
+        }
+
+        /* Overlay effect */
+        .overlay {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 99;
+            display: none;
+            transition: opacity 0.5s;
+        }
+
+        .overlay.active {
+            display: block;
+            opacity: 1;
+        }
+
+        /* Responsive adjustments */
+        @media (min-width: 768px) {
+            .msg { font-size: 16px; }
+            .reply { font-size: 13px; }
+            #input { font-size: 16px; }
+            #send, #uploadBtn { font-size: 24px; width: 50px; height: 50px;}
+            .time { font-size: 12px; }
+            #sidebar-toggle { top: 20px; left: 20px; font-size: 36px;}
+            .auth-container, .profile-modal { padding: 40px; }
+        }
+
+        /* Toast Message for "Press back again to exit" */
+        #toastMessage {
+            position: fixed;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            z-index: 10000;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            pointer-events: none; /* Allows clicks to pass through */
+        }
+
+        #toastMessage.show {
+            opacity: 1;
+        }
+
+        /* Context Menu for messages */
+        #messageContextMenu {
+            position: absolute;
+            background-color: #2a3942; /* Darker background */
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            z-index: 1000;
+            display: none;
+            overflow: hidden; /* Ensure rounded corners */
+        }
+
+        #messageContextMenu ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        #messageContextMenu ul li {
+            padding: 10px 15px;
+            color: #e9edef;
+            cursor: pointer;
+            font-size: 0.9em;
+            white-space: nowrap;
+        }
+
+        #messageContextMenu ul li:hover {
+            background-color: #005c4b; /* Highlight on hover */
+        }
+
+        /* Styles for Bot Command Suggestions */
+        #commandSuggestions {
+            position: absolute;
+            bottom: calc(var(--input-area-total-height) + 5px); /* Position above the input area */
+            left: 15px;
+            right: 15px;
+            background-color: #2a3942; /* Darker background, similar to messageContextMenu */
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            z-index: 101; /* Above chat but below reply preview */
+            max-height: 200px; /* Limit height and make it scrollable */
+            overflow-y: auto;
+            display: none; /* Hidden by default */
+        }
+
+        #commandSuggestions ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        #commandSuggestions li {
+            padding: 10px 15px;
+            color: #e9edef;
+            cursor: pointer;
+            font-size: 0.95em;
+            border-bottom: 1px solid #33444d; /* Separator between commands */
+        }
+
+        #commandSuggestions li:last-child {
+            border-bottom: none;
+        }
+
+        #commandSuggestions li:hover {
+            background-color: #005c4b; /* Highlight on hover */
+        }
+
+        /* --- Gacha and Inventory/Sell Pages --- */
+        .game-page {
+            flex: 1;
+            display: none; /* Hidden by default */
+            flex-direction: column;
+            background-color: #111b21;
+            padding-bottom: var(--bottom-nav-height); /* Ensure space for bottom nav */
+            overflow-y: auto;
+        }
+
+        .game-page-header {
+            display: flex;
+            align-items: center;
+            padding: 15px 20px;
+            background-color: #202c33;
+            color: #e9edef;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 10;
+        }
+
+        .game-page-header h2 {
+            flex-grow: 1;
+            margin: 0;
+            font-size: 1.5em;
+            text-align: center; /* Center the title */
+        }
+
+        /* Inventory Grid */
+        #inventoryGrid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 15px;
+            padding: 20px;
+            justify-items: center; /* Center items within grid cells */
+        }
+
+        .card-item {
+            background-color: #2a3942;
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .card-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        .card-item img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 5px;
+            margin-bottom: 5px;
+        }
+
+        .card-item .card-stars {
+            font-size: 0.9em;
+            color: #ffc107; /* Gold color for stars */
+            margin-top: 5px;
+        }
+
+        /* Gacha Page */
+        #gachaPageContent {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            text-align: center;
+        }
+
+        #gachaResult {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #gachaResult img {
+            max-width: 250px;
+            height: auto;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            margin-bottom: 15px;
+        }
+
+        #gachaResult .card-stars {
+            font-size: 1.5em;
+            color: #ffc107;
+            margin-bottom: 10px;
+        }
+
+        #gachaButton {
+            padding: 15px 30px;
+            font-size: 1.2em;
+            background-color: #008069;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-top: 20px;
+        }
+
+        #gachaButton:hover {
+            background-color: #006b5a;
+        }
+
+        #gachaCost {
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: #aebac1;
+        }
+
+        /* Sell Confirmation Modal */
+        #sellConfirmModal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #2a3942;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            z-index: 1001;
+            display: none;
+            text-align: center;
+        }
+
+        #sellConfirmModal p {
+            margin-bottom: 20px;
+            font-size: 1.1em;
+        }
+
+        #sellConfirmModal .button-group {
+            margin-top: 0; /* Override default button-group margin */
+            justify-content: space-around;
+        }
+
+        #sellConfirmModal button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+        }
+
+        #confirmSellBtn {
+            background-color: #dc3545; /* Red for confirm sell */
+            color: white;
+        }
+
+        #cancelSellBtn {
+            background-color: #6c757d; /* Grey for cancel */
+            color: white;
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <nav class="top-nav">
-                <button class="menu-button" onclick="toggleSidebar()">☰</button>
-                <div class="app-title">ZedxChat</div>
-                <div class="top-right-buttons">
-                    <button class="logout-button" onclick="logout()">Logout</button>
-                    <button class="profile-button">
-                        <img id="profilePic" src="https://via.placeholder.com/24" alt="Profile">
-                    </button>
-                </div>
-            </nav>
-            <div class="user-info">
-                <span id="displayName"></span>
-                <span id="userMoney">Money: 0</span>
-            </div>
-        </header>
 
-        <div class="sidebar" id="sidebar">
-            <a href="#" onclick="showChatScreen()">Chat Publik</a>
-            <a href="#" onclick="showInventoryScreen()">Inventory</a>
-            <a href="#" onclick="showGachaScreen()">Gacha</a>
-            <a href="#" onclick="showSellScreen()">Sell</a>
-            <a href="#" onclick="reportAdmin()">Report Admin</a>
-        </div>
-
-        <main id="mainContent" class="main-content">
-            <div id="authScreen" class="screen">
-                <h2>Login / Register</h2>
-                <input type="email" id="authEmail" placeholder="Email">
-                <input type="password" id="authPassword" placeholder="Password">
-                <button onclick="login()">Login</button>
-                <button onclick="register()">Register</button>
-            </div>
-
-            <div id="chatScreen" class="screen hidden">
-                <div class="chat-messages" id="chatMessages">
-                    </div>
-                <div id="replyToContainer" class="reply-to-container hidden">
-                    Merespon: <span id="replyToText"></span>
-                    <button onclick="cancelReply()">X</button>
-                </div>
-                <div class="message-input-area">
-                    <button class="attach-button" onclick="document.getElementById('imageUpload').click()">📎</button>
-                    <input type="file" id="imageUpload" accept="image/*" style="display: none;">
-                    <input type="text" id="messageInput" placeholder="Ketik pesan...">
-                    <button class="send-button" onclick="sendMessage()">Kirim</button>
-                </div>
-            </div>
-
-            <div id="gachaScreen" class="screen hidden">
-                <h2>Gacha Kartu</h2>
-                <button id="gachaButton" class="gacha-button">Lakukan Gacha (Biaya: 1000 Money)</button>
-                <div id="gachaResult" class="gacha-result hidden">
-                    <img id="gachaCardImage" src="" alt="Kartu Gacha" style="max-width: 100%; display: none;">
-                    <p id="gachaCardName"></p>
-                    <p id="gachaCardDescription"></p>
-                </div>
-            </div>
-
-            <div id="inventoryScreen" class="screen hidden">
-                <h2>Inventory Kartu Anda</h2>
-                <div id="userCards" class="card-list">
-                    </div>
-            </div>
-
-            <div id="sellScreen" class="screen hidden">
-                <h2>Jual Kartu</h2>
-                <div id="sellableCards" class="card-list">
-                    </div>
-            </div>
-
-            <div id="reportAdminScreen" class="screen hidden">
-                <h2>Laporan ke Admin</h2>
-                <p>Silakan masukkan ID pesan yang ingin Anda laporkan:</p>
-                <input type="text" id="reportMessageIdInput" placeholder="ID Pesan">
-                <textarea id="reportReasonInput" placeholder="Alasan laporan (opsional)"></textarea>
-                <button onclick="submitReport()">Kirim Laporan</button>
-            </div>
-        </main>
-
-        <div id="notification" class="notification"></div>
-
-        <nav class="bottom-nav">
-            <button class="nav-item" onclick="showChatScreen()">
-                <img src="https://img.icons8.com/ios-filled/50/ffffff/speech-bubble.png" alt="Chat">
-                <span>Chat</span>
-            </button>
-            <button class="nav-item" onclick="showInventoryScreen()">
-                <img src="https://img.icons8.com/ios-filled/50/ffffff/box.png" alt="Inventory">
-                <span>Inventory</span>
-            </button>
-            <button class="nav-item" onclick="showGachaScreen()">
-                <img src="https://img.icons8.com/ios-filled/50/ffffff/star.png" alt="Gacha">
-                <span>Gacha</span>
-            </button>
-            <button class="nav-item" onclick="showSellScreen()">
-                <img src="https://img.icons8.com/ios-filled/50/ffffff/money-bag.png" alt="Sell">
-                <span>Sell</span>
-            </button>
-        </nav>
+    <div id="loadingScreen">
+        <div id="loadingSpinner"></div>
+        <span>Memuat ZedxChat...</span>
     </div>
 
-    <script src="script.js"></script>
+    <div class="auth-container" id="loginScreen">
+        <h2>Login ke ZedxChat</h2>
+        <div class="input-group">
+            <label for="loginEmail">Email:</label>
+            <input type="email" id="loginEmail" placeholder="Masukkan email Anda" required />
+        </div>
+        <div class="input-group">
+            <label for="loginPassword">Password:</label>
+            <input type="password" id="loginPassword" placeholder="Masukkan password Anda" required />
+        </div>
+        <div class="button-group">
+            <button id="loginBtn" class="auth-button">Login</button>
+        </div>
+        <p id="loginMessage" class="auth-message"></p>
+        <p class="switch-auth-mode">Belum punya akun? <a href="#" id="goToRegister">Buat Akun di sini</a></p>
+    </div>
+
+    <div class="auth-container" id="registerScreen">
+        <h2>Daftar Akun Baru</h2>
+        <div class="input-group">
+            <label for="registerEmail">Email:</label>
+            <input type="email" id="registerEmail" placeholder="Masukkan email Anda" required />
+        </div>
+        <div class="input-group">
+            <label for="registerPassword">Password:</label>
+            <input type="password" id="registerPassword" placeholder="Minimal 6 karakter" required />
+        </div>
+        <div class="button-group">
+            <button id="registerBtn" class="auth-button">Daftar</button>
+        </div>
+        <p id="registerMessage" class="auth-message"></p>
+        <p class="switch-auth-mode">Sudah punya akun? <a href="#" id="goToLogin">Login di sini</a></p>
+    </div>
+
+    <div id="chatListContainer">
+        <div id="chatListHeader">
+            <h1>ZedxChat</h1>
+            <button id="lobbyLogoutBtn">Logout</button>
+            <button id="viewProfileBtn">👤</button>
+        </div>
+        <div id="moneyDisplay">
+            Money: <span id="userMoney">0</span>
+        </div>
+        <div id="chatListContent">
+            </div>
+        <div id="bottomNav">
+            <div class="nav-item active" id="navChat">
+                <i class="fas fa-comment-dots"></i>
+                <span>Chat</span>
+            </div>
+            <div class="nav-item" id="navInventory">
+                <i class="fas fa-box"></i>
+                <span>Inventory</span>
+            </div>
+            <div class="nav-item" id="navGacha">
+                <i class="fas fa-star"></i>
+                <span>Gacha</span>
+            </div>
+            <div class="nav-item" id="navSell">
+                <i class="fas fa-hand-holding-dollar"></i>
+                <span>Sell</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="inventoryPage" class="game-page">
+        <div class="game-page-header">
+            <h2>Inventory</h2>
+        </div>
+        <div id="inventoryGrid">
+            </div>
+    </div>
+
+    <div id="gachaPage" class="game-page">
+        <div class="game-page-header">
+            <h2>Gacha</h2>
+        </div>
+        <div id="gachaPageContent">
+            <div id="gachaResult">
+                <img id="gachaCardImage" src="" alt="Gacha Result" style="display: none;">
+                <div class="card-stars" id="gachaCardStars" style="display: none;"></div>
+            </div>
+            <button id="gachaButton">Gacha Sekarang!</button>
+            <p id="gachaCost">Biaya: 14 Money</p>
+        </div>
+    </div>
+
+    <div id="sellPage" class="game-page">
+        <div class="game-page-header">
+            <h2>Sell Cards</h2>
+        </div>
+        <div id="sellGrid" class="inventory-grid">
+            </div>
+    </div>
+
+    <div id="sellConfirmModal">
+        <p id="sellConfirmText"></p>
+        <div class="button-group">
+            <button id="cancelSellBtn">Tidak</button>
+            <button id="confirmSellBtn">Ya, Jual</button>
+        </div>
+    </div>
+
+
+    <div class="auth-container" id="profileModal" style="display:none;">
+        <h2>Profil Anda</h2>
+        <p>Email: <strong id="profileEmail"></strong></p>
+        <div class="input-group">
+            <label for="profileDisplayName">Nama Pengguna (Username):</label>
+            <input type="text" id="profileDisplayName" placeholder="Atur nama pengguna Anda" required />
+        </div>
+        <button id="saveProfileBtn" style="background-color: #008069; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">Simpan</button>
+        <button onclick="closeProfileModal()" style="background-color: #555; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin-left: 10px;">Tutup</button>
+        <p id="profileMessage" style="margin-top: 10px; color: red;"></p>
+    </div>
+
+    <div id="sidebar">
+        <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
+        <div id="sidebar-menu-list">
+            <ul>
+                <li><a href="#" onclick="openProfileModal()">Profil Saya</a></li>
+                <li><a href="#">Pengaturan Notifikasi</a></li>
+                <li><a href="#">Privasi dan Keamanan</a></li>
+                <li><a href="#">Bantuan</a></li>
+                <li><a href="#">Tentang Aplikasi</a></li>
+                <li><a href="#" onclick="logout()">Logout</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="overlay" id="fullScreenOverlay" onclick="closeNav(); closeProfileModal(); hideMessageContextMenu(); hideCommandSuggestions(); hideSellConfirmModal()"></div>
+
+    <span id="sidebar-toggle" onclick="openNav()">&#9776;</span>
+
+    <div id="main-content">
+        <div id="chat-header">
+            <button id="backToChatListBtn">&#8249;</button> <h2 id="currentChatName"></h2>
+        </div>
+        <div id="chat-container"></div>
+
+        <div id="commandSuggestions">
+            <ul>
+                </ul>
+        </div>
+
+        <div id="reply-preview">
+            <span id="reply-text"></span>
+            <button onclick="cancelReply()" style="background:none;border:none;color:white;font-size:1.5em;">×</button>
+        </div>
+
+        <div id="input-area">
+            <button id="uploadBtn">📎</button>
+            <input type="file" id="fileInput" accept="image/*" style="display:none;" />
+            <textarea id="input" placeholder="Ketik pesan..." rows="1"></textarea>
+            <button id="send">Kirim</button>
+        </div>
+    </div>
+
+    <div id="messageContextMenu">
+        <ul>
+            <li id="contextDelete">Hapus Pesan</li>
+        </ul>
+    </div>
+
+    <div id="toastMessage">Tekan kembali sekali lagi untuk keluar</div>
+
+    <script>
+        // GANTI DENGAN KUNCI API IMGBB ANDA
+        const imgbbKey = "a12e3657b8edd041c13eda8c12ff5925"; // Example key, get yours from imgbb.com/api
+
+        // GANTI DENGAN KONFIGURASI FIREBASE ANDA
+        const firebaseConfig = {
+            apiKey: "AIzaSyCTjBsKdHmmTELY3wnfGYANEzzDBEF2BIo", // Your Firebase API Key
+            authDomain: "realtime-df5d0.firebaseapp.com",
+            databaseURL: "https://realtime-df5d0-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "realtime-df5d0",
+            storageBucket: "realtime-df5d0.appspot.com",
+            messagingSenderId: "1065067984786",
+            appId: "1:1065067984786:web:b315a080932587ec53f34b"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const auth = firebase.auth();
+
+        const PUBLIC_CHAT_ID = "publicChat"; // Fixed ID for the public chat in Firebase DB
+        const REPORT_CHAT_ID = "reportChat"; // Fixed ID for the report chat
+        const GACHA_COST = 14;
+        const TEXT_TO_MONEY_RATE = 100; // 1 money per 100 characters
+
+        let currentLoggedInUser = null; // Firebase User Object, will have .isAdmin property
+        let currentDisplayName = "Anonim"; // Display Name for chat
+        let currentScreen = 'loading'; // Keep track of the current active screen
+        let backButtonPressedOnce = false; // For double-tap to exit logic
+        let backButtonTimeout; // To clear the double-tap timeout
+
+        let currentChatId = null; // Menambahkan variabel untuk melacak chat yang sedang aktif
+        let currentChatListener = null; // Menambahkan variabel untuk melacak listener chat
+
+        // Variables for context menu
+        let currentContextMenuMessage = null; // Stores message data for context menu actions
+
+        // Variables for swipe gesture
+        let initialX = null;
+        let initialY = null;
+        const SWIPE_THRESHOLD = 50; // Minimum horizontal swipe distance to trigger reply
+        const VERTICAL_THRESHOLD = 20; // Maximum vertical deviation for a horizontal swipe
+        let swipedElement = null; // To keep track of the element being swiped
+
+        // Bot Commands
+        const botCommands = [
+            { command: "report", description: "Laporkan pesan atau pengguna yang melanggar aturan." },
+            { command: "help", description: "Dapatkan bantuan dan informasi tentang bot." },
+            { command: "system", description: "Menampilkan informasi simulasi sistem (RAM, CPU, Uptime, Core)." }
+        ];
+
+        // Gacha/Inventory variables
+        let cardData = []; // To store all possible cards from JSON
+        let userCards = {}; // To store user's owned cards (key: firebase_card_id, value: card_object)
+        let selectedCardToSell = null; // Stores the card object being considered for selling
+
+        // --- UI Elements ---
+        // Loading Screen
+        const loadingScreen = document.getElementById("loadingScreen");
+
+        // Auth UI - Separated
+        const loginScreen = document.getElementById("loginScreen");
+        const loginEmailInput = document.getElementById("loginEmail");
+        const loginPasswordInput = document.getElementById("loginPassword");
+        const loginBtn = document.getElementById("loginBtn");
+        const loginMessageEl = document.getElementById("loginMessage");
+        const goToRegisterLink = document.getElementById("goToRegister");
+
+        const registerScreen = document.getElementById("registerScreen");
+        const registerEmailInput = document.getElementById("registerEmail");
+        const registerPasswordInput = document.getElementById("registerPassword");
+        const registerBtn = document.getElementById("registerBtn");
+        const registerMessageEl = document.getElementById("registerMessage");
+        const goToLoginLink = document.getElementById("goToLogin");
+
+        // Chat List (Lobby) UI
+        const chatListContainer = document.getElementById("chatListContainer");
+        const chatListContent = document.getElementById("chatListContent");
+        const lobbyLogoutBtn = document.getElementById("lobbyLogoutBtn");
+        const viewProfileBtn = document.getElementById("viewProfileBtn");
+        const userMoneyEl = document.getElementById("userMoney");
+        const moneyDisplayEl = document.getElementById("moneyDisplay");
+
+        // Bottom Navigation
+        const bottomNav = document.getElementById("bottomNav");
+        const navChat = document.getElementById("navChat");
+        const navInventory = document.getElementById("navInventory");
+        const navGacha = document.getElementById("navGacha");
+        const navSell = document.getElementById("navSell");
+
+        // Inventory Page
+        const inventoryPage = document.getElementById("inventoryPage");
+        const inventoryGrid = document.getElementById("inventoryGrid");
+
+        // Gacha Page
+        const gachaPage = document.getElementById("gachaPage");
+        const gachaButton = document.getElementById("gachaButton");
+        const gachaCardImage = document.getElementById("gachaCardImage");
+        const gachaCardStars = document.getElementById("gachaCardStars");
+        const gachaCostEl = document.getElementById("gachaCost");
+
+        // Sell Page
+        const sellPage = document.getElementById("sellPage");
+        const sellGrid = document.getElementById("sellGrid");
+
+        // Sell Confirmation Modal
+        const sellConfirmModal = document.getElementById("sellConfirmModal");
+        const sellConfirmText = document.getElementById("sellConfirmText");
+        const confirmSellBtn = document.getElementById("confirmSellBtn");
+        const cancelSellBtn = document.getElementById("cancelSellBtn");
+
+        // Profile Modal
+        const profileModal = document.getElementById("profileModal");
+        const profileEmailEl = document.getElementById("profileEmail");
+        const profileDisplayNameInput = document.getElementById("profileDisplayName");
+        const saveProfileBtn = document.getElementById("saveProfileBtn");
+        const profileMessageEl = document.getElementById("profileMessage");
+
+        // Chat Detail UI
+        const mainContent = document.getElementById("main-content");
+        const chatHeader = document.getElementById("chat-header");
+        const backToChatListBtn = document.getElementById("backToChatListBtn");
+        const currentChatNameEl = document.getElementById("currentChatName");
+        const chatContainer = document.getElementById("chat-container");
+        const input_area = document.getElementById("input-area"); /* Mendefinisikan input_area */
+        const input = document.getElementById("input"); /* Ini adalah textarea */
+        const sendBtn = document.getElementById("send");
+        const fileInput = document.getElementById("fileInput");
+        const uploadBtn = document.getElementById("uploadBtn");
+        const replyPreview = document.getElementById("reply-preview");
+        const replyText = document.getElementById("reply-text");
+        const sidebar = document.getElementById("sidebar");
+        const fullScreenOverlay = document.getElementById("fullScreenOverlay");
+        const sidebarToggle = document.getElementById("sidebar-toggle");
+        const root = document.documentElement; /* Untuk mengakses variabel CSS */
+
+        // Context Menu
+        const messageContextMenu = document.getElementById("messageContextMenu");
+        const contextDelete = document.getElementById("contextDelete");
+
+        // Command Suggestions
+        const commandSuggestions = document.getElementById("commandSuggestions");
+        const commandSuggestionsList = commandSuggestions.querySelector("ul");
+
+        // Toast Message
+        const toastMessage = document.getElementById("toastMessage");
+
+        let replyTo = null;
+
+        // --- Fetch Card Data from JSON ---
+        async function fetchCardData() {
+            try {
+                const response = await fetch('https://raw.githubusercontent.com/ikyYourStar/ksr-api/refs/heads/main/ksr.json');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                cardData = await response.json();
+                console.log("Card data loaded:", cardData.length, "cards");
+            } catch (error) {
+                console.error("Failed to fetch card data:", error);
+                showToast("Gagal memuat data kartu. Fitur gacha/inventory mungkin tidak berfungsi.");
+            }
+        }
+
+        // Call fetchCardData when the app initializes
+        fetchCardData();
+
+
+        // --- Screen Navigation Functions ---
+        // This function now manages browser history for proper back button behavior
+        function showScreen(screen, pushState = true, chatId = null) {
+            // Hide all main screens initially
+            loginScreen.style.display = "none";
+            registerScreen.style.display = "none";
+            chatListContainer.style.display = "none";
+            mainContent.style.display = "none";
+            inventoryPage.style.display = "none"; // Hide new pages
+            gachaPage.style.display = "none";    // Hide new pages
+            sellPage.style.display = "none";     // Hide new pages
+            sidebarToggle.style.display = "none";
+            profileModal.style.display = "none";
+            fullScreenOverlay.classList.remove("active");
+            closeNav(); // Ensure sidebar is closed when changing screens
+            hideToast(); // Hide any active toast message
+            hideMessageContextMenu(); // Hide context menu
+            hideCommandSuggestions(); // Hide command suggestions when changing screens
+            hideSellConfirmModal(); // Hide sell confirmation modal
+
+            // Detach previous chat message listener if moving away from chat detail
+            if (currentChatListener) {
+                db.ref(`${currentChatId}/messages`).off('child_added');
+                db.ref(`${currentChatId}/messages`).off('child_changed');
+                currentChatListener = null;
+            }
+
+            // Deactivate all nav items
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            // Hide input area by default, only show for chatDetail
+            input_area.style.display = 'none';
+
+            currentScreen = screen; // Update current screen state
+
+            if (pushState) {
+                // Push the new screen state to browser history
+                history.pushState({ screen: screen, chatId: chatId }, '', `#${screen}${chatId ? '/' + chatId : ''}`);
+            }
+
+            if (screen === 'login') {
+                loginScreen.style.display = "block";
+                loginEmailInput.value = "";
+                loginPasswordInput.value = "";
+                loginMessageEl.textContent = "";
+            } else if (screen === 'register') {
+                registerScreen.style.display = "block";
+                registerEmailInput.value = "";
+                registerPasswordInput.value = "";
+                registerMessageEl.textContent = "";
+            } else if (screen === 'chatList' || screen === 'inventory' || screen === 'gacha' || screen === 'sell') {
+                chatListContainer.style.display = "flex"; // chatListContainer now acts as the main lobby screen host
+                sidebarToggle.style.display = "block";
+                moneyDisplayEl.style.display = "block"; // Always show money display in lobby
+                bottomNav.style.display = "flex"; // Show bottom nav
+
+                // Handle specific sub-screens within the lobby
+                if (screen === 'chatList') {
+                    document.getElementById('chatListContent').style.display = 'block'; // Show chat list
+                    inventoryPage.style.display = 'none';
+                    gachaPage.style.display = 'none';
+                    sellPage.style.display = 'none';
+                    renderChatListItems();
+                    navChat.classList.add('active');
+                } else if (screen === 'inventory') {
+                    document.getElementById('chatListContent').style.display = 'none';
+                    inventoryPage.style.display = 'flex';
+                    gachaPage.style.display = 'none';
+                    sellPage.style.display = 'none';
+                    renderInventory();
+                    navInventory.classList.add('active');
+                } else if (screen === 'gacha') {
+                    document.getElementById('chatListContent').style.display = 'none';
+                    inventoryPage.style.display = 'none';
+                    gachaPage.style.display = 'flex';
+                    sellPage.style.display = 'none';
+                    navGacha.classList.add('active');
+                    // Reset gacha display
+                    gachaCardImage.style.display = 'none';
+                    gachaCardStars.style.display = 'none';
+                    gachaCardImage.src = "";
+                    gachaCardStars.textContent = "";
+                } else if (screen === 'sell') {
+                    document.getElementById('chatListContent').style.display = 'none';
+                    inventoryPage.style.display = 'none';
+                    gachaPage.style.display = 'none';
+                    sellPage.style.display = 'flex';
+                    renderSellPage();
+                    navSell.classList.add('active');
+                }
+            } else if (screen === 'chatDetail') {
+                currentChatId = chatId; // Set chat ID yang sedang aktif
+                mainContent.style.display = "flex";
+                sidebarToggle.style.display = "block";
+                input_area.style.display = 'flex'; // Show input area for chat
+                bottomNav.style.display = "none"; // Hide bottom nav in chat detail
+                moneyDisplayEl.style.display = "none"; // Hide money display in chat detail
+
+                chatContainer.innerHTML = ""; // Clear previous chat messages
+                currentChatNameEl.textContent = (chatId === PUBLIC_CHAT_ID) ? "ZedxChat (Publik)" : "Pesan Laporan Admin"; // Sesuaikan nama header
+                cancelReply(); // Pastikan reply preview bersih saat masuk chat baru
+
+                // Panggil ini agar padding awal sesuai saat layar chat dimuat
+                updateInputAreaHeight();
+
+                // Load initial messages first
+                db.ref(`${currentChatId}/messages`).once('value', (snapshot) => {
+                    chatContainer.innerHTML = ""; // Ensure it's clear before initial load
+                    snapshot.forEach((childSnapshot) => {
+                        renderMessage(childSnapshot.key, childSnapshot.val(), currentChatId);
+                    });
+                    scrollToBottom();
+
+                    // Attach real-time listeners AFTER initial load
+                    // This listener is for new messages
+                    db.ref(`${currentChatId}/messages`).on("child_added", (snap) => {
+                        // Check if the message is already rendered (from initial load)
+                        if (!document.getElementById("msg-" + snap.key)) {
+                            renderMessage(snap.key, snap.val(), currentChatId);
+                        }
+                    });
+
+                    // This listener is for changes to existing messages (e.g., deleted status)
+                    db.ref(`${currentChatId}/messages`).on("child_changed", (snap) => {
+                        // We need to re-render the message completely to apply new styles
+                        // This ensures the "Pesan ini telah dihapus" styling is applied correctly
+                        const existingEl = document.getElementById("msg-" + snap.key);
+                        if (existingEl) {
+                            const scrollAtBottom = chatContainer.scrollHeight - chatContainer.clientHeight <= chatContainer.scrollTop + 50; // Toleransi 50px
+                            existingEl.remove(); // Remove the old element
+                            renderMessage(snap.key, snap.val(), currentChatId); // Re-render with updated data
+                            if (scrollAtBottom) {
+                                scrollToBottom();
+                            }
+                        }
+                    });
+                });
+            }
+
+            // Hide loading screen after the target screen is displayed
+            loadingScreen.style.opacity = 0;
+            setTimeout(() => { loadingScreen.style.display = 'none'; }, 500); // Wait for fade out
+        }
+
+        // --- History Management and Popstate Event Listener ---
+        // Initial pushState to mark the application's start point
+        history.replaceState({ screen: 'loading' }, '', ''); // Replace initial empty state
+
+        window.addEventListener('popstate', (event) => {
+            const targetState = event.state;
+            const targetScreen = targetState ? targetState.screen : null;
+            const targetChatId = targetState ? targetState.chatId : null;
+
+            if (targetState && targetState.sidebarOpen) {
+                closeNav();
+                return;
+            }
+            if (targetState && targetState.profileModalOpen) {
+                closeProfileModal();
+                return;
+            }
+            if (targetState && targetState.sellConfirmModalOpen) {
+                hideSellConfirmModal();
+                return;
+            }
+
+            // Handle back button from lobby screens (chatList, inventory, gacha, sell)
+            if (['chatList', 'inventory', 'gacha', 'sell'].includes(currentScreen)) {
+                if (backButtonPressedOnce) {
+                    clearTimeout(backButtonTimeout);
+                    backButtonPressedOnce = false;
+                    // Allow browser to exit or close app (for PWA/WebView)
+                    // For web, this usually means letting the browser handle its default back action.
+                } else {
+                    showToast("Tekan kembali sekali lagi untuk keluar");
+                    backButtonPressedOnce = true;
+                    // Push current state back to prevent immediate exit
+                    history.pushState({ screen: currentScreen }, '', `#${currentScreen}`);
+                    backButtonTimeout = setTimeout(() => {
+                        backButtonPressedOnce = false;
+                        hideToast();
+                    }, 2000);
+                }
+            } else if (targetScreen) {
+                showScreen(targetScreen, false, targetChatId); // Teruskan chatId saat popstate
+            }
+        });
+
+
+        // --- Toast Message Functions ---
+        function showToast(message) {
+            toastMessage.textContent = message;
+            toastMessage.classList.add('show');
+        }
+
+        function hideToast() {
+            toastMessage.classList.remove('show');
+        }
+
+        // --- Authentication Functions ---
+        loadingScreen.style.display = 'flex'; // Ensure loading screen is visible at start
+
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                currentLoggedInUser = user;
+                // Fetch user data including money and textCount
+                db.ref('users/' + user.uid).once('value')
+                    .then(snapshot => {
+                        const userData = snapshot.val();
+                        if (userData) {
+                            currentDisplayName = userData.displayName || user.email.split('@')[0];
+                            currentLoggedInUser.isAdmin = userData.isAdmin || false; // Set isAdmin property
+                            // Initialize money and textCount if they don't exist
+                            if (typeof userData.money === 'undefined') {
+                                db.ref(`users/${user.uid}/money`).set(0);
+                            }
+                            if (typeof userData.textCount === 'undefined') {
+                                db.ref(`users/${user.uid}/textCount`).set(0);
+                            }
+                        } else {
+                            currentDisplayName = user.email.split('@')[0];
+                            // Initialize new user data
+                            db.ref('users/' + user.uid).set({
+                                displayName: currentDisplayName,
+                                email: user.email,
+                                createdAt: firebase.database.ServerValue.TIMESTAMP,
+                                isAdmin: false,
+                                money: 0,
+                                textCount: 0
+                            });
+                            currentLoggedInUser.isAdmin = false;
+                        }
+                        // Listen for real-time updates to money
+                        db.ref(`users/${user.uid}/money`).on('value', (moneySnap) => {
+                            userMoneyEl.textContent = moneySnap.val() || 0;
+                        });
+
+                        // Listen for user's cards
+                        db.ref(`users/${user.uid}/cards`).on('value', (cardsSnap) => {
+                            userCards = cardsSnap.val() || {};
+                            // You might want to re-render inventory/sell pages if they are active
+                            if (currentScreen === 'inventory') renderInventory();
+                            if (currentScreen === 'sell') renderSellPage();
+                        });
+
+                        showScreen('chatList'); // Go to default lobby screen
+                    })
+                    .catch(error => {
+                        console.error("Error fetching user data:", error);
+                        currentDisplayName = user.email.split('@')[0];
+                        currentLoggedInUser.isAdmin = false; // Assume not admin on error
+                        showScreen('chatList'); // Fallback to chat list even on error
+                    });
+
+            } else {
+                currentLoggedInUser = null;
+                currentDisplayName = "Anonim";
+                showScreen('login'); // Show login screen if not authenticated
+            }
+        });
+
+        // --- Login Logic ---
+        loginBtn.addEventListener("click", () => {
+            const email = loginEmailInput.value.trim();
+            const password = loginPasswordInput.value.trim();
+            if (!email || !password) { loginMessageEl.textContent = "Email dan password harus diisi!"; return; }
+
+            auth.signInWithEmailAndPassword(email, password)
+                .then(() => { loginMessageEl.textContent = "Login berhasil!"; })
+                .catch((error) => {
+                    let errorMessage = "Login gagal.";
+                    if (error.code === 'auth/wrong-password') errorMessage = "Password salah.";
+                    else if (error.code === 'auth/user-not-found') errorMessage = "Pengguna tidak ditemukan.";
+                    else if (error.code === 'auth/invalid-email') errorMessage = "Format email tidak valid.";
+                    loginMessageEl.textContent = errorMessage + " (" + error.message + ")";
+                    console.error("Login Error:", error);
+                });
+        });
+
+        goToRegisterLink.addEventListener("click", (e) => {
+            e.preventDefault(); // Prevent page reload
+            showScreen('register');
+        });
+
+        // --- Register Logic ---
+        registerBtn.addEventListener("click", () => {
+            const email = registerEmailInput.value.trim();
+            const password = registerPasswordInput.value.trim();
+            if (!email || !password) { registerMessageEl.textContent = "Email dan password harus diisi!"; return; }
+            if (password.length < 6) { registerMessageEl.textContent = "Password minimal 6 karakter!"; return; }
+
+            auth.createUserWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    const defaultDisplayName = email.split('@')[0];
+                    return db.ref('users/' + userCredential.user.uid).set({
+                        email: email,
+                        displayName: defaultDisplayName,
+                        createdAt: firebase.database.ServerValue.TIMESTAMP,
+                        isAdmin: false, // Default to false for new registrations
+                        money: 0,       // Initialize money for new users
+                        textCount: 0    // Initialize textCount for new users
+                    }).then(() => {
+                        registerMessageEl.textContent = "Pendaftaran berhasil! Nama pengguna Anda diatur sebagai '" + defaultDisplayName + "'. Silakan login.";
+                        registerPasswordInput.value = ""; // Clear password for security
+                        setTimeout(() => showScreen('login'), 2000); // Auto-redirect to login after successful registration
+                    });
+                })
+                .catch((error) => {
+                    let errorMessage = "Pendaftaran gagal.";
+                    if (error.code === 'auth/email-already-in-use') errorMessage = "Email ini sudah terdaftar. Silakan login atau gunakan email lain.";
+                    else if (error.code === 'auth/invalid-email') errorMessage = "Format email tidak valid.";
+                    else if (error.code === 'auth/weak-password') errorMessage = "Password terlalu lemah (minimal 6 karakter).";
+                    registerMessageEl.textContent = errorMessage + " (" + error.message + ")";
+                    console.error("Register Error:", error);
+                });
+        });
+
+        // --- Chat List & Message Rendering ---
+
+        function renderChatListItems() {
+            chatListContent.innerHTML = ''; // Clear existing items
+            chatListContent.style.display = 'block'; // Ensure chat list content is visible
+
+            // Add Public Chat item
+            const publicChatDiv = document.createElement('div');
+            publicChatDiv.className = 'chat-list-item';
+            publicChatDiv.onclick = () => showScreen('chatDetail', true, PUBLIC_CHAT_ID);
+            publicChatDiv.innerHTML = `
+                <div class="chat-avatar">Z</div>
+                <div class="chat-info">
+                    <div class="chat-name">ZedxChat (Publik)</div>
+                    <div class="chat-last-message" id="publicChatLastMsg">Memuat...</div>
+                </div>
+                <div class="chat-time" id="publicChatLastTime"></div>
+            `;
+            chatListContent.appendChild(publicChatDiv);
+
+            // Add a listener for the last message in public chat
+            db.ref(`${PUBLIC_CHAT_ID}/messages`).orderByKey().limitToLast(1).on('child_added', snap => {
+                const msgData = snap.val();
+                document.getElementById('publicChatLastMsg').textContent = msgData.text || (msgData.imageUrl ? "Gambar" : "");
+                document.getElementById('publicChatLastTime').textContent = formatTime(msgData.timestamp);
+            });
+
+            // Add Report Chat item if user is admin
+            if (currentLoggedInUser && currentLoggedInUser.isAdmin) {
+                const reportChatDiv = document.createElement('div');
+                reportChatDiv.className = 'chat-list-item';
+                // Styling khusus untuk report chat
+                reportChatDiv.innerHTML = `
+                    <div class="chat-avatar" style="background-color: #ff0000; font-size: 1.8em;">!</div>
+                    <div class="chat-info">
+                        <div class="chat-name" style="color: #ff6b6b;">Pesan Laporan Admin</div>
+                        <div class="chat-last-message" id="reportChatLastMsg">Tidak ada laporan baru</div>
+                    </div>
+                    <div class="chat-time" id="reportChatLastTime"></div>
+                `;
+                // Gunakan addEventListener untuk menghindari masalah jika Anda ingin menambahkan lebih banyak event
+                reportChatDiv.addEventListener('click', () => showScreen('chatDetail', true, REPORT_CHAT_ID));
+                chatListContent.appendChild(reportChatDiv);
+
+                // Add a listener for the last message in report chat
+                db.ref(`${REPORT_CHAT_ID}/messages`).orderByKey().limitToLast(1).on('child_added', snap => {
+                    const msgData = snap.val();
+                    document.getElementById('reportChatLastMsg').textContent = `Dari ${msgData.sender}: ${msgData.text}`;
+                    document.getElementById('reportChatLastTime').textContent = formatTime(msgData.timestamp);
+                });
+            }
+        }
+
+        // Fungsi renderMessage yang diperbarui untuk mendukung balasan dan gambar
+        function renderMessage(key, val, chatRef) {
+            const msgDivId = "msg-" + key;
+            let msgDiv = document.getElementById(msgDivId);
+            const isNewMessage = !msgDiv; // Check if the message element already exists
+
+            if (isNewMessage) {
+                msgDiv = document.createElement('div');
+                msgDiv.id = msgDivId;
+                msgDiv.classList.add('msg');
+                chatContainer.appendChild(msgDiv);
+            } else {
+                // Clear existing content if message is being re-rendered (e.g., from child_changed)
+                msgDiv.innerHTML = '';
+                // Remove previous event listeners to avoid duplicates
+                // Note: Re-attaching listeners is crucial here.
+                msgDiv.removeEventListener('contextmenu', msgDiv.contextMenuHandler);
+                msgDiv.removeEventListener('touchstart', msgDiv.touchStartHandler);
+                msgDiv.removeEventListener('touchmove', msgDiv.touchMoveHandler);
+                msgDiv.removeEventListener('touchend', msgDiv.touchEndHandler);
+                msgDiv.removeEventListener('touchstart', msgDiv.longPressStartHandler);
+                msgDiv.removeEventListener('touchend', msgDiv.longPressEndHandler);
+                msgDiv.removeEventListener('touchmove', msgDiv.longPressMoveHandler);
+
+                // Reset classes before applying new ones, especially for deleted state
+                msgDiv.classList.remove('own', 'other', 'deleted-message');
+                msgDiv.style.backgroundColor = ''; // Clear custom background
+                msgDiv.style.opacity = ''; // Clear custom opacity
+                msgDiv.style.fontStyle = ''; // Clear custom font style
+                msgDiv.style.transform = 'translateX(0px)'; // Reset any swipe position
+            }
+
+            // Set class based on sender (own, other, or bot)
+            const isOwn = val.senderUid === currentLoggedInUser.uid;
+            const isBot = val.sender === "ZedxBot";
+
+            if (isOwn) {
+                msgDiv.classList.add('own');
+            } else if (isBot) {
+                msgDiv.classList.add('other'); // Bot messages appear as "other"
+                msgDiv.style.backgroundColor = '#303f4a'; // Slightly different background for bot
+                msgDiv.style.fontStyle = 'italic';
+            } else {
+                msgDiv.classList.add('other');
+            }
+
+            // --- MODIFIKASI: Penanganan pesan terhapus ---
+            if (val.deleted) {
+                msgDiv.classList.add('deleted-message');
+                msgDiv.innerHTML = `
+                    <span style="font-style: italic;">Pesan ini telah dihapus.</span>
+                    <span class="time">${formatTime(val.timestamp)}</span>
+                `;
+                // If it's a deleted message, we don't need context menu or swipe.
+                // The class `deleted-message` will override `own`/`other` background, but
+                // `own`/`other` should still be present to maintain alignment (margin auto).
+                if (replyTo && msgDivId === replyTo.id) {
+                    cancelReply();
+                }
+                scrollToBottom();
+                return; // Stop further rendering for deleted messages
+            }
+            // --- AKHIR MODIFIKASI: Penanganan pesan terhapus ---
+
+            // Handlers for swipe gesture (extracted to named functions for easy removal)
+            const handleTouchStart = (e) => {
+                if (e.touches.length === 1) {
+                    initialX = e.touches[0].clientX;
+                    initialY = e.touches[0].clientY;
+                    swipedElement = msgDiv;
+                    msgDiv.style.transition = 'transform 0.1s ease-out';
+                }
+            };
+
+            const handleTouchMove = (e) => {
+                if (initialX === null || swipedElement !== msgDiv || e.touches.length === 0) return;
+
+                const currentX = e.touches[0].clientX;
+                const currentY = e.touches[0].clientY;
+
+                const diffX = currentX - initialX;
+                const diffY = currentY - initialY;
+
+                if (Math.abs(diffY) < VERTICAL_THRESHOLD) {
+                    if (diffX > 0) {
+                        msgDiv.style.transform = `translateX(${Math.min(diffX, SWIPE_THRESHOLD * 0.7)}px)`;
+                    } else {
+                        msgDiv.style.transform = `translateX(0px)`;
+                    }
+                } else {
+                    msgDiv.style.transform = `translateX(0px)`;
+                    initialX = null;
+                    initialY = null;
+                    swipedElement = null;
+                }
+            };
+
+            const handleTouchEnd = (e) => {
+                if (initialX === null || swipedElement !== msgDiv) return;
+
+                const currentX = e.changedTouches[0].clientX;
+                const diffX = currentX - initialX;
+
+                msgDiv.style.transform = `translateX(0px)`;
+
+                if (diffX > SWIPE_THRESHOLD) {
+                    startReply(key, val.text, val.sender, val.senderUid);
+                }
+
+                initialX = null;
+                initialY = null;
+                swipedElement = null;
+            };
+
+            // Storing handlers on the element itself to easily remove them later
+            msgDiv.contextMenuHandler = (e) => { e.preventDefault(); showContextMenu(e, key, val, chatRef); };
+            msgDiv.touchStartHandler = handleTouchStart;
+            msgDiv.touchMoveHandler = handleTouchMove;
+            msgDiv.touchEndHandler = handleTouchEnd;
+
+            // Add long press/right click listener to show context menu (ONLY for Delete)
+            if (chatRef === PUBLIC_CHAT_ID) {
+                 msgDiv.addEventListener('contextmenu', msgDiv.contextMenuHandler);
+                 let touchTimeout;
+                 msgDiv.longPressStartHandler = (e) => {
+                    touchTimeout = setTimeout(() => {
+                        e.preventDefault();
+                        showContextMenu(e, key, val, chatRef);
+                    }, 500);
+                 };
+                 msgDiv.longPressEndHandler = () => {
+                    clearTimeout(touchTimeout);
+                 };
+                 msgDiv.longPressMoveHandler = () => {
+                    clearTimeout(touchTimeout);
+                 };
+
+                 msgDiv.addEventListener('touchstart', msgDiv.longPressStartHandler, { passive: true }); // Make touchstart passive to avoid blocking scroll if not long press
+                 msgDiv.addEventListener('touchend', msgDiv.longPressEndHandler);
+                 msgDiv.addEventListener('touchmove', msgDiv.longPressMoveHandler);
+            }
+
+            // --- SWIPE GESTURE FOR REPLY ---
+            // Only enable swipe reply for public chat, and not for bot messages
+            if (chatRef === PUBLIC_CHAT_ID && !isBot) {
+                msgDiv.addEventListener('touchstart', msgDiv.touchStartHandler, { passive: true });
+                msgDiv.addEventListener('touchmove', msgDiv.touchMoveHandler, { passive: true });
+                msgDiv.addEventListener('touchend', msgDiv.touchEndHandler);
+            }
+            // --- END SWIPE GESTURE ---
+
+            if (val.replyTo) {
+                const replyEl = document.createElement('div');
+                replyEl.classList.add('reply');
+                replyEl.textContent = `Membalas ${val.replyTo.sender}: ${val.replyTo.text}`;
+                msgDiv.appendChild(replyEl);
+            }
+
+            const messageContent = document.createElement('span');
+            messageContent.textContent = val.text;
+            msgDiv.appendChild(messageContent);
+
+            if (val.imageUrl) {
+                const img = document.createElement('img');
+                img.src = val.imageUrl;
+                img.alt = "Gambar terkirim";
+                img.onload = () => scrollToBottom(); // Scroll once image is loaded
+                msgDiv.appendChild(img);
+            }
+
+            const timeSpan = document.createElement('span');
+            timeSpan.classList.add('time');
+            timeSpan.textContent = formatTime(val.timestamp);
+            msgDiv.appendChild(timeSpan);
+
+            // Menambahkan nama pengirim untuk pesan yang bukan dari user sendiri dan bukan bot
+            if (!isOwn && !isBot) {
+                const senderNameSpan = document.createElement('span');
+                senderNameSpan.classList.add('sender-name'); // Tambahkan kelas untuk styling
+                senderNameSpan.textContent = val.sender + ": "; // Tampilkan nama pengirim
+                messageContent.prepend(senderNameSpan); // Masukkan di depan teks pesan
+            }
+
+            scrollToBottom();
+        }
+
+        // --- Message Context Menu Logic ---
+        function showContextMenu(event, msgKey, msgVal, chatRef) {
+            currentContextMenuMessage = { key: msgKey, val: msgVal, chatRef: chatRef };
+
+            // Determine if delete option should be shown
+            const isOwnMessage = msgVal.senderUid === currentLoggedInUser.uid;
+            const isAdmin = currentLoggedInUser.isAdmin;
+            const canDelete = isOwnMessage || isAdmin; // User can delete own, admin can delete any
+
+            // Hide/show delete option
+            contextDelete.style.display = canDelete ? 'block' : 'none';
+
+            // Position the context menu
+            messageContextMenu.style.left = `${event.clientX}px`;
+            messageContextMenu.style.top = `${event.clientY}px`;
+            messageContextMenu.style.display = 'block';
+
+            // Ensure menu stays within viewport
+            const rect = messageContextMenu.getBoundingClientRect();
+            if (rect.bottom > window.innerHeight) {
+                messageContextMenu.style.top = `${event.clientY - rect.height}px`;
+            }
+            if (rect.right > window.innerWidth) {
+                messageContextMenu.style.left = `${event.clientX - rect.width}px`;
+            }
+
+            // Show overlay to close menu on outside click
+            fullScreenOverlay.classList.add('active');
+        }
+
+        function hideMessageContextMenu() {
+            messageContextMenu.style.display = 'none';
+            fullScreenOverlay.classList.remove('active');
+            // currentContextMenuMessage = null; // Don't clear immediately, clear it in the delete action or after a delay
+        }
+
+        // Add listeners for context menu items
+        contextDelete.addEventListener('click', () => {
+            if (currentContextMenuMessage && currentContextMenuMessage.chatRef === PUBLIC_CHAT_ID && currentContextMenuMessage.key) { // Ensure key exists
+                // Confirm deletion
+                if (confirm("Apakah Anda yakin ingin menghapus pesan ini?")) {
+                    // Update the 'deleted' property in Firebase
+                    db.ref(`${PUBLIC_CHAT_ID}/messages/${currentContextMenuMessage.key}`).update({ deleted: true })
+                        .then(() => {
+                            showToast("Pesan berhasil dihapus.");
+                            console.log("Pesan dihapus:", currentContextMenuMessage.key);
+                            currentContextMenuMessage = null; // Clear after successful action
+                        })
+                        .catch(error => {
+                            showToast("Gagal menghapus pesan: " + error.message);
+                            console.error("Error deleting message:", error);
+                            currentContextMenuMessage = null; // Clear even on error
+                        });
+                }
+            } else {
+                 showToast("Hapus hanya tersedia untuk chat publik atau pesan tidak valid.");
+                 console.error("Attempted to delete with invalid currentContextMenuMessage:", currentContextMenuMessage);
+                 currentContextMenuMessage = null; // Clear if it was somehow invalid
+            }
+            hideMessageContextMenu();
+        });
+
+        // Close context menu if clicked outside
+        document.addEventListener('click', (e) => {
+            if (!messageContextMenu.contains(e.target) && messageContextMenu.style.display === 'block') {
+                hideMessageContextMenu();
+            }
+        });
+
+        // --- Fungsi untuk format waktu ---
+        function formatTime(timestamp) {
+            if (!timestamp) return '';
+            const date = new Date(timestamp);
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            return `${hours}:${minutes}`;
+        }
+
+        function scrollToBottom() {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // --- Reply Functions ---
+        function startReply(msgId, msgText, senderName, senderUid) {
+            replyTo = {
+                id: msgId, // Already "msg-" + key, so just use msgId directly
+                text: msgText,
+                sender: senderName,
+                senderUid: senderUid
+            };
+            replyText.textContent = `Membalas ${senderName}: ${msgText}`;
+            replyPreview.style.display = 'flex';
+            updateInputAreaHeight(); // Adjust input area height
+            input.focus();
+        }
+
+        function cancelReply() {
+            replyTo = null;
+            replyPreview.style.display = 'none';
+            updateInputAreaHeight(); // Adjust input area height back
+        }
+
+        // --- Dynamic Input Area Height Adjustment ---
+        function updateInputAreaHeight() {
+            // Reset height to calculate scrollHeight correctly
+            input.style.height = 'auto';
+            // Set min height to default for one row
+            let newHeight = input.scrollHeight;
+
+            // Constrain the height to max 150px
+            if (newHeight > 150) {
+                newHeight = 150;
+            }
+
+            input.style.height = `${newHeight}px`;
+
+            // Calculate total input area height
+            const inputAreaComputedStyle = window.getComputedStyle(input_area);
+            const inputAreaPaddingTop = parseFloat(inputAreaComputedStyle.paddingTop);
+            const inputAreaPaddingBottom = parseFloat(inputAreaComputedStyle.paddingBottom);
+
+            let totalHeight = newHeight + inputAreaPaddingTop + inputAreaPaddingBottom;
+            totalHeight += 10; // Small extra buffer
+
+            if (replyPreview.style.display === 'flex') {
+                totalHeight += parseFloat(getComputedStyle(root).getPropertyValue('--reply-preview-height'));
+            }
+
+            root.style.setProperty('--input-area-total-height', `${totalHeight}px`);
+            if (currentChatId) scrollToBottom(); // Only scroll if in chat detail
+        }
+
+        input.addEventListener('input', updateInputAreaHeight);
+        input.addEventListener('focus', updateInputAreaHeight);
+
+
+        // --- Send Message and Upload Logic ---
+        sendBtn.addEventListener("click", () => {
+            const text = input.value.trim();
+            if (text === "" && !fileInput.files[0]) return; // No text and no image
+
+            const messageData = {
+                sender: currentDisplayName,
+                senderUid: currentLoggedInUser.uid,
+                timestamp: firebase.database.ServerValue.TIMESTAMP
+            };
+
+            if (replyTo) {
+                messageData.replyTo = {
+                    id: replyTo.id,
+                    text: replyTo.text,
+                    sender: replyTo.sender,
+                    senderUid: replyTo.senderUid
+                };
+            }
+
+            // --- Update text count for money earning ---
+            if (currentLoggedInUser) {
+                const charCount = text.length;
+                db.ref(`users/${currentLoggedInUser.uid}/textCount`).transaction((currentTextCount) => {
+                    const newTextCount = (currentTextCount || 0) + charCount;
+                    const moneyToAdd = Math.floor(newTextCount / TEXT_TO_MONEY_RATE) - Math.floor((currentTextCount || 0) / TEXT_TO_MONEY_RATE);
+                    if (moneyToAdd > 0) {
+                        db.ref(`users/${currentLoggedInUser.uid}/money`).transaction((currentMoney) => {
+                            return (currentMoney || 0) + moneyToAdd;
+                        }, (error, committed, snapshot) => {
+                            if (error) {
+                                console.error("Money transaction failed:", error);
+                            } else if (committed) {
+                                showToast(`Anda mendapatkan ${moneyToAdd} Money!`);
+                            }
+                        });
+                    }
+                    return newTextCount;
+                });
+            }
+
+
+            // --- MODIFIKASI: Penanganan perintah bot ---
+            if (text.startsWith("-report ")) {
+                if (currentChatId !== PUBLIC_CHAT_ID) {
+                    showToast("Perintah -report hanya bisa digunakan di ZedxChat (Publik).");
+                    input.value = "";
+                    cancelReply();
+                    return;
+                }
+                const reportText = text.substring("-report ".length).trim();
+                if (reportText === "") {
+                    showToast("Pesan laporan tidak boleh kosong!");
+                    input.value = "";
+                    cancelReply();
+                    return;
+                }
+
+                db.ref(`${REPORT_CHAT_ID}/messages`).push({
+                    ...messageData,
+                    text: reportText,
+                    originalSenderEmail: currentLoggedInUser.email
+                }).then(() => {
+                    console.log("Pesan laporan dikirim!");
+                    db.ref(`${PUBLIC_CHAT_ID}/messages`).push({
+                        ...messageData,
+                        text: text
+                    }).then((publicMessageRef) => {
+                        db.ref(`${PUBLIC_CHAT_ID}/messages`).push({
+                            sender: "ZedxBot",
+                            senderUid: "zedxbot_uid",
+                            text: "Pesan Anda telah kami terima dan akan dikirim ke admin. Mohon tunggu yaa.",
+                            timestamp: firebase.database.ServerValue.TIMESTAMP,
+                            replyTo: {
+                                id: publicMessageRef.key,
+                                text: text,
+                                sender: currentDisplayName,
+                                senderUid: currentLoggedInUser.uid
+                            }
+                        });
+                    }).catch(error => {
+                        console.error("Gagal mengirim pesan publik asli atau bot reply:", error);
+                        showToast("Gagal mengirim laporan atau notifikasi: " + error.message);
+                    });
+                }).catch(error => {
+                    console.error("Gagal mengirim pesan laporan ke admin:", error);
+                    showToast("Gagal mengirim laporan: " + error.message);
+                });
+            }
+            else if (text.startsWith("-help")) {
+                if (currentChatId !== PUBLIC_CHAT_ID) {
+                    showToast("Perintah -help hanya bisa digunakan di ZedxChat (Publik).");
+                    input.value = "";
+                    cancelReply();
+                    return;
+                }
+                db.ref(`${PUBLIC_CHAT_ID}/messages`).push({
+                    ...messageData,
+                    text: text
+                }).then((publicMessageRef) => {
+                    const helpMessage = "Halo! Berikut beberapa perintah yang bisa Anda gunakan:\n" +
+                                        "-report [pesan] : Laporkan pesan atau pengguna.\n" +
+                                        "-help : Menampilkan daftar perintah ini.\n" +
+                                        "-system : Menampilkan informasi simulasi sistem.";
+                    db.ref(`${PUBLIC_CHAT_ID}/messages`).push({
+                        sender: "ZedxBot",
+                        senderUid: "zedxbot_uid",
+                        text: helpMessage,
+                        timestamp: firebase.database.ServerValue.TIMESTAMP,
+                        replyTo: {
+                            id: publicMessageRef.key,
+                            text: text,
+                            sender: currentDisplayName,
+                            senderUid: currentLoggedInUser.uid
+                        }
+                    });
+                }).catch(error => {
+                    console.error("Gagal mengirim pesan -help atau bot reply:", error);
+                    showToast("Gagal memproses perintah help: " + error.message);
+                });
+            }
+            else if (text.startsWith("-system")) {
+                if (currentChatId !== PUBLIC_CHAT_ID) {
+                    showToast("Perintah -system hanya bisa digunakan di ZedxChat (Publik).");
+                    input.value = "";
+                    cancelReply();
+                    return;
+                }
+                db.ref(`${PUBLIC_CHAT_ID}/messages`).push({
+                    ...messageData,
+                    text: text
+                }).then((publicMessageRef) => {
+                    const ram = (Math.random() * (8 - 2) + 2).toFixed(1);
+                    const cpu = (Math.random() * (90 - 10) + 10).toFixed(0);
+                    const uptimeHours = Math.floor(Math.random() * 24 * 7);
+                    const uptimeMinutes = Math.floor(Math.random() * 60);
+                    const cores = Math.floor(Math.random() * (16 - 2) + 2);
+
+                    const systemInfoMessage = `Status Sistem ZedxChat (Simulasi):\n` +
+                                              `RAM Terpakai: ${ram} GB\n` +
+                                              `CPU Usage: ${cpu}%\n` +
+                                              `Uptime: ${uptimeHours} jam ${uptimeMinutes} menit\n` +
+                                              `Core CPU: ${cores} core`;
+
+                    db.ref(`${PUBLIC_CHAT_ID}/messages`).push({
+                        sender: "ZedxBot",
+                        senderUid: "zedxbot_uid",
+                        text: systemInfoMessage,
+                        timestamp: firebase.database.ServerValue.TIMESTAMP,
+                        replyTo: {
+                            id: publicMessageRef.key,
+                            text: text,
+                            sender: currentDisplayName,
+                            senderUid: currentLoggedInUser.uid
+                        }
+                    });
+                }).catch(error => {
+                    console.error("Gagal mengirim pesan -system atau bot reply:", error);
+                    showToast("Gagal memproses perintah sistem: " + error.message);
+                });
+            }
+            else {
+                // Normal message logic
+                if (!currentChatId) { // Prevent sending if no chat is active
+                    showToast("Tidak ada chat yang aktif.");
+                    return;
+                }
+                if (fileInput.files[0]) {
+                    uploadImage(fileInput.files[0], (imageUrl) => {
+                        db.ref(`${currentChatId}/messages`).push({
+                            ...messageData,
+                            text: text,
+                            imageUrl: imageUrl
+                        });
+                        fileInput.value = ""; // Clear file input after sending
+                    });
+                } else {
+                    db.ref(`${currentChatId}/messages`).push({
+                        ...messageData,
+                        text: text
+                    });
+                }
+            }
+
+            input.value = ""; // Clear input after sending
+            cancelReply(); // Clear reply preview
+            hideCommandSuggestions(); // Hide suggestions after sending
+        });
+
+        uploadBtn.addEventListener("click", () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener("change", (event) => {
+            if (event.target.files.length > 0) {
+                showToast("Gambar siap dikirim!");
+                // You might want to preview the image here
+            }
+        });
+
+        function uploadImage(file, callback) {
+            if (!imgbbKey) {
+                showToast("Kunci ImgBB tidak dikonfigurasi. Unggah gambar dinonaktifkan.");
+                console.error("ImgBB API Key is not set. Image upload will not work.");
+                return;
+            }
+
+            showToast("Mengunggah gambar...");
+            const formData = new FormData();
+            formData.append("image", file);
+
+            fetch(`https://api.imgbb.com/1/upload?key=${imgbbKey}`, {
+                    method: "POST",
+                    body: formData,
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.data && data.data.url) {
+                        callback(data.data.url);
+                        showToast("Gambar berhasil diunggah!");
+                    } else {
+                        console.error("ImgBB upload error:", data);
+                        showToast("Gagal mengunggah gambar.");
+                    }
+                })
+                .catch(error => {
+                    console.error("ImgBB fetch error:", error);
+                    showToast("Gagal mengunggah gambar.");
+                });
+        }
+
+
+        // --- Sidebar Functions ---
+        function openNav() {
+            sidebar.classList.add('open');
+            fullScreenOverlay.classList.add('active');
+            history.pushState({ screen: currentScreen, sidebarOpen: true, chatId: currentChatId }, '', window.location.hash);
+        }
+
+        function closeNav() {
+            sidebar.classList.remove('open');
+            fullScreenOverlay.classList.remove('active');
+            if (history.state && history.state.sidebarOpen) {
+                history.back();
+            }
+        }
+
+        // --- Profile Modal Functions ---
+        function openProfileModal() {
+            if (currentLoggedInUser) {
+                profileEmailEl.textContent = currentLoggedInUser.email;
+                profileDisplayNameInput.value = currentDisplayName;
+                profileModal.style.display = 'block';
+                fullScreenOverlay.classList.add('active');
+                history.pushState({ screen: currentScreen, profileModalOpen: true, chatId: currentChatId }, '', window.location.hash);
+            }
+        }
+
+        function closeProfileModal() {
+            profileModal.style.display = 'none';
+            fullScreenOverlay.classList.remove('active');
+            profileMessageEl.textContent = "";
+            if (history.state && history.state.profileModalOpen) {
+                history.back();
+            }
+        }
+
+        saveProfileBtn.addEventListener("click", () => {
+            const newDisplayName = profileDisplayNameInput.value.trim();
+            if (newDisplayName && currentLoggedInUser) {
+                db.ref('users/' + currentLoggedInUser.uid).update({ displayName: newDisplayName })
+                    .then(() => {
+                        currentDisplayName = newDisplayName;
+                        profileMessageEl.textContent = "Nama pengguna berhasil disimpan!";
+                        profileMessageEl.style.color = 'green';
+                        setTimeout(closeProfileModal, 1500); // Close after a short delay
+                    })
+                    .catch(error => {
+                        profileMessageEl.textContent = "Gagal menyimpan nama pengguna: " + error.message;
+                        profileMessageEl.style.color = 'red';
+                        console.error("Error saving display name:", error);
+                    });
+            } else {
+                profileMessageEl.textContent = "Nama pengguna tidak boleh kosong.";
+                profileMessageEl.style.color = 'red';
+            }
+        });
+
+        viewProfileBtn.addEventListener("click", openProfileModal);
+
+        // --- Logout Function ---
+        function logout() {
+            auth.signOut()
+                .then(() => {
+                    console.log("User signed out.");
+                    showToast("Anda telah logout.");
+                })
+                .catch((error) => {
+                    console.error("Logout Error:", error);
+                    showToast("Gagal logout: " + error.message);
+                });
+        }
+
+        lobbyLogoutBtn.addEventListener("click", logout);
+
+        backToChatListBtn.addEventListener("click", () => {
+            history.back();
+        });
+
+        // Event listener for profile modal/sidebar/context menu/command suggestions closing via overlay
+        fullScreenOverlay.addEventListener("click", (e) => {
+            if (profileModal.style.display === 'block') {
+                closeProfileModal();
+            }
+            if (sidebar.classList.contains('open')) {
+                closeNav();
+            }
+            if (messageContextMenu.style.display === 'block') {
+                hideMessageContextMenu();
+            }
+            if (commandSuggestions.style.display === 'block' && !commandSuggestions.contains(e.target)) {
+                 hideCommandSuggestions();
+            }
+            if (sellConfirmModal.style.display === 'block') { // New: close sell confirm modal
+                hideSellConfirmModal();
+            }
+        });
+
+        // --- MODIFIKASI: Bot Command Suggestions Logic ---
+        function showCommandSuggestions(query) {
+            commandSuggestionsList.innerHTML = '';
+            const filteredCommands = botCommands.filter(cmd =>
+                cmd.command.startsWith(query.substring(1))
+            );
+
+            if (filteredCommands.length > 0 && currentChatId === PUBLIC_CHAT_ID) {
+                filteredCommands.forEach(cmd => {
+                    const listItem = document.createElement('li');
+                    listItem.innerHTML = `<b>-${cmd.command}</b> - ${cmd.description}`;
+                    listItem.addEventListener('click', () => {
+                        input.value = `-${cmd.command} `;
+                        hideCommandSuggestions();
+                        input.focus();
+                        updateInputAreaHeight();
+                    });
+                    commandSuggestionsList.appendChild(listItem);
+                });
+                commandSuggestions.style.display = 'block';
+            } else {
+                hideCommandSuggestions();
+            }
+        }
+
+        function hideCommandSuggestions() {
+            commandSuggestions.style.display = 'none';
+        }
+
+        input.addEventListener('input', () => {
+            const text = input.value;
+            if (text.startsWith('-')) {
+                showCommandSuggestions(text);
+            } else {
+                hideCommandSuggestions();
+            }
+            updateInputAreaHeight();
+        });
+
+        input.addEventListener('blur', () => {
+            setTimeout(() => {
+                if (!commandSuggestions.contains(document.activeElement)) {
+                    hideCommandSuggestions();
+                }
+            }, 100);
+        });
+
+        // --- NEW: Bottom Navigation Logic ---
+        navChat.addEventListener('click', () => showScreen('chatList'));
+        navInventory.addEventListener('click', () => showScreen('inventory'));
+        navGacha.addEventListener('click', () => showScreen('gacha'));
+        navSell.addEventListener('click', () => showScreen('sell'));
+
+        // --- NEW: Gacha Logic ---
+        gachaButton.addEventListener('click', () => {
+            if (!currentLoggedInUser) {
+                showToast("Anda harus login untuk melakukan gacha.");
+                return;
+            }
+
+            db.ref(`users/${currentLoggedInUser.uid}/money`).transaction((currentMoney) => {
+                if (currentMoney === null) currentMoney = 0; // Initialize if null
+                if (currentMoney < GACHA_COST) {
+                    showToast("Money tidak cukup untuk gacha! Butuh 14 Money.");
+                    return undefined; // Abort the transaction
+                }
+                return currentMoney - GACHA_COST;
+            }, (error, committed, snapshot) => {
+                if (error) {
+                    console.error("Gacha money transaction failed:", error);
+                    showToast("Gagal melakukan gacha: " + error.message);
+                } else if (committed) {
+                    showToast("Gacha berhasil! Mengambil kartu...");
+                    performGacha();
+                }
+            });
+        });
+
+        function performGacha() {
+            if (cardData.length === 0) {
+                showToast("Data kartu belum dimuat. Coba lagi nanti.");
+                return;
+            }
+
+            // Simple random selection for now. You might implement rarity logic later.
+            const randomIndex = Math.floor(Math.random() * cardData.length);
+            const drawnCard = cardData[randomIndex];
+
+            if (drawnCard) {
+                // Save the drawn card to user's inventory in Firebase
+                db.ref(`users/${currentLoggedInUser.uid}/cards`).push(drawnCard)
+                    .then(() => {
+                        console.log("Card added to inventory:", drawnCard.nama);
+                        showToast(`Selamat! Anda mendapatkan ${drawnCard.nama}!`);
+                        displayGachaResult(drawnCard);
+                    })
+                    .catch(error => {
+                        console.error("Failed to save card to inventory:", error);
+                        showToast("Gagal menyimpan kartu ke inventori.");
+                    });
+            } else {
+                showToast("Gagal mendapatkan kartu. Coba lagi.");
+            }
+        }
+
+        function displayGachaResult(card) {
+            gachaCardImage.src = card.ibb;
+            gachaCardStars.textContent = card.bint;
+            gachaCardImage.style.display = 'block';
+            gachaCardStars.style.display = 'block';
+        }
+
+        // --- NEW: Inventory Logic ---
+        function renderInventory() {
+            inventoryGrid.innerHTML = ''; // Clear current inventory display
+            const cardsArray = Object.values(userCards); // Convert object of cards to array
+            if (cardsArray.length === 0) {
+                inventoryGrid.innerHTML = '<p style="text-align: center; color: #aebac1; margin-top: 50px;">Inventori Anda kosong. Lakukan gacha untuk mendapatkan kartu!</p>';
+                return;
+            }
+
+            cardsArray.forEach(card => {
+                const cardEl = document.createElement('div');
+                cardEl.className = 'card-item';
+                cardEl.innerHTML = `
+                    <img src="${card.ibb}" alt="${card.nama}">
+                    <div class="card-stars">${card.bint}</div>
+                `;
+                // No click handler for inventory, just display
+                inventoryGrid.appendChild(cardEl);
+            });
+        }
+
+        // --- NEW: Sell Logic ---
+        function renderSellPage() {
+            sellGrid.innerHTML = ''; // Clear current sell display
+            const cardsArray = Object.entries(userCards); // Get [key, value] pairs to know Firebase key
+            if (cardsArray.length === 0) {
+                sellGrid.innerHTML = '<p style="text-align: center; color: #aebac1; margin-top: 50px;">Anda tidak memiliki kartu untuk dijual.</p>';
+                return;
+            }
+
+            cardsArray.forEach(([cardFirebaseKey, card]) => {
+                const cardEl = document.createElement('div');
+                cardEl.className = 'card-item';
+                cardEl.innerHTML = `
+                    <img src="${card.ibb}" alt="${card.nama}">
+                    <div class="card-stars">${card.bint}</div>
+                    <div style="font-size: 0.8em; color: #bada55;">${card.harga || 0} Money</div>
+                `;
+                cardEl.addEventListener('click', () => showSellConfirm(cardFirebaseKey, card));
+                sellGrid.appendChild(cardEl);
+            });
+        }
+
+        function showSellConfirm(cardFirebaseKey, card) {
+            selectedCardToSell = { firebaseKey: cardFirebaseKey, data: card };
+            sellConfirmText.textContent = `Apakah Anda yakin ingin menjual kartu ${card.nama} seharga ${card.harga || 0} Money?`;
+            sellConfirmModal.style.display = 'block';
+            fullScreenOverlay.classList.add('active');
+            history.pushState({ screen: currentScreen, sellConfirmModalOpen: true }, '', window.location.hash);
+        }
+
+        function hideSellConfirmModal() {
+            sellConfirmModal.style.display = 'none';
+            fullScreenOverlay.classList.remove('active');
+            selectedCardToSell = null;
+            if (history.state && history.state.sellConfirmModalOpen) {
+                history.back();
+            }
+        }
+
+        cancelSellBtn.addEventListener('click', hideSellConfirmModal);
+
+        confirmSellBtn.addEventListener('click', () => {
+            if (!selectedCardToSell || !currentLoggedInUser) {
+                hideSellConfirmModal();
+                showToast("Kesalahan: Kartu tidak terpilih atau tidak login.");
+                return;
+            }
+
+            const cardKey = selectedCardToSell.firebaseKey;
+            const cardPrice = parseInt(selectedCardToSell.data.harga || 0);
+
+            // Remove card from user's inventory
+            db.ref(`users/${currentLoggedInUser.uid}/cards/${cardKey}`).remove()
+                .then(() => {
+                    // Add money to user's balance
+                    return db.ref(`users/${currentLoggedInUser.uid}/money`).transaction((currentMoney) => {
+                        return (currentMoney || 0) + cardPrice;
+                    });
+                })
+                .then((transactionResult) => {
+                    if (transactionResult.committed) {
+                        showToast(`Kartu ${selectedCardToSell.data.nama} berhasil dijual! Anda mendapatkan ${cardPrice} Money.`);
+                        // userCards will update automatically due to listener
+                        hideSellConfirmModal();
+                    } else {
+                        throw new Error("Money transaction not committed.");
+                    }
+                })
+                .catch(error => {
+                    console.error("Error selling card:", error);
+                    showToast("Gagal menjual kartu: " + error.message);
+                    hideSellConfirmModal();
+                });
+        });
+
+    </script>
 </body>
 </html>
