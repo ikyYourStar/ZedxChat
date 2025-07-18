@@ -3,12 +3,12 @@
 // Firebase configuration (REPLACE WITH YOUR ACTUAL CONFIG)
 const firebaseConfig = {
     apiKey: "AIzaSyCTjBsKdHmmTELY3wnfGYANEzzDBEF2BIo", // Your Firebase API Key
-            authDomain: "realtime-df5d0.firebaseapp.com",
-            databaseURL: "https://realtime-df5d0-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "realtime-df5d0",
-            storageBucket: "realtime-df5d0.appspot.com",
-            messagingSenderId: "1065067984786",
-            appId: "1:1065067984786:web:b315a080932587ec53f34b"
+    authDomain: "realtime-df5d0.firebaseapp.com",
+    databaseURL: "https://realtime-df5d0-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "realtime-df5d0",
+    storageBucket: "realtime-df5d0.appspot.com",
+    messagingSenderId: "1065067984786",
+    appId: "1:1065067984786:web:b315a080932587ec53f34b"
 };
 
 // Initialize Firebase App if not already initialized
