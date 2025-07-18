@@ -7,6 +7,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="shared.js"></script>
     <style>
         /* Your existing CSS here */
         :root {
@@ -31,26 +32,21 @@
 
         /* --- Loading Screen Styles --- */
         #loadingScreen {
-            position: fixed;
-            top: 0;
+            position: fixed; top: 0;
             left: 0;
             width: 100%;
             height: 100%;
             background-color: #111b21; /* Match app background */
             display: flex;
-            flex-direction: column;
-            justify-content: center;
+            flex-direction: column; justify-content: center;
             align-items: center;
             color: #008069; /* WhatsApp Green */
-            font-size: 1.5em;
-            z-index: 9999; /* Ensure it's on top */
-            transition: opacity 0.5s ease-out;
-            opacity: 1;
+            font-size: 1.5em; z-index: 9999; /* Ensure it's on top */
+            transition: opacity 0.5s ease-out; opacity: 1;
         }
 
         #loadingSpinner {
-            border: 4px solid rgba(0, 128, 105, 0.3);
-            border-top: 4px solid #008069;
+            border: 4px solid rgba(0, 128, 105, 0.3); border-top: 4px solid #008069;
             border-radius: 50%;
             width: 50px;
             height: 50px;
@@ -67,33 +63,28 @@
         .auth-container {
             background-color: rgba(32, 44, 51, 0.9); /* Darker, slightly transparent */
             padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            border-radius: 8px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
             width: 100%;
             max-width: 400px;
             text-align: center;
             box-sizing: border-box;
             position: absolute;
-            top: 50%;
-            left: 50%;
+            top: 50%; left: 50%;
             transform: translate(-50%, -50%);
             z-index: 102;
             display: none;
         }
 
         .auth-container h2 {
-            margin-bottom: 25px;
-            color: #e9edef;
+            margin-bottom: 25px; color: #e9edef;
         }
 
         .input-group {
-            margin-bottom: 20px;
-            text-align: left;
+            margin-bottom: 20px; text-align: left;
         }
 
         .input-group input {
-            width: 100%;
-            padding: 12px;
+            width: 100%; padding: 12px;
             border: 1px solid #555;
             border-radius: 5px;
             font-size: 16px;
@@ -103,15 +94,13 @@
         }
 
         .button-group {
-            display: flex;
-            gap: 15px;
+            display: flex; gap: 15px;
             justify-content: center;
             margin-top: 25px;
         }
 
         .button-group button {
-            padding: 12px 25px;
-            border: none;
+            padding: 12px 25px; border: none;
             border-radius: 5px;
             font-size: 16px;
             cursor: pointer;
@@ -128,38 +117,32 @@
         }
 
         .switch-auth-mode {
-            margin-top: 20px;
-            font-size: 0.9em;
+            margin-top: 20px; font-size: 0.9em;
             color: #aebac1;
         }
 
         .switch-auth-mode a {
-            color: #008069;
-            text-decoration: none;
+            color: #008069; text-decoration: none;
             font-weight: bold;
         }
 
         .auth-message { /* Combined style for login/register messages */
-            margin-top: 20px;
-            font-weight: bold;
+            margin-top: 20px; font-weight: bold;
             color: #ff6b6b; /* Error red */
         }
 
         /* --- Chat List (Lobby) Styles --- */
         #chatListContainer {
-            display: flex;
-            flex-direction: column;
+            display: flex; flex-direction: column;
             height: 100vh;
             width: 100%;
             background-color: #111b21; /* WhatsApp dark background */
-            position: relative;
-            overflow: hidden;
+            position: relative; overflow: hidden;
             display: none; /* Hidden by default */
         }
 
         #chatListHeader {
-            display: flex;
-            align-items: center;
+            display: flex; align-items: center;
             padding: 15px 20px;
             background-color: #202c33;
             color: #e9edef;
@@ -168,15 +151,13 @@
         }
 
         #chatListHeader h1 {
-            flex-grow: 1;
-            margin: 0;
+            flex-grow: 1; margin: 0;
             font-size: 1.5em;
             text-align: left;
         }
 
         #chatListHeader button {
-            background: none;
-            border: none;
+            background: none; border: none;
             color: #e9edef;
             font-size: 1.2em;
             cursor: pointer;
@@ -184,19 +165,16 @@
         }
 
         #chatListContent {
-            flex: 1;
-            overflow-y: auto;
+            flex: 1; overflow-y: auto;
             padding: 0;
             padding-bottom: var(--bottom-nav-height); /* Add padding for bottom nav */
         }
 
         .chat-list-item {
-            display: flex;
-            align-items: center;
+            display: flex; align-items: center;
             padding: 15px 20px;
             border-bottom: 1px solid #2a3942; /* Darker separator */
-            cursor: pointer;
-            transition: background-color 0.2s ease;
+            cursor: pointer; transition: background-color 0.2s ease;
         }
 
         .chat-list-item:hover {
@@ -208,12 +186,10 @@
         }
 
         .chat-avatar {
-            width: 50px;
-            height: 50px;
+            width: 50px; height: 50px;
             border-radius: 50%;
             background-color: #008069; /* Default avatar background */
-            display: flex;
-            justify-content: center;
+            display: flex; justify-content: center;
             align-items: center;
             font-size: 1.5em;
             color: white;
@@ -223,8 +199,7 @@
 
         /* --- Money Display in Lobby --- */
         #moneyDisplay {
-            padding: 10px 20px;
-            background-color: #1a252e;
+            padding: 10px 20px; background-color: #1a252e;
             color: #e9edef;
             font-size: 1.1em;
             font-weight: bold;
@@ -234,14 +209,12 @@
 
         /* --- Bottom Navigation --- */
         #bottomNav {
-            position: fixed;
-            bottom: 0;
+            position: fixed; bottom: 0;
             left: 0;
             width: 100%;
             height: var(--bottom-nav-height);
             background-color: #202c33; /* Darker header */
-            display: flex;
-            justify-content: space-around;
+            display: flex; justify-content: space-around;
             align-items: center;
             box-shadow: 0 -2px 5px rgba(0,0,0,0.2);
             z-index: 100;
@@ -249,15 +222,13 @@
         }
 
         .nav-item {
-            display: flex;
-            flex-direction: column;
+            display: flex; flex-direction: column;
             align-items: center;
             justify-content: center;
             flex: 1;
             color: #aebac1; /* Default color */
             font-size: 0.8em;
-            cursor: pointer;
-            transition: color 0.2s ease;
+            cursor: pointer; transition: color 0.2s ease;
         }
 
         .nav-item.active {
@@ -265,35 +236,29 @@
         }
 
         .nav-item i {
-            font-size: 1.5em;
-            margin-bottom: 3px;
+            font-size: 1.5em; margin-bottom: 3px;
         }
 
         /* --- Main Chat Content Styles --- */
         #main-content {
-            flex: 1;
-            display: flex;
+            flex: 1; display: flex;
             flex-direction: column;
             height: 100vh; /* Use 100vh for full screen chat */
-            width: 100%;
-            position: relative;
+            width: 100%; position: relative;
             background-color: #0b141a; /* WhatsApp chat background */
             display: none; /* Hidden by default */
         }
 
         #chat-header {
-            display: flex;
-            align-items: center;
+            display: flex; align-items: center;
             padding: 10px 15px;
             background-color: #202c33; /* Darker header */
-            color: #e9edef;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            color: #e9edef; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
             z-index: 10;
         }
 
         #chat-header button {
-            background: none;
-            border: none;
+            background: none; border: none;
             color: #e9edef;
             font-size: 1.5em;
             cursor: pointer;
@@ -301,19 +266,16 @@
         }
 
         #chat-header h2 {
-            flex-grow: 1;
-            margin: 0;
+            flex-grow: 1; margin: 0;
             font-size: 1.2em;
         }
 
         #chat-container {
             flex: 1; /* Penting agar container mengisi sisa ruang */
-            overflow-y: auto;
-            padding: 10px 15px; /* Padding samping dan atas */
+            overflow-y: auto; padding: 10px 15px; /* Padding samping dan atas */
             background-image: url('https://raw.githubusercontent.com/ikyYourStar/ZedxChat/refs/heads/main/assets/Tak%20berjudul134_20250707192207.png'); /* Your background image */
             background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
+            background-position: center; background-repeat: no-repeat;
             /* PERBAIKAN: Padding bawah dinamis agar pesan tidak tertutup input */
             padding-bottom: calc(var(--input-area-total-height) + var(--extra-bottom-padding));
         }
@@ -325,29 +287,25 @@
             border-radius: 8px; /* Smaller border radius */
             word-wrap: break-word;
             font-size: 0.95em; /* Slightly smaller font for better fit */
-            position: relative;
-            transition: transform 0.2s ease; /* For swipe animation */
+            position: relative; transition: transform 0.2s ease; /* For swipe animation */
             will-change: transform;
             box-shadow: 0 1px 1px rgba(0,0,0,0.1);
         }
 
         .own {
             background: #005c4b; /* Darker green for own messages */
-            margin-left: auto;
-            text-align: right;
+            margin-left: auto; text-align: right;
         }
 
         .other {
             background: #202c33; /* Dark grey for other messages */
-            margin-right: auto;
-            text-align: left;
+            margin-right: auto; text-align: left;
         }
 
         /* MODIFIKASI: Gaya khusus untuk pesan yang dihapus */
         .deleted-message {
             background-color: #303f4a; /* Slightly different background for deleted */
-            opacity: 0.7;
-            font-style: italic;
+            opacity: 0.7; font-style: italic;
             color: #aebac1;
             /* Pastikan margin-left/right tidak auto jika ingin di tengah atau sesuai asal */
             margin-left: unset; /* Reset margin-left */
@@ -358,20 +316,17 @@
         }
         /* Overrides for deleted messages to keep their original alignment */
         .deleted-message.own {
-            margin-left: auto;
-            margin-right: 0;
+            margin-left: auto; margin-right: 0;
             text-align: right; /* Teks tetap di kanan untuk pesan sendiri yang dihapus */
         }
         .deleted-message.other {
-            margin-right: auto;
-            margin-left: 0;
+            margin-right: auto; margin-left: 0;
             text-align: left; /* Teks tetap di kiri untuk pesan orang lain yang dihapus */
         }
 
 
         .reply {
-            font-size: 0.75em;
-            opacity: 0.7;
+            font-size: 0.75em; opacity: 0.7;
             margin-bottom: 5px;
             font-style: italic;
             border-left: 3px solid #075e54;
@@ -380,34 +335,29 @@
         }
 
         #reply-preview {
-            background: #202c33;
-            color: #e9edef;
+            background: #202c33; color: #e9edef;
             padding: 10px 15px;
             font-size: 0.9em;
             display: none;
             align-items: center;
             justify-content: space-between;
             border-top: 1px solid #2a3942;
-            position: fixed;
-            left: 0;
+            position: fixed; left: 0;
             right: 0;
             /* PERBAIKAN: Ditempatkan tepat di atas input-area */
-            bottom: var(--input-area-min-height);
-            z-index: 101;
+            bottom: var(--input-area-min-height); z-index: 101;
             height: var(--reply-preview-height); /* Tinggi tetap */
         }
 
         #reply-preview span {
-            flex: 1;
-            white-space: nowrap;
+            flex: 1; white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
             margin-right: 10px;
         }
 
         #reply-preview button {
-            background:none;
-            border:none;
+            background:none; border:none;
             color:#e9edef;
             font-size:1.5em;
             cursor:pointer;
@@ -415,24 +365,21 @@
 
         /* PERBAIKAN: Area input sekarang fixed di bagian bawah */
         #input-area {
-            position: fixed;
-            bottom: 0;
+            position: fixed; bottom: 0;
             left: 0;
             right: 0;
             display: flex;
             gap: 8px; /* Smaller gap */
             padding: 8px 15px; /* Adjust padding */
             background: #202c33; /* Dark input area */
-            border-top: 1px solid #2a3942;
-            align-items: center;
+            border-top: 1px solid #2a3942; align-items: center;
             z-index: 102; /* Pastikan di atas reply-preview dan konten chat */
             min-height: var(--input-area-min-height); /* Tinggi minimum */
         }
 
         /* PERBAIKAN: Menggunakan textarea agar bisa multi-baris otomatis */
         #input {
-            flex: 1;
-            padding: 10px 15px; /* Adjust padding */
+            flex: 1; padding: 10px 15px; /* Adjust padding */
             font-size: 1em; /* Ukuran font relatif */
             border: none; /* No border */
             border-radius: 20px; /* Pill shape */
@@ -449,10 +396,8 @@
         #send, #uploadBtn {
             width: 45px; /* Round buttons */
             height: 45px;
-            border-radius: 50%;
-            background: #008069; /* WhatsApp Green */
-            color: white;
-            font-size: 1.5em; /* Ukuran font relatif */
+            border-radius: 50%; background: #008069; /* WhatsApp Green */
+            color: white; font-size: 1.5em; /* Ukuran font relatif */
             border: none;
             cursor: pointer;
             display: flex;
@@ -470,14 +415,12 @@
         }
 
         .msg img {
-            max-width: 100%;
-            border-radius: 5px;
+            max-width: 100%; border-radius: 5px;
             margin-top: 5px;
         }
 
         .time {
-            font-size: 0.7em;
-            opacity: 0.6;
+            font-size: 0.7em; opacity: 0.6;
             display: block;
             margin-top: 3px;
             color: #aebac1;
@@ -492,23 +435,19 @@
         }
 
         .sender-name { /* New style for sender name in 'other' messages */
-            font-weight: bold;
-            color: #075e54; /* A distinct color for sender name */
+            font-weight: bold; color: #075e54; /* A distinct color for sender name */
             margin-right: 5px;
         }
 
         /* Sidebar Styles */
         #sidebar {
-            width: 0;
-            background-color: #1f2c33; /* Darker sidebar */
-            overflow-x: hidden;
-            transition: 0.5s;
+            width: 0; background-color: #1f2c33; /* Darker sidebar */
+            overflow-x: hidden; transition: 0.5s;
             padding-top: 60px;
             position: fixed;
             height: 100%;
             z-index: 100;
-            top: 0;
-            left: 0;
+            top: 0; left: 0;
             color: #e9edef;
         }
 
@@ -517,8 +456,7 @@
         }
 
         #sidebar a {
-            padding: 8px 8px 8px 32px;
-            text-decoration: none;
+            padding: 8px 8px 8px 32px; text-decoration: none;
             font-size: 25px;
             color: #818181;
             display: block;
@@ -530,21 +468,18 @@
         }
 
         #sidebar .closebtn {
-            position: absolute;
-            top: 0;
+            position: absolute; top: 0;
             right: 25px;
             font-size: 36px;
             margin-left: 50px;
         }
 
         #sidebar-menu-list ul {
-            list-style-type: none;
-            padding: 0;
+            list-style-type: none; padding: 0;
         }
 
         #sidebar-menu-list li {
-            padding: 10px 32px;
-            font-size: 18px;
+            padding: 10px 32px; font-size: 18px;
             border-bottom: 1px solid #2a3942;
         }
 
@@ -553,8 +488,7 @@
         }
 
         #sidebar-menu-list li a {
-            color: #e9edef;
-            text-decoration: none;
+            color: #e9edef; text-decoration: none;
             display: block;
             padding: 0;
             font-size: 18px;
@@ -566,22 +500,17 @@
 
         /* Overlay effect */
         .overlay {
-            position: fixed;
-            width: 100%;
+            position: fixed; width: 100%;
             height: 100%;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            top: 0; left: 0;
+            right: 0; bottom: 0;
             background-color: rgba(0,0,0,0.5);
             z-index: 99;
-            display: none;
-            transition: opacity 0.5s;
+            display: none; transition: opacity 0.5s;
         }
 
         .overlay.active {
-            display: block;
-            opacity: 1;
+            display: block; opacity: 1;
         }
 
         /* Responsive adjustments */
@@ -597,16 +526,14 @@
 
         /* Toast Message for "Press back again to exit" */
         #toastMessage {
-            position: fixed;
-            bottom: 50px;
+            position: fixed; bottom: 50px;
             left: 50%;
             transform: translateX(-50%);
             background-color: rgba(0, 0, 0, 0.7);
             color: white;
             padding: 10px 20px;
             border-radius: 5px;
-            font-size: 0.9em;
-            z-index: 10000;
+            font-size: 0.9em; z-index: 10000;
             opacity: 0;
             transition: opacity 0.3s ease-in-out;
             pointer-events: none; /* Allows clicks to pass through */
@@ -618,24 +545,20 @@
 
         /* Context Menu for messages */
         #messageContextMenu {
-            position: absolute;
-            background-color: #2a3942; /* Darker background */
-            border-radius: 5px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            position: absolute; background-color: #2a3942; /* Darker background */
+            border-radius: 5px; box-shadow: 0 2px 10px rgba(0,0,0,0.3);
             z-index: 1000;
             display: none;
             overflow: hidden; /* Ensure rounded corners */
         }
 
         #messageContextMenu ul {
-            list-style: none;
-            margin: 0;
+            list-style: none; margin: 0;
             padding: 0;
         }
 
         #messageContextMenu ul li {
-            padding: 10px 15px;
-            color: #e9edef;
+            padding: 10px 15px; color: #e9edef;
             cursor: pointer;
             font-size: 0.9em;
             white-space: nowrap;
@@ -647,28 +570,22 @@
 
         /* Styles for Bot Command Suggestions */
         #commandSuggestions {
-            position: absolute;
-            bottom: calc(var(--input-area-total-height) + 5px); /* Position above the input area */
-            left: 15px;
-            right: 15px;
+            position: absolute; bottom: calc(var(--input-area-total-height) + 5px); /* Position above the input area */
+            left: 15px; right: 15px;
             background-color: #2a3942; /* Darker background, similar to messageContextMenu */
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
             z-index: 101; /* Above chat but below reply preview */
             max-height: 200px; /* Limit height and make it scrollable */
-            overflow-y: auto;
-            display: none; /* Hidden by default */
+            overflow-y: auto; display: none; /* Hidden by default */
         }
 
         #commandSuggestions ul {
-            list-style: none;
-            padding: 0;
+            list-style: none; padding: 0;
             margin: 0;
         }
 
         #commandSuggestions li {
-            padding: 10px 15px;
-            color: #e9edef;
+            padding: 10px 15px; color: #e9edef;
             cursor: pointer;
             font-size: 0.95em;
             border-bottom: 1px solid #33444d; /* Separator between commands */
@@ -681,173 +598,10 @@
         #commandSuggestions li:hover {
             background-color: #005c4b; /* Highlight on hover */
         }
-
-        /* --- Gacha and Inventory/Sell Pages --- */
-        .game-page {
-            flex: 1;
-            display: none; /* Hidden by default */
-            flex-direction: column;
-            background-color: #111b21;
-            padding-bottom: var(--bottom-nav-height); /* Ensure space for bottom nav */
-            overflow-y: auto;
-        }
-
-        .game-page-header {
-            display: flex;
-            align-items: center;
-            padding: 15px 20px;
-            background-color: #202c33;
-            color: #e9edef;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            z-index: 10;
-        }
-
-        .game-page-header h2 {
-            flex-grow: 1;
-            margin: 0;
-            font-size: 1.5em;
-            text-align: center; /* Center the title */
-        }
-
-        /* Inventory Grid */
-        #inventoryGrid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-            gap: 15px;
-            padding: 20px;
-            justify-items: center; /* Center items within grid cells */
-        }
-
-        .card-item {
-            background-color: #2a3942;
-            border-radius: 8px;
-            padding: 10px;
-            text-align: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        .card-item:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-        }
-
-        .card-item img {
-            max-width: 100%;
-            height: auto;
-            border-radius: 5px;
-            margin-bottom: 5px;
-        }
-
-        .card-item .card-stars {
-            font-size: 0.9em;
-            color: #ffc107; /* Gold color for stars */
-            margin-top: 5px;
-        }
-
-        /* Gacha Page */
-        #gachaPageContent {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-            text-align: center;
-        }
-
-        #gachaResult {
-            margin-top: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-
-        #gachaResult img {
-            max-width: 250px;
-            height: auto;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            margin-bottom: 15px;
-        }
-
-        #gachaResult .card-stars {
-            font-size: 1.5em;
-            color: #ffc107;
-            margin-bottom: 10px;
-        }
-
-        #gachaButton {
-            padding: 15px 30px;
-            font-size: 1.2em;
-            background-color: #008069;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-            margin-top: 20px;
-        }
-
-        #gachaButton:hover {
-            background-color: #006b5a;
-        }
-
-        #gachaCost {
-            margin-top: 10px;
-            font-size: 0.9em;
-            color: #aebac1;
-        }
-
-        /* Sell Confirmation Modal */
-        #sellConfirmModal {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: #2a3942;
-            padding: 25px;
-            border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-            z-index: 1001;
-            display: none;
-            text-align: center;
-        }
-
-        #sellConfirmModal p {
-            margin-bottom: 20px;
-            font-size: 1.1em;
-        }
-
-        #sellConfirmModal .button-group {
-            margin-top: 0; /* Override default button-group margin */
-            justify-content: space-around;
-        }
-
-        #sellConfirmModal button {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 1em;
-        }
-
-        #confirmSellBtn {
-            background-color: #dc3545; /* Red for confirm sell */
-            color: white;
-        }
-
-        #cancelSellBtn {
-            background-color: #6c757d; /* Grey for cancel */
-            color: white;
-        }
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
-
     <div id="loadingScreen">
         <div id="loadingSpinner"></div>
         <span>Memuat ZedxChat...</span>
@@ -898,64 +652,14 @@
         </div>
         <div id="chatListContent">
             </div>
+
         <div id="bottomNav">
             <div class="nav-item active" id="navChat">
                 <i class="fas fa-comment-dots"></i>
                 <span>Chat</span>
             </div>
-            <div class="nav-item" id="navInventory">
-                <i class="fas fa-box"></i>
-                <span>Inventory</span>
-            </div>
-            <div class="nav-item" id="navGacha">
-                <i class="fas fa-star"></i>
-                <span>Gacha</span>
-            </div>
-            <div class="nav-item" id="navSell">
-                <i class="fas fa-hand-holding-dollar"></i>
-                <span>Sell</span>
-            </div>
         </div>
     </div>
-
-    <div id="inventoryPage" class="game-page">
-        <div class="game-page-header">
-            <h2>Inventory</h2>
-        </div>
-        <div id="inventoryGrid">
-            </div>
-    </div>
-
-    <div id="gachaPage" class="game-page">
-        <div class="game-page-header">
-            <h2>Gacha</h2>
-        </div>
-        <div id="gachaPageContent">
-            <div id="gachaResult">
-                <img id="gachaCardImage" src="" alt="Gacha Result" style="display: none;">
-                <div class="card-stars" id="gachaCardStars" style="display: none;"></div>
-            </div>
-            <button id="gachaButton">Gacha Sekarang!</button>
-            <p id="gachaCost">Biaya: 14 Money</p>
-        </div>
-    </div>
-
-    <div id="sellPage" class="game-page">
-        <div class="game-page-header">
-            <h2>Sell Cards</h2>
-        </div>
-        <div id="sellGrid" class="inventory-grid">
-            </div>
-    </div>
-
-    <div id="sellConfirmModal">
-        <p id="sellConfirmText"></p>
-        <div class="button-group">
-            <button id="cancelSellBtn">Tidak</button>
-            <button id="confirmSellBtn">Ya, Jual</button>
-        </div>
-    </div>
-
 
     <div class="auth-container" id="profileModal" style="display:none;">
         <h2>Profil Anda</h2>
@@ -982,29 +686,26 @@
             </ul>
         </div>
     </div>
-
-    <div class="overlay" id="fullScreenOverlay" onclick="closeNav(); closeProfileModal(); hideMessageContextMenu(); hideCommandSuggestions(); hideSellConfirmModal()"></div>
+    <div class="overlay" id="fullScreenOverlay" onclick="closeNav(); closeProfileModal(); hideMessageContextMenu(); hideCommandSuggestions();"></div>
 
     <span id="sidebar-toggle" onclick="openNav()">&#9776;</span>
 
     <div id="main-content">
         <div id="chat-header">
-            <button id="backToChatListBtn">&#8249;</button> <h2 id="currentChatName"></h2>
+            <button id="backToChatListBtn">&#8249;</button>
+            <h2 id="currentChatName"></h2>
         </div>
         <div id="chat-container"></div>
-
         <div id="commandSuggestions">
             <ul>
                 </ul>
         </div>
-
         <div id="reply-preview">
             <span id="reply-text"></span>
-            <button onclick="cancelReply()" style="background:none;border:none;color:white;font-size:1.5em;">×</button>
+            <button onclick="cancelReply()" style="background:none;border:none;color:white;font-size:1.5em;">✕</button>
         </div>
-
         <div id="input-area">
-            <button id="uploadBtn">📎</button>
+            <button id="uploadBtn">⬆️</button>
             <input type="file" id="fileInput" accept="image/*" style="display:none;" />
             <textarea id="input" placeholder="Ketik pesan..." rows="1"></textarea>
             <button id="send">Kirim</button>
@@ -1023,29 +724,19 @@
         // GANTI DENGAN KUNCI API IMGBB ANDA
         const imgbbKey = "a12e3657b8edd041c13eda8c12ff5925"; // Example key, get yours from imgbb.com/api
 
-        // GANTI DENGAN KONFIGURASI FIREBASE ANDA
-        const firebaseConfig = {
-            apiKey: "AIzaSyCTjBsKdHmmTELY3wnfGYANEzzDBEF2BIo", // Your Firebase API Key
-            authDomain: "realtime-df5d0.firebaseapp.com",
-            databaseURL: "https://realtime-df5d0-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "realtime-df5d0",
-            storageBucket: "realtime-df5d0.appspot.com",
-            messagingSenderId: "1065067984786",
-            appId: "1:1065067984786:web:b315a080932587ec53f34b"
-        };
-
-        firebase.initializeApp(firebaseConfig);
+        // Firebase objects are now from shared.js
         const db = firebase.database();
         const auth = firebase.auth();
+        const storage = firebase.storage(); // Get storage from shared.js for consistency
 
         const PUBLIC_CHAT_ID = "publicChat"; // Fixed ID for the public chat in Firebase DB
         const REPORT_CHAT_ID = "reportChat"; // Fixed ID for the report chat
-        const GACHA_COST = 14;
         const TEXT_TO_MONEY_RATE = 100; // 1 money per 100 characters
 
         let currentLoggedInUser = null; // Firebase User Object, will have .isAdmin property
         let currentDisplayName = "Anonim"; // Display Name for chat
         let currentScreen = 'loading'; // Keep track of the current active screen
+
         let backButtonPressedOnce = false; // For double-tap to exit logic
         let backButtonTimeout; // To clear the double-tap timeout
 
@@ -1069,11 +760,6 @@
             { command: "system", description: "Menampilkan informasi simulasi sistem (RAM, CPU, Uptime, Core)." }
         ];
 
-        // Gacha/Inventory variables
-        let cardData = []; // To store all possible cards from JSON
-        let userCards = {}; // To store user's owned cards (key: firebase_card_id, value: card_object)
-        let selectedCardToSell = null; // Stores the card object being considered for selling
-
         // --- UI Elements ---
         // Loading Screen
         const loadingScreen = document.getElementById("loadingScreen");
@@ -1093,1324 +779,966 @@
         const registerMessageEl = document.getElementById("registerMessage");
         const goToLoginLink = document.getElementById("goToLogin");
 
-        // Chat List (Lobby) UI
-        const chatListContainer = document.getElementById("chatListContainer");
-        const chatListContent = document.getElementById("chatListContent");
-        const lobbyLogoutBtn = document.getElementById("lobbyLogoutBtn");
-        const viewProfileBtn = document.getElementById("viewProfileBtn");
-        const userMoneyEl = document.getElementById("userMoney");
-        const moneyDisplayEl = document.getElementById("moneyDisplay");
-
-        // Bottom Navigation
-        const bottomNav = document.getElementById("bottomNav");
-        const navChat = document.getElementById("navChat");
-        const navInventory = document.getElementById("navInventory");
-        const navGacha = document.getElementById("navGacha");
-        const navSell = document.getElementById("navSell");
-
-        // Inventory Page
-        const inventoryPage = document.getElementById("inventoryPage");
-        const inventoryGrid = document.getElementById("inventoryGrid");
-
-        // Gacha Page
-        const gachaPage = document.getElementById("gachaPage");
-        const gachaButton = document.getElementById("gachaButton");
-        const gachaCardImage = document.getElementById("gachaCardImage");
-        const gachaCardStars = document.getElementById("gachaCardStars");
-        const gachaCostEl = document.getElementById("gachaCost");
-
-        // Sell Page
-        const sellPage = document.getElementById("sellPage");
-        const sellGrid = document.getElementById("sellGrid");
-
-        // Sell Confirmation Modal
-        const sellConfirmModal = document.getElementById("sellConfirmModal");
-        const sellConfirmText = document.getElementById("sellConfirmText");
-        const confirmSellBtn = document.getElementById("confirmSellBtn");
-        const cancelSellBtn = document.getElementById("cancelSellBtn");
+        // Chat List UI
+        const chatListContainer = document.getElementById('chatListContainer');
+        const chatListContent = document.getElementById('chatListContent');
+        const lobbyLogoutBtn = document.getElementById('lobbyLogoutBtn');
+        const viewProfileBtn = document.getElementById('viewProfileBtn');
+        const userMoneySpan = document.getElementById('userMoney'); // For lobby money display
 
         // Profile Modal
-        const profileModal = document.getElementById("profileModal");
-        const profileEmailEl = document.getElementById("profileEmail");
-        const profileDisplayNameInput = document.getElementById("profileDisplayName");
-        const saveProfileBtn = document.getElementById("saveProfileBtn");
-        const profileMessageEl = document.getElementById("profileMessage");
+        const profileModal = document.getElementById('profileModal');
+        const profileEmailEl = document.getElementById('profileEmail');
+        const profileDisplayNameInput = document.getElementById('profileDisplayName');
+        const saveProfileBtn = document.getElementById('saveProfileBtn');
+        const profileMessageEl = document.getElementById('profileMessage');
 
-        // Chat Detail UI
+        // Main Chat UI
         const mainContent = document.getElementById("main-content");
         const chatHeader = document.getElementById("chat-header");
         const backToChatListBtn = document.getElementById("backToChatListBtn");
         const currentChatNameEl = document.getElementById("currentChatName");
         const chatContainer = document.getElementById("chat-container");
-        const input_area = document.getElementById("input-area"); /* Mendefinisikan input_area */
-        const input = document.getElementById("input"); /* Ini adalah textarea */
-        const sendBtn = document.getElementById("send");
+        const inputArea = document.getElementById("input-area");
+        const messageInput = document.getElementById("input");
+        const sendButton = document.getElementById("send");
+        const uploadButton = document.getElementById("uploadBtn");
         const fileInput = document.getElementById("fileInput");
-        const uploadBtn = document.getElementById("uploadBtn");
         const replyPreview = document.getElementById("reply-preview");
         const replyText = document.getElementById("reply-text");
-        const sidebar = document.getElementById("sidebar");
-        const fullScreenOverlay = document.getElementById("fullScreenOverlay");
-        const sidebarToggle = document.getElementById("sidebar-toggle");
-        const root = document.documentElement; /* Untuk mengakses variabel CSS */
+        const cancelReplyButton = replyPreview.querySelector('button');
+        let replyingToMessageId = null; // ID pesan yang sedang di-reply
+        let replyingToMessageContent = null; // Konten pesan yang sedang di-reply
 
         // Context Menu
         const messageContextMenu = document.getElementById("messageContextMenu");
-        const contextDelete = document.getElementById("contextDelete");
+        const contextDeleteBtn = document.getElementById("contextDelete");
+        let activeMessageElement = null; // To store the message element for context menu
 
-        // Command Suggestions
-        const commandSuggestions = document.getElementById("commandSuggestions");
-        const commandSuggestionsList = commandSuggestions.querySelector("ul");
+        // Bot Command Suggestions
+        const commandSuggestions = document.getElementById('commandSuggestions');
+        const commandSuggestionsList = commandSuggestions.querySelector('ul');
 
-        // Toast Message
-        const toastMessage = document.getElementById("toastMessage");
+        // Sidebar
+        const sidebar = document.getElementById("sidebar");
+        const fullScreenOverlay = document.getElementById("fullScreenOverlay");
 
-        let replyTo = null;
-
-        // --- Fetch Card Data from JSON ---
-        async function fetchCardData() {
-            try {
-                const response = await fetch('https://raw.githubusercontent.com/ikyYourStar/ksr-api/refs/heads/main/ksr.json');
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                cardData = await response.json();
-                console.log("Card data loaded:", cardData.length, "cards");
-            } catch (error) {
-                console.error("Failed to fetch card data:", error);
-                showToast("Gagal memuat data kartu. Fitur gacha/inventory mungkin tidak berfungsi.");
-            }
-        }
-
-        // Call fetchCardData when the app initializes
-        fetchCardData();
+        // Bottom Navigation (only Chat now)
+        const bottomNav = document.getElementById('bottomNav');
+        const navChat = document.getElementById('navChat');
 
 
-        // --- Screen Navigation Functions ---
-        // This function now manages browser history for proper back button behavior
-        function showScreen(screen, pushState = true, chatId = null) {
-            // Hide all main screens initially
-            loginScreen.style.display = "none";
-            registerScreen.style.display = "none";
-            chatListContainer.style.display = "none";
-            mainContent.style.display = "none";
-            inventoryPage.style.display = "none"; // Hide new pages
-            gachaPage.style.display = "none";    // Hide new pages
-            sellPage.style.display = "none";     // Hide new pages
-            sidebarToggle.style.display = "none";
-            profileModal.style.display = "none";
-            fullScreenOverlay.classList.remove("active");
-            closeNav(); // Ensure sidebar is closed when changing screens
-            hideToast(); // Hide any active toast message
-            hideMessageContextMenu(); // Hide context menu
-            hideCommandSuggestions(); // Hide command suggestions when changing screens
-            hideSellConfirmModal(); // Hide sell confirmation modal
-
-            // Detach previous chat message listener if moving away from chat detail
-            if (currentChatListener) {
-                db.ref(`${currentChatId}/messages`).off('child_added');
-                db.ref(`${currentChatId}/messages`).off('child_changed');
-                currentChatListener = null;
-            }
-
-            // Deactivate all nav items
-            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
-            // Hide input area by default, only show for chatDetail
-            input_area.style.display = 'none';
-
-            currentScreen = screen; // Update current screen state
-
-            if (pushState) {
-                // Push the new screen state to browser history
-                history.pushState({ screen: screen, chatId: chatId }, '', `#${screen}${chatId ? '/' + chatId : ''}`);
-            }
-
-            if (screen === 'login') {
-                loginScreen.style.display = "block";
-                loginEmailInput.value = "";
-                loginPasswordInput.value = "";
-                loginMessageEl.textContent = "";
-            } else if (screen === 'register') {
-                registerScreen.style.display = "block";
-                registerEmailInput.value = "";
-                registerPasswordInput.value = "";
-                registerMessageEl.textContent = "";
-            } else if (screen === 'chatList' || screen === 'inventory' || screen === 'gacha' || screen === 'sell') {
-                chatListContainer.style.display = "flex"; // chatListContainer now acts as the main lobby screen host
-                sidebarToggle.style.display = "block";
-                moneyDisplayEl.style.display = "block"; // Always show money display in lobby
-                bottomNav.style.display = "flex"; // Show bottom nav
-
-                // Handle specific sub-screens within the lobby
-                if (screen === 'chatList') {
-                    document.getElementById('chatListContent').style.display = 'block'; // Show chat list
-                    inventoryPage.style.display = 'none';
-                    gachaPage.style.display = 'none';
-                    sellPage.style.display = 'none';
-                    renderChatListItems();
-                    navChat.classList.add('active');
-                } else if (screen === 'inventory') {
-                    document.getElementById('chatListContent').style.display = 'none';
-                    inventoryPage.style.display = 'flex';
-                    gachaPage.style.display = 'none';
-                    sellPage.style.display = 'none';
-                    renderInventory();
-                    navInventory.classList.add('active');
-                } else if (screen === 'gacha') {
-                    document.getElementById('chatListContent').style.display = 'none';
-                    inventoryPage.style.display = 'none';
-                    gachaPage.style.display = 'flex';
-                    sellPage.style.display = 'none';
-                    navGacha.classList.add('active');
-                    // Reset gacha display
-                    gachaCardImage.style.display = 'none';
-                    gachaCardStars.style.display = 'none';
-                    gachaCardImage.src = "";
-                    gachaCardStars.textContent = "";
-                } else if (screen === 'sell') {
-                    document.getElementById('chatListContent').style.display = 'none';
-                    inventoryPage.style.display = 'none';
-                    gachaPage.style.display = 'none';
-                    sellPage.style.display = 'flex';
-                    renderSellPage();
-                    navSell.classList.add('active');
-                }
-            } else if (screen === 'chatDetail') {
-                currentChatId = chatId; // Set chat ID yang sedang aktif
-                mainContent.style.display = "flex";
-                sidebarToggle.style.display = "block";
-                input_area.style.display = 'flex'; // Show input area for chat
-                bottomNav.style.display = "none"; // Hide bottom nav in chat detail
-                moneyDisplayEl.style.display = "none"; // Hide money display in chat detail
-
-                chatContainer.innerHTML = ""; // Clear previous chat messages
-                currentChatNameEl.textContent = (chatId === PUBLIC_CHAT_ID) ? "ZedxChat (Publik)" : "Pesan Laporan Admin"; // Sesuaikan nama header
-                cancelReply(); // Pastikan reply preview bersih saat masuk chat baru
-
-                // Panggil ini agar padding awal sesuai saat layar chat dimuat
-                updateInputAreaHeight();
-
-                // Load initial messages first
-                db.ref(`${currentChatId}/messages`).once('value', (snapshot) => {
-                    chatContainer.innerHTML = ""; // Ensure it's clear before initial load
-                    snapshot.forEach((childSnapshot) => {
-                        renderMessage(childSnapshot.key, childSnapshot.val(), currentChatId);
-                    });
-                    scrollToBottom();
-
-                    // Attach real-time listeners AFTER initial load
-                    // This listener is for new messages
-                    db.ref(`${currentChatId}/messages`).on("child_added", (snap) => {
-                        // Check if the message is already rendered (from initial load)
-                        if (!document.getElementById("msg-" + snap.key)) {
-                            renderMessage(snap.key, snap.val(), currentChatId);
-                        }
-                    });
-
-                    // This listener is for changes to existing messages (e.g., deleted status)
-                    db.ref(`${currentChatId}/messages`).on("child_changed", (snap) => {
-                        // We need to re-render the message completely to apply new styles
-                        // This ensures the "Pesan ini telah dihapus" styling is applied correctly
-                        const existingEl = document.getElementById("msg-" + snap.key);
-                        if (existingEl) {
-                            const scrollAtBottom = chatContainer.scrollHeight - chatContainer.clientHeight <= chatContainer.scrollTop + 50; // Toleransi 50px
-                            existingEl.remove(); // Remove the old element
-                            renderMessage(snap.key, snap.val(), currentChatId); // Re-render with updated data
-                            if (scrollAtBottom) {
-                                scrollToBottom();
-                            }
-                        }
-                    });
-                });
-            }
-
-            // Hide loading screen after the target screen is displayed
-            loadingScreen.style.opacity = 0;
-            setTimeout(() => { loadingScreen.style.display = 'none'; }, 500); // Wait for fade out
-        }
-
-        // --- History Management and Popstate Event Listener ---
-        // Initial pushState to mark the application's start point
-        history.replaceState({ screen: 'loading' }, '', ''); // Replace initial empty state
-
-        window.addEventListener('popstate', (event) => {
-            const targetState = event.state;
-            const targetScreen = targetState ? targetState.screen : null;
-            const targetChatId = targetState ? targetState.chatId : null;
-
-            if (targetState && targetState.sidebarOpen) {
-                closeNav();
-                return;
-            }
-            if (targetState && targetState.profileModalOpen) {
-                closeProfileModal();
-                return;
-            }
-            if (targetState && targetState.sellConfirmModalOpen) {
-                hideSellConfirmModal();
-                return;
-            }
-
-            // Handle back button from lobby screens (chatList, inventory, gacha, sell)
-            if (['chatList', 'inventory', 'gacha', 'sell'].includes(currentScreen)) {
-                if (backButtonPressedOnce) {
-                    clearTimeout(backButtonTimeout);
-                    backButtonPressedOnce = false;
-                    // Allow browser to exit or close app (for PWA/WebView)
-                    // For web, this usually means letting the browser handle its default back action.
-                } else {
-                    showToast("Tekan kembali sekali lagi untuk keluar");
-                    backButtonPressedOnce = true;
-                    // Push current state back to prevent immediate exit
-                    history.pushState({ screen: currentScreen }, '', `#${currentScreen}`);
-                    backButtonTimeout = setTimeout(() => {
-                        backButtonPressedOnce = false;
-                        hideToast();
-                    }, 2000);
-                }
-            } else if (targetScreen) {
-                showScreen(targetScreen, false, targetChatId); // Teruskan chatId saat popstate
-            }
-        });
-
-
-        // --- Toast Message Functions ---
-        function showToast(message) {
-            toastMessage.textContent = message;
-            toastMessage.classList.add('show');
-        }
-
-        function hideToast() {
-            toastMessage.classList.remove('show');
-        }
-
-        // --- Authentication Functions ---
-        loadingScreen.style.display = 'flex'; // Ensure loading screen is visible at start
-
-        auth.onAuthStateChanged(user => {
+        // --- Auth Functions ---
+        auth.onAuthStateChanged((user) => {
             if (user) {
                 currentLoggedInUser = user;
-                // Fetch user data including money and textCount
-                db.ref('users/' + user.uid).once('value')
-                    .then(snapshot => {
-                        const userData = snapshot.val();
-                        if (userData) {
-                            currentDisplayName = userData.displayName || user.email.split('@')[0];
-                            currentLoggedInUser.isAdmin = userData.isAdmin || false; // Set isAdmin property
-                            // Initialize money and textCount if they don't exist
-                            if (typeof userData.money === 'undefined') {
-                                db.ref(`users/${user.uid}/money`).set(0);
-                            }
-                            if (typeof userData.textCount === 'undefined') {
-                                db.ref(`users/${user.uid}/textCount`).set(0);
-                            }
-                        } else {
+                db.ref('users/' + user.uid).once('value', (snapshot) => {
+                    const userData = snapshot.val();
+                    if (userData) {
+                        currentDisplayName = userData.displayName || user.email.split('@')[0];
+                        currentLoggedInUser.isAdmin = userData.isAdmin || false; // Set isAdmin flag
+                        profileDisplayNameInput.value = currentDisplayName; // Update profile input
+                    } else {
+                        // If user data doesn't exist, create it (e.g., first-time login)
+                        db.ref('users/' + user.uid).set({
+                            displayName: user.email.split('@')[0],
+                            email: user.email,
+                            createdAt: firebase.database.ServerValue.TIMESTAMP,
+                            isAdmin: false,
+                            money: 0,
+                            textCount: 0,
+                            cards: {} // Initialize cards for future gacha use
+                        }).then(() => {
                             currentDisplayName = user.email.split('@')[0];
-                            // Initialize new user data
-                            db.ref('users/' + user.uid).set({
-                                displayName: currentDisplayName,
-                                email: user.email,
-                                createdAt: firebase.database.ServerValue.TIMESTAMP,
-                                isAdmin: false,
-                                money: 0,
-                                textCount: 0
-                            });
                             currentLoggedInUser.isAdmin = false;
-                        }
-                        // Listen for real-time updates to money
-                        db.ref(`users/${user.uid}/money`).on('value', (moneySnap) => {
-                            userMoneyEl.textContent = moneySnap.val() || 0;
+                            profileDisplayNameInput.value = currentDisplayName;
+                        }).catch(error => {
+                            console.error("Error initializing user data:", error);
                         });
-
-                        // Listen for user's cards
-                        db.ref(`users/${user.uid}/cards`).on('value', (cardsSnap) => {
-                            userCards = cardsSnap.val() || {};
-                            // You might want to re-render inventory/sell pages if they are active
-                            if (currentScreen === 'inventory') renderInventory();
-                            if (currentScreen === 'sell') renderSellPage();
-                        });
-
-                        showScreen('chatList'); // Go to default lobby screen
-                    })
-                    .catch(error => {
-                        console.error("Error fetching user data:", error);
-                        currentDisplayName = user.email.split('@')[0];
-                        currentLoggedInUser.isAdmin = false; // Assume not admin on error
-                        showScreen('chatList'); // Fallback to chat list even on error
-                    });
-
+                    }
+                    updateUserInfoDisplay();
+                    hideAuthScreens();
+                    showChatListScreen();
+                });
             } else {
                 currentLoggedInUser = null;
                 currentDisplayName = "Anonim";
-                showScreen('login'); // Show login screen if not authenticated
+                updateUserInfoDisplay();
+                hideLoadingScreen();
+                showLoginScreen();
             }
         });
 
-        // --- Login Logic ---
+        goToRegisterLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            showRegisterScreen();
+        });
+
+        goToLoginLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            showLoginScreen();
+        });
+
         loginBtn.addEventListener("click", () => {
-            const email = loginEmailInput.value.trim();
-            const password = loginPasswordInput.value.trim();
-            if (!email || !password) { loginMessageEl.textContent = "Email dan password harus diisi!"; return; }
-
+            const email = loginEmailInput.value;
+            const password = loginPasswordInput.value;
+            if (!email || !password) {
+                loginMessageEl.textContent = "Email dan password harus diisi.";
+                return;
+            }
             auth.signInWithEmailAndPassword(email, password)
-                .then(() => { loginMessageEl.textContent = "Login berhasil!"; })
-                .catch((error) => {
-                    let errorMessage = "Login gagal.";
-                    if (error.code === 'auth/wrong-password') errorMessage = "Password salah.";
-                    else if (error.code === 'auth/user-not-found') errorMessage = "Pengguna tidak ditemukan.";
-                    else if (error.code === 'auth/invalid-email') errorMessage = "Format email tidak valid.";
-                    loginMessageEl.textContent = errorMessage + " (" + error.message + ")";
-                    console.error("Login Error:", error);
-                });
-        });
-
-        goToRegisterLink.addEventListener("click", (e) => {
-            e.preventDefault(); // Prevent page reload
-            showScreen('register');
-        });
-
-        // --- Register Logic ---
-        registerBtn.addEventListener("click", () => {
-            const email = registerEmailInput.value.trim();
-            const password = registerPasswordInput.value.trim();
-            if (!email || !password) { registerMessageEl.textContent = "Email dan password harus diisi!"; return; }
-            if (password.length < 6) { registerMessageEl.textContent = "Password minimal 6 karakter!"; return; }
-
-            auth.createUserWithEmailAndPassword(email, password)
                 .then((userCredential) => {
-                    const defaultDisplayName = email.split('@')[0];
-                    return db.ref('users/' + userCredential.user.uid).set({
-                        email: email,
-                        displayName: defaultDisplayName,
-                        createdAt: firebase.database.ServerValue.TIMESTAMP,
-                        isAdmin: false, // Default to false for new registrations
-                        money: 0,       // Initialize money for new users
-                        textCount: 0    // Initialize textCount for new users
-                    }).then(() => {
-                        registerMessageEl.textContent = "Pendaftaran berhasil! Nama pengguna Anda diatur sebagai '" + defaultDisplayName + "'. Silakan login.";
-                        registerPasswordInput.value = ""; // Clear password for security
-                        setTimeout(() => showScreen('login'), 2000); // Auto-redirect to login after successful registration
-                    });
+                    loginMessageEl.textContent = "Login berhasil!";
+                    // Handled by auth.onAuthStateChanged
                 })
                 .catch((error) => {
-                    let errorMessage = "Pendaftaran gagal.";
-                    if (error.code === 'auth/email-already-in-use') errorMessage = "Email ini sudah terdaftar. Silakan login atau gunakan email lain.";
-                    else if (error.code === 'auth/invalid-email') errorMessage = "Format email tidak valid.";
-                    else if (error.code === 'auth/weak-password') errorMessage = "Password terlalu lemah (minimal 6 karakter).";
-                    registerMessageEl.textContent = errorMessage + " (" + error.message + ")";
-                    console.error("Register Error:", error);
+                    loginMessageEl.textContent = "Login gagal: " + error.message;
                 });
         });
 
-        // --- Chat List & Message Rendering ---
-
-        function renderChatListItems() {
-            chatListContent.innerHTML = ''; // Clear existing items
-            chatListContent.style.display = 'block'; // Ensure chat list content is visible
-
-            // Add Public Chat item
-            const publicChatDiv = document.createElement('div');
-            publicChatDiv.className = 'chat-list-item';
-            publicChatDiv.onclick = () => showScreen('chatDetail', true, PUBLIC_CHAT_ID);
-            publicChatDiv.innerHTML = `
-                <div class="chat-avatar">Z</div>
-                <div class="chat-info">
-                    <div class="chat-name">ZedxChat (Publik)</div>
-                    <div class="chat-last-message" id="publicChatLastMsg">Memuat...</div>
-                </div>
-                <div class="chat-time" id="publicChatLastTime"></div>
-            `;
-            chatListContent.appendChild(publicChatDiv);
-
-            // Add a listener for the last message in public chat
-            db.ref(`${PUBLIC_CHAT_ID}/messages`).orderByKey().limitToLast(1).on('child_added', snap => {
-                const msgData = snap.val();
-                document.getElementById('publicChatLastMsg').textContent = msgData.text || (msgData.imageUrl ? "Gambar" : "");
-                document.getElementById('publicChatLastTime').textContent = formatTime(msgData.timestamp);
-            });
-
-            // Add Report Chat item if user is admin
-            if (currentLoggedInUser && currentLoggedInUser.isAdmin) {
-                const reportChatDiv = document.createElement('div');
-                reportChatDiv.className = 'chat-list-item';
-                // Styling khusus untuk report chat
-                reportChatDiv.innerHTML = `
-                    <div class="chat-avatar" style="background-color: #ff0000; font-size: 1.8em;">!</div>
-                    <div class="chat-info">
-                        <div class="chat-name" style="color: #ff6b6b;">Pesan Laporan Admin</div>
-                        <div class="chat-last-message" id="reportChatLastMsg">Tidak ada laporan baru</div>
-                    </div>
-                    <div class="chat-time" id="reportChatLastTime"></div>
-                `;
-                // Gunakan addEventListener untuk menghindari masalah jika Anda ingin menambahkan lebih banyak event
-                reportChatDiv.addEventListener('click', () => showScreen('chatDetail', true, REPORT_CHAT_ID));
-                chatListContent.appendChild(reportChatDiv);
-
-                // Add a listener for the last message in report chat
-                db.ref(`${REPORT_CHAT_ID}/messages`).orderByKey().limitToLast(1).on('child_added', snap => {
-                    const msgData = snap.val();
-                    document.getElementById('reportChatLastMsg').textContent = `Dari ${msgData.sender}: ${msgData.text}`;
-                    document.getElementById('reportChatLastTime').textContent = formatTime(msgData.timestamp);
+        registerBtn.addEventListener("click", () => {
+            const email = registerEmailInput.value;
+            const password = registerPasswordInput.value;
+            if (!email || !password || password.length < 6) {
+                registerMessageEl.textContent = "Email dan password minimal 6 karakter harus diisi.";
+                return;
+            }
+            auth.createUserWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    registerMessageEl.textContent = "Registrasi berhasil! Anda bisa login sekarang.";
+                    showLoginScreen(); // Redirect to login after successful registration
+                })
+                .catch((error) => {
+                    registerMessageEl.textContent = "Registrasi gagal: " + error.message;
                 });
-            }
-        }
+        });
 
-        // Fungsi renderMessage yang diperbarui untuk mendukung balasan dan gambar
-        function renderMessage(key, val, chatRef) {
-            const msgDivId = "msg-" + key;
-            let msgDiv = document.getElementById(msgDivId);
-            const isNewMessage = !msgDiv; // Check if the message element already exists
+        lobbyLogoutBtn.addEventListener('click', logout);
 
-            if (isNewMessage) {
-                msgDiv = document.createElement('div');
-                msgDiv.id = msgDivId;
-                msgDiv.classList.add('msg');
-                chatContainer.appendChild(msgDiv);
-            } else {
-                // Clear existing content if message is being re-rendered (e.g., from child_changed)
-                msgDiv.innerHTML = '';
-                // Remove previous event listeners to avoid duplicates
-                // Note: Re-attaching listeners is crucial here.
-                msgDiv.removeEventListener('contextmenu', msgDiv.contextMenuHandler);
-                msgDiv.removeEventListener('touchstart', msgDiv.touchStartHandler);
-                msgDiv.removeEventListener('touchmove', msgDiv.touchMoveHandler);
-                msgDiv.removeEventListener('touchend', msgDiv.touchEndHandler);
-                msgDiv.removeEventListener('touchstart', msgDiv.longPressStartHandler);
-                msgDiv.removeEventListener('touchend', msgDiv.longPressEndHandler);
-                msgDiv.removeEventListener('touchmove', msgDiv.longPressMoveHandler);
-
-                // Reset classes before applying new ones, especially for deleted state
-                msgDiv.classList.remove('own', 'other', 'deleted-message');
-                msgDiv.style.backgroundColor = ''; // Clear custom background
-                msgDiv.style.opacity = ''; // Clear custom opacity
-                msgDiv.style.fontStyle = ''; // Clear custom font style
-                msgDiv.style.transform = 'translateX(0px)'; // Reset any swipe position
-            }
-
-            // Set class based on sender (own, other, or bot)
-            const isOwn = val.senderUid === currentLoggedInUser.uid;
-            const isBot = val.sender === "ZedxBot";
-
-            if (isOwn) {
-                msgDiv.classList.add('own');
-            } else if (isBot) {
-                msgDiv.classList.add('other'); // Bot messages appear as "other"
-                msgDiv.style.backgroundColor = '#303f4a'; // Slightly different background for bot
-                msgDiv.style.fontStyle = 'italic';
-            } else {
-                msgDiv.classList.add('other');
-            }
-
-            // --- MODIFIKASI: Penanganan pesan terhapus ---
-            if (val.deleted) {
-                msgDiv.classList.add('deleted-message');
-                msgDiv.innerHTML = `
-                    <span style="font-style: italic;">Pesan ini telah dihapus.</span>
-                    <span class="time">${formatTime(val.timestamp)}</span>
-                `;
-                // If it's a deleted message, we don't need context menu or swipe.
-                // The class `deleted-message` will override `own`/`other` background, but
-                // `own`/`other` should still be present to maintain alignment (margin auto).
-                if (replyTo && msgDivId === replyTo.id) {
-                    cancelReply();
-                }
-                scrollToBottom();
-                return; // Stop further rendering for deleted messages
-            }
-            // --- AKHIR MODIFIKASI: Penanganan pesan terhapus ---
-
-            // Handlers for swipe gesture (extracted to named functions for easy removal)
-            const handleTouchStart = (e) => {
-                if (e.touches.length === 1) {
-                    initialX = e.touches[0].clientX;
-                    initialY = e.touches[0].clientY;
-                    swipedElement = msgDiv;
-                    msgDiv.style.transition = 'transform 0.1s ease-out';
-                }
-            };
-
-            const handleTouchMove = (e) => {
-                if (initialX === null || swipedElement !== msgDiv || e.touches.length === 0) return;
-
-                const currentX = e.touches[0].clientX;
-                const currentY = e.touches[0].clientY;
-
-                const diffX = currentX - initialX;
-                const diffY = currentY - initialY;
-
-                if (Math.abs(diffY) < VERTICAL_THRESHOLD) {
-                    if (diffX > 0) {
-                        msgDiv.style.transform = `translateX(${Math.min(diffX, SWIPE_THRESHOLD * 0.7)}px)`;
-                    } else {
-                        msgDiv.style.transform = `translateX(0px)`;
-                    }
-                } else {
-                    msgDiv.style.transform = `translateX(0px)`;
-                    initialX = null;
-                    initialY = null;
-                    swipedElement = null;
-                }
-            };
-
-            const handleTouchEnd = (e) => {
-                if (initialX === null || swipedElement !== msgDiv) return;
-
-                const currentX = e.changedTouches[0].clientX;
-                const diffX = currentX - initialX;
-
-                msgDiv.style.transform = `translateX(0px)`;
-
-                if (diffX > SWIPE_THRESHOLD) {
-                    startReply(key, val.text, val.sender, val.senderUid);
-                }
-
-                initialX = null;
-                initialY = null;
-                swipedElement = null;
-            };
-
-            // Storing handlers on the element itself to easily remove them later
-            msgDiv.contextMenuHandler = (e) => { e.preventDefault(); showContextMenu(e, key, val, chatRef); };
-            msgDiv.touchStartHandler = handleTouchStart;
-            msgDiv.touchMoveHandler = handleTouchMove;
-            msgDiv.touchEndHandler = handleTouchEnd;
-
-            // Add long press/right click listener to show context menu (ONLY for Delete)
-            if (chatRef === PUBLIC_CHAT_ID) {
-                 msgDiv.addEventListener('contextmenu', msgDiv.contextMenuHandler);
-                 let touchTimeout;
-                 msgDiv.longPressStartHandler = (e) => {
-                    touchTimeout = setTimeout(() => {
-                        e.preventDefault();
-                        showContextMenu(e, key, val, chatRef);
-                    }, 500);
-                 };
-                 msgDiv.longPressEndHandler = () => {
-                    clearTimeout(touchTimeout);
-                 };
-                 msgDiv.longPressMoveHandler = () => {
-                    clearTimeout(touchTimeout);
-                 };
-
-                 msgDiv.addEventListener('touchstart', msgDiv.longPressStartHandler, { passive: true }); // Make touchstart passive to avoid blocking scroll if not long press
-                 msgDiv.addEventListener('touchend', msgDiv.longPressEndHandler);
-                 msgDiv.addEventListener('touchmove', msgDiv.longPressMoveHandler);
-            }
-
-            // --- SWIPE GESTURE FOR REPLY ---
-            // Only enable swipe reply for public chat, and not for bot messages
-            if (chatRef === PUBLIC_CHAT_ID && !isBot) {
-                msgDiv.addEventListener('touchstart', msgDiv.touchStartHandler, { passive: true });
-                msgDiv.addEventListener('touchmove', msgDiv.touchMoveHandler, { passive: true });
-                msgDiv.addEventListener('touchend', msgDiv.touchEndHandler);
-            }
-            // --- END SWIPE GESTURE ---
-
-            if (val.replyTo) {
-                const replyEl = document.createElement('div');
-                replyEl.classList.add('reply');
-                replyEl.textContent = `Membalas ${val.replyTo.sender}: ${val.replyTo.text}`;
-                msgDiv.appendChild(replyEl);
-            }
-
-            const messageContent = document.createElement('span');
-            messageContent.textContent = val.text;
-            msgDiv.appendChild(messageContent);
-
-            if (val.imageUrl) {
-                const img = document.createElement('img');
-                img.src = val.imageUrl;
-                img.alt = "Gambar terkirim";
-                img.onload = () => scrollToBottom(); // Scroll once image is loaded
-                msgDiv.appendChild(img);
-            }
-
-            const timeSpan = document.createElement('span');
-            timeSpan.classList.add('time');
-            timeSpan.textContent = formatTime(val.timestamp);
-            msgDiv.appendChild(timeSpan);
-
-            // Menambahkan nama pengirim untuk pesan yang bukan dari user sendiri dan bukan bot
-            if (!isOwn && !isBot) {
-                const senderNameSpan = document.createElement('span');
-                senderNameSpan.classList.add('sender-name'); // Tambahkan kelas untuk styling
-                senderNameSpan.textContent = val.sender + ": "; // Tampilkan nama pengirim
-                messageContent.prepend(senderNameSpan); // Masukkan di depan teks pesan
-            }
-
-            scrollToBottom();
-        }
-
-        // --- Message Context Menu Logic ---
-        function showContextMenu(event, msgKey, msgVal, chatRef) {
-            currentContextMenuMessage = { key: msgKey, val: msgVal, chatRef: chatRef };
-
-            // Determine if delete option should be shown
-            const isOwnMessage = msgVal.senderUid === currentLoggedInUser.uid;
-            const isAdmin = currentLoggedInUser.isAdmin;
-            const canDelete = isOwnMessage || isAdmin; // User can delete own, admin can delete any
-
-            // Hide/show delete option
-            contextDelete.style.display = canDelete ? 'block' : 'none';
-
-            // Position the context menu
-            messageContextMenu.style.left = `${event.clientX}px`;
-            messageContextMenu.style.top = `${event.clientY}px`;
-            messageContextMenu.style.display = 'block';
-
-            // Ensure menu stays within viewport
-            const rect = messageContextMenu.getBoundingClientRect();
-            if (rect.bottom > window.innerHeight) {
-                messageContextMenu.style.top = `${event.clientY - rect.height}px`;
-            }
-            if (rect.right > window.innerWidth) {
-                messageContextMenu.style.left = `${event.clientX - rect.width}px`;
-            }
-
-            // Show overlay to close menu on outside click
-            fullScreenOverlay.classList.add('active');
-        }
-
-        function hideMessageContextMenu() {
-            messageContextMenu.style.display = 'none';
+        // --- UI State Management ---
+        function hideAllScreens() {
+            loadingScreen.style.display = 'none';
+            loginScreen.style.display = 'none';
+            registerScreen.style.display = 'none';
+            chatListContainer.style.display = 'none';
+            mainContent.style.display = 'none';
+            profileModal.style.display = 'none';
             fullScreenOverlay.classList.remove('active');
-            // currentContextMenuMessage = null; // Don't clear immediately, clear it in the delete action or after a delay
         }
 
-        // Add listeners for context menu items
-        contextDelete.addEventListener('click', () => {
-            if (currentContextMenuMessage && currentContextMenuMessage.chatRef === PUBLIC_CHAT_ID && currentContextMenuMessage.key) { // Ensure key exists
-                // Confirm deletion
-                if (confirm("Apakah Anda yakin ingin menghapus pesan ini?")) {
-                    // Update the 'deleted' property in Firebase
-                    db.ref(`${PUBLIC_CHAT_ID}/messages/${currentContextMenuMessage.key}`).update({ deleted: true })
-                        .then(() => {
-                            showToast("Pesan berhasil dihapus.");
-                            console.log("Pesan dihapus:", currentContextMenuMessage.key);
-                            currentContextMenuMessage = null; // Clear after successful action
-                        })
-                        .catch(error => {
-                            showToast("Gagal menghapus pesan: " + error.message);
-                            console.error("Error deleting message:", error);
-                            currentContextMenuMessage = null; // Clear even on error
-                        });
-                }
+        function showLoadingScreen() {
+            hideAllScreens();
+            loadingScreen.style.display = 'flex';
+            currentScreen = 'loading';
+        }
+
+        function hideLoadingScreen() {
+            loadingScreen.style.opacity = '0';
+            setTimeout(() => {
+                loadingScreen.style.display = 'none';
+                loadingScreen.style.opacity = '1'; // Reset for next time
+            }, 500);
+        }
+
+        function hideAuthScreens() {
+            loginScreen.style.display = 'none';
+            registerScreen.style.display = 'none';
+        }
+
+        function showLoginScreen() {
+            hideAllScreens();
+            loginScreen.style.display = 'block';
+            loginMessageEl.textContent = ''; // Clear previous messages
+            currentScreen = 'login';
+        }
+
+        function showRegisterScreen() {
+            hideAllScreens();
+            registerScreen.style.display = 'block';
+            registerMessageEl.textContent = ''; // Clear previous messages
+            currentScreen = 'register';
+        }
+
+        function showChatListScreen() {
+            hideAllScreens();
+            chatListContainer.style.display = 'flex';
+            bottomNav.style.display = 'flex';
+            currentScreen = 'chatList';
+            populateChatList(); // Ensure chat list is populated
+            setActiveNavItem('navChat'); // Set Chat nav item active
+        }
+
+        function showMainChatScreen(chatId, chatName) {
+            hideAllScreens();
+            mainContent.style.display = 'flex';
+            bottomNav.style.display = 'flex';
+            currentChatId = chatId;
+            currentChatNameEl.textContent = chatName;
+            setupChatListener(chatId); // Set up listener for the selected chat
+            currentScreen = 'mainChat';
+            scrollToBottom(); // Scroll to bottom when chat opens
+            setActiveNavItem('navChat'); // Keep Chat nav item active
+        }
+
+        function setActiveNavItem(id) {
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            document.getElementById(id).classList.add('active');
+        }
+
+        // --- Profile Modal ---
+        viewProfileBtn.addEventListener('click', openProfileModal);
+
+        function openProfileModal() {
+            if (currentLoggedInUser) {
+                profileEmailEl.textContent = currentLoggedInUser.email;
+                profileDisplayNameInput.value = currentDisplayName; // Load current display name
+                profileMessageEl.textContent = ''; // Clear message
+                profileModal.style.display = 'block';
+                fullScreenOverlay.classList.add('active'); // Show overlay
+                currentScreen = 'profile';
             } else {
-                 showToast("Hapus hanya tersedia untuk chat publik atau pesan tidak valid.");
-                 console.error("Attempted to delete with invalid currentContextMenuMessage:", currentContextMenuMessage);
-                 currentContextMenuMessage = null; // Clear if it was somehow invalid
+                showToast('Anda harus login untuk melihat profil.', 'error');
             }
-            hideMessageContextMenu();
+        }
+
+        function closeProfileModal() {
+            profileModal.style.display = 'none';
+            fullScreenOverlay.classList.remove('active'); // Hide overlay
+            // Revert screen state based on what was active before opening modal
+            if (chatListContainer.style.display === 'flex') {
+                currentScreen = 'chatList';
+            } else if (mainContent.style.display === 'flex') {
+                currentScreen = 'mainChat';
+            } else {
+                currentScreen = 'loading'; // Fallback
+            }
+        }
+
+        saveProfileBtn.addEventListener('click', () => {
+            const newDisplayName = profileDisplayNameInput.value.trim();
+            if (newDisplayName && currentLoggedInUser) {
+                db.ref('users/' + currentLoggedInUser.uid).update({
+                    displayName: newDisplayName
+                }).then(() => {
+                    currentDisplayName = newDisplayName; // Update local variable
+                    updateUserInfoDisplay(); // Update all UI displays
+                    profileMessageEl.textContent = 'Profil berhasil diperbarui!';
+                    profileMessageEl.style.color = '#008069';
+                    setTimeout(() => {
+                        profileMessageEl.textContent = '';
+                    }, 3000);
+                }).catch(error => {
+                    profileMessageEl.textContent = 'Gagal memperbarui profil: ' + error.message;
+                    profileMessageEl.style.color = 'red';
+                });
+            } else {
+                profileMessageEl.textContent = 'Nama pengguna tidak boleh kosong.';
+                profileMessageEl.style.color = 'red';
+            }
         });
 
-        // Close context menu if clicked outside
-        document.addEventListener('click', (e) => {
-            if (!messageContextMenu.contains(e.target) && messageContextMenu.style.display === 'block') {
-                hideMessageContextMenu();
+        // Function to update user info across all relevant UI elements
+        function updateUserInfoDisplay() {
+            if (currentLoggedInUser) {
+                // Update money display in lobby and game pages
+                // Money display is handled by shared.js now
+                // Ensure the element userMoneySpan exists in index.html for this to work
+                // No need to set up a new listener here, shared.js already does it
+                // Just trigger an update if the element is present
+                if (userMoneySpan) {
+                    db.ref('users/' + currentLoggedInUser.uid + '/money').once('value', (snapshot) => {
+                        const money = snapshot.val() || 0;
+                        userMoneySpan.textContent = money;
+                    });
+                }
+                // Update display name in profile modal if open, etc.
+                if (profileDisplayNameInput) profileDisplayNameInput.value = currentDisplayName;
             }
+        }
+
+        // --- Chat List Functions ---
+        function populateChatList() {
+            chatListContent.innerHTML = ''; // Clear existing list
+            // Public Chat
+            const publicChatItem = document.createElement('div');
+            publicChatItem.classList.add('chat-list-item');
+            publicChatItem.innerHTML = `
+                <div class="chat-avatar">P</div>
+                <div>
+                    <h3>Public Chat</h3>
+                    <p>Obrolan umum untuk semua pengguna.</p>
+                </div>
+            `;
+            publicChatItem.addEventListener('click', () => {
+                showMainChatScreen(PUBLIC_CHAT_ID, 'Public Chat');
+            });
+            chatListContent.appendChild(publicChatItem);
+
+            // Kusuriya / Gacha Item
+            const kusuriyaItem = document.createElement('div');
+            kusuriyaItem.classList.add('chat-list-item');
+            kusuriyaItem.innerHTML = `
+                <div class="chat-avatar" style="background-color: #ffc107;">K</div>
+                <div>
+                    <h3>Kusuriya</h3>
+                    <p>Halaman Gacha/Kartu</p>
+                </div>
+            `;
+            kusuriyaItem.addEventListener('click', () => {
+                // Redirect to gacha.html
+                window.location.href = 'gacha.html';
+            });
+            chatListContent.appendChild(kusuriyaItem);
+
+            // If user is admin, show Report Chat
+            if (currentLoggedInUser && currentLoggedInUser.isAdmin) {
+                const reportChatItem = document.createElement('div');
+                reportChatItem.classList.add('chat-list-item');
+                reportChatItem.innerHTML = `
+                    <div class="chat-avatar" style="background-color: #dc3545;">R</div>
+                    <div>
+                        <h3>Report Chat (Admin)</h3>
+                        <p>Pesan yang dilaporkan pengguna.</p>
+                    </div>
+                `;
+                reportChatItem.addEventListener('click', () => {
+                    showMainChatScreen(REPORT_CHAT_ID, 'Report Chat (Admin)');
+                });
+                chatListContent.appendChild(reportChatItem);
+            }
+        }
+
+        // --- Main Chat Functions ---
+        backToChatListBtn.addEventListener("click", () => {
+            if (currentChatListener) {
+                db.ref(`chats/${currentChatId}`).off('child_added', currentChatListener);
+                currentChatListener = null;
+            }
+            showChatListScreen();
         });
 
-        // --- Fungsi untuk format waktu ---
-        function formatTime(timestamp) {
-            if (!timestamp) return '';
-            const date = new Date(timestamp);
-            const hours = date.getHours().toString().padStart(2, '0');
-            const minutes = date.getMinutes().toString().padStart(2, '0');
-            return `${hours}:${minutes}`;
+        function setupChatListener(chatId) {
+            // Remove previous listener if any
+            if (currentChatListener) {
+                db.ref(`chats/${currentChatId}`).off('child_added', currentChatListener);
+            }
+            chatContainer.innerHTML = ''; // Clear existing messages
+
+            currentChatListener = db.ref(`chats/${chatId}`).on('child_added', (snapshot) => {
+                const message = snapshot.val();
+                message.id = snapshot.key; // Store the message ID
+                displayMessage(message);
+                scrollToBottom();
+            });
+        }
+
+        function displayMessage(message) {
+            const msgDiv = document.createElement("div");
+            msgDiv.classList.add("msg");
+            msgDiv.dataset.messageId = message.id; // Set data attribute for ID
+            msgDiv.dataset.senderUid = message.uid; // Set sender UID for checking ownership
+
+            let messageContent = '';
+            if (message.deleted) {
+                msgDiv.classList.add('deleted-message');
+                messageContent = 'Pesan ini telah dihapus';
+            } else {
+                messageContent = message.text;
+                if (message.imageUrl) {
+                    messageContent += `<br><img src="${message.imageUrl}" alt="Image" loading="lazy">`;
+                }
+            }
+
+            // Display replied message if exists and not deleted
+            if (message.replyTo && !message.deleted) {
+                const replyContent = message.replyTo.content.length > 50 ?
+                                     message.replyTo.content.substring(0, 50) + '...' :
+                                     message.replyTo.content;
+                msgDiv.innerHTML += `<div class="reply">Membalas <strong>${message.replyTo.senderName}</strong>: ${replyContent}</div>`;
+            }
+
+
+            db.ref('users/' + message.uid).once('value', (snapshot) => {
+                const senderData = snapshot.val();
+                const senderDisplayName = senderData ? senderData.displayName : 'Unknown User';
+
+                if (message.uid === currentLoggedInUser.uid) {
+                    msgDiv.classList.add("own");
+                } else {
+                    msgDiv.classList.add("other");
+                    // Only show sender name for 'other' messages if not deleted
+                    if (!message.deleted) {
+                        msgDiv.innerHTML += `<span class="sender-name">${senderDisplayName}</span>`;
+                    }
+                }
+                msgDiv.innerHTML += `<p>${messageContent}</p><span class="time">${formatTimestamp(message.timestamp)}</span>`;
+
+                chatContainer.appendChild(msgDiv);
+                scrollToBottom();
+
+                // Add event listeners for context menu and swipe
+                if (!message.deleted) { // Only add context menu/swipe for non-deleted messages
+                    msgDiv.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                        showContextMenu(e, message);
+                    });
+
+                    // Swipe listeners
+                    msgDiv.addEventListener('touchstart', handleTouchStart, false);
+                    msgDiv.addEventListener('touchmove', handleTouchMove, false);
+                    msgDiv.addEventListener('touchend', handleTouchEnd, false);
+                }
+            });
         }
 
         function scrollToBottom() {
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
 
-        // --- Reply Functions ---
-        function startReply(msgId, msgText, senderName, senderUid) {
-            replyTo = {
-                id: msgId, // Already "msg-" + key, so just use msgId directly
-                text: msgText,
-                sender: senderName,
-                senderUid: senderUid
-            };
-            replyText.textContent = `Membalas ${senderName}: ${msgText}`;
-            replyPreview.style.display = 'flex';
-            updateInputAreaHeight(); // Adjust input area height
-            input.focus();
-        }
-
-        function cancelReply() {
-            replyTo = null;
-            replyPreview.style.display = 'none';
-            updateInputAreaHeight(); // Adjust input area height back
-        }
-
-        // --- Dynamic Input Area Height Adjustment ---
-        function updateInputAreaHeight() {
-            // Reset height to calculate scrollHeight correctly
-            input.style.height = 'auto';
-            // Set min height to default for one row
-            let newHeight = input.scrollHeight;
-
-            // Constrain the height to max 150px
-            if (newHeight > 150) {
-                newHeight = 150;
-            }
-
-            input.style.height = `${newHeight}px`;
-
-            // Calculate total input area height
-            const inputAreaComputedStyle = window.getComputedStyle(input_area);
-            const inputAreaPaddingTop = parseFloat(inputAreaComputedStyle.paddingTop);
-            const inputAreaPaddingBottom = parseFloat(inputAreaComputedStyle.paddingBottom);
-
-            let totalHeight = newHeight + inputAreaPaddingTop + inputAreaPaddingBottom;
-            totalHeight += 10; // Small extra buffer
-
-            if (replyPreview.style.display === 'flex') {
-                totalHeight += parseFloat(getComputedStyle(root).getPropertyValue('--reply-preview-height'));
-            }
-
-            root.style.setProperty('--input-area-total-height', `${totalHeight}px`);
-            if (currentChatId) scrollToBottom(); // Only scroll if in chat detail
-        }
-
-        input.addEventListener('input', updateInputAreaHeight);
-        input.addEventListener('focus', updateInputAreaHeight);
-
-
-        // --- Send Message and Upload Logic ---
-        sendBtn.addEventListener("click", () => {
-            const text = input.value.trim();
-            if (text === "" && !fileInput.files[0]) return; // No text and no image
-
-            const messageData = {
-                sender: currentDisplayName,
-                senderUid: currentLoggedInUser.uid,
-                timestamp: firebase.database.ServerValue.TIMESTAMP
-            };
-
-            if (replyTo) {
-                messageData.replyTo = {
-                    id: replyTo.id,
-                    text: replyTo.text,
-                    sender: replyTo.sender,
-                    senderUid: replyTo.senderUid
-                };
-            }
-
-            // --- Update text count for money earning ---
-            if (currentLoggedInUser) {
-                const charCount = text.length;
-                db.ref(`users/${currentLoggedInUser.uid}/textCount`).transaction((currentTextCount) => {
-                    const newTextCount = (currentTextCount || 0) + charCount;
-                    const moneyToAdd = Math.floor(newTextCount / TEXT_TO_MONEY_RATE) - Math.floor((currentTextCount || 0) / TEXT_TO_MONEY_RATE);
-                    if (moneyToAdd > 0) {
-                        db.ref(`users/${currentLoggedInUser.uid}/money`).transaction((currentMoney) => {
-                            return (currentMoney || 0) + moneyToAdd;
-                        }, (error, committed, snapshot) => {
-                            if (error) {
-                                console.error("Money transaction failed:", error);
-                            } else if (committed) {
-                                showToast(`Anda mendapatkan ${moneyToAdd} Money!`);
-                            }
-                        });
-                    }
-                    return newTextCount;
-                });
-            }
-
-
-            // --- MODIFIKASI: Penanganan perintah bot ---
-            if (text.startsWith("-report ")) {
-                if (currentChatId !== PUBLIC_CHAT_ID) {
-                    showToast("Perintah -report hanya bisa digunakan di ZedxChat (Publik).");
-                    input.value = "";
-                    cancelReply();
-                    return;
-                }
-                const reportText = text.substring("-report ".length).trim();
-                if (reportText === "") {
-                    showToast("Pesan laporan tidak boleh kosong!");
-                    input.value = "";
-                    cancelReply();
-                    return;
-                }
-
-                db.ref(`${REPORT_CHAT_ID}/messages`).push({
-                    ...messageData,
-                    text: reportText,
-                    originalSenderEmail: currentLoggedInUser.email
-                }).then(() => {
-                    console.log("Pesan laporan dikirim!");
-                    db.ref(`${PUBLIC_CHAT_ID}/messages`).push({
-                        ...messageData,
-                        text: text
-                    }).then((publicMessageRef) => {
-                        db.ref(`${PUBLIC_CHAT_ID}/messages`).push({
-                            sender: "ZedxBot",
-                            senderUid: "zedxbot_uid",
-                            text: "Pesan Anda telah kami terima dan akan dikirim ke admin. Mohon tunggu yaa.",
-                            timestamp: firebase.database.ServerValue.TIMESTAMP,
-                            replyTo: {
-                                id: publicMessageRef.key,
-                                text: text,
-                                sender: currentDisplayName,
-                                senderUid: currentLoggedInUser.uid
-                            }
-                        });
-                    }).catch(error => {
-                        console.error("Gagal mengirim pesan publik asli atau bot reply:", error);
-                        showToast("Gagal mengirim laporan atau notifikasi: " + error.message);
-                    });
-                }).catch(error => {
-                    console.error("Gagal mengirim pesan laporan ke admin:", error);
-                    showToast("Gagal mengirim laporan: " + error.message);
-                });
-            }
-            else if (text.startsWith("-help")) {
-                if (currentChatId !== PUBLIC_CHAT_ID) {
-                    showToast("Perintah -help hanya bisa digunakan di ZedxChat (Publik).");
-                    input.value = "";
-                    cancelReply();
-                    return;
-                }
-                db.ref(`${PUBLIC_CHAT_ID}/messages`).push({
-                    ...messageData,
-                    text: text
-                }).then((publicMessageRef) => {
-                    const helpMessage = "Halo! Berikut beberapa perintah yang bisa Anda gunakan:\n" +
-                                        "-report [pesan] : Laporkan pesan atau pengguna.\n" +
-                                        "-help : Menampilkan daftar perintah ini.\n" +
-                                        "-system : Menampilkan informasi simulasi sistem.";
-                    db.ref(`${PUBLIC_CHAT_ID}/messages`).push({
-                        sender: "ZedxBot",
-                        senderUid: "zedxbot_uid",
-                        text: helpMessage,
-                        timestamp: firebase.database.ServerValue.TIMESTAMP,
-                        replyTo: {
-                            id: publicMessageRef.key,
-                            text: text,
-                            sender: currentDisplayName,
-                            senderUid: currentLoggedInUser.uid
-                        }
-                    });
-                }).catch(error => {
-                    console.error("Gagal mengirim pesan -help atau bot reply:", error);
-                    showToast("Gagal memproses perintah help: " + error.message);
-                });
-            }
-            else if (text.startsWith("-system")) {
-                if (currentChatId !== PUBLIC_CHAT_ID) {
-                    showToast("Perintah -system hanya bisa digunakan di ZedxChat (Publik).");
-                    input.value = "";
-                    cancelReply();
-                    return;
-                }
-                db.ref(`${PUBLIC_CHAT_ID}/messages`).push({
-                    ...messageData,
-                    text: text
-                }).then((publicMessageRef) => {
-                    const ram = (Math.random() * (8 - 2) + 2).toFixed(1);
-                    const cpu = (Math.random() * (90 - 10) + 10).toFixed(0);
-                    const uptimeHours = Math.floor(Math.random() * 24 * 7);
-                    const uptimeMinutes = Math.floor(Math.random() * 60);
-                    const cores = Math.floor(Math.random() * (16 - 2) + 2);
-
-                    const systemInfoMessage = `Status Sistem ZedxChat (Simulasi):\n` +
-                                              `RAM Terpakai: ${ram} GB\n` +
-                                              `CPU Usage: ${cpu}%\n` +
-                                              `Uptime: ${uptimeHours} jam ${uptimeMinutes} menit\n` +
-                                              `Core CPU: ${cores} core`;
-
-                    db.ref(`${PUBLIC_CHAT_ID}/messages`).push({
-                        sender: "ZedxBot",
-                        senderUid: "zedxbot_uid",
-                        text: systemInfoMessage,
-                        timestamp: firebase.database.ServerValue.TIMESTAMP,
-                        replyTo: {
-                            id: publicMessageRef.key,
-                            text: text,
-                            sender: currentDisplayName,
-                            senderUid: currentLoggedInUser.uid
-                        }
-                    });
-                }).catch(error => {
-                    console.error("Gagal mengirim pesan -system atau bot reply:", error);
-                    showToast("Gagal memproses perintah sistem: " + error.message);
-                });
-            }
-            else {
-                // Normal message logic
-                if (!currentChatId) { // Prevent sending if no chat is active
-                    showToast("Tidak ada chat yang aktif.");
-                    return;
-                }
-                if (fileInput.files[0]) {
-                    uploadImage(fileInput.files[0], (imageUrl) => {
-                        db.ref(`${currentChatId}/messages`).push({
-                            ...messageData,
-                            text: text,
-                            imageUrl: imageUrl
-                        });
-                        fileInput.value = ""; // Clear file input after sending
-                    });
-                } else {
-                    db.ref(`${currentChatId}/messages`).push({
-                        ...messageData,
-                        text: text
-                    });
-                }
-            }
-
-            input.value = ""; // Clear input after sending
-            cancelReply(); // Clear reply preview
-            hideCommandSuggestions(); // Hide suggestions after sending
-        });
-
-        uploadBtn.addEventListener("click", () => {
-            fileInput.click();
-        });
-
-        fileInput.addEventListener("change", (event) => {
-            if (event.target.files.length > 0) {
-                showToast("Gambar siap dikirim!");
-                // You might want to preview the image here
+        sendButton.addEventListener("click", sendMessage);
+        messageInput.addEventListener("keypress", (e) => {
+            if (e.key === "Enter" && !e.shiftKey) { // Allow Shift + Enter for new line
+                e.preventDefault();
+                sendMessage();
             }
         });
 
-        function uploadImage(file, callback) {
-            if (!imgbbKey) {
-                showToast("Kunci ImgBB tidak dikonfigurasi. Unggah gambar dinonaktifkan.");
-                console.error("ImgBB API Key is not set. Image upload will not work.");
+        messageInput.addEventListener('input', () => {
+            adjustInputAreaHeight();
+            showCommandSuggestionsHandler(); // Check for command suggestions
+        });
+
+        function adjustInputAreaHeight() {
+            messageInput.style.height = 'auto'; // Reset height
+            messageInput.style.height = messageInput.scrollHeight + 'px'; // Set to scroll height
+
+            // Update CSS variable based on actual input area height
+            const currentInputAreaHeight = inputArea.offsetHeight;
+            document.documentElement.style.setProperty('--input-area-total-height', `${currentInputAreaHeight}px`);
+        }
+
+        function sendMessage() {
+            const messageText = messageInput.value.trim();
+            if (!messageText && !fileInput.files.length) {
+                return; // Don't send empty messages
+            }
+
+            if (!currentLoggedInUser) {
+                showToast("Anda harus login untuk mengirim pesan.", 'error');
                 return;
             }
 
-            showToast("Mengunggah gambar...");
-            const formData = new FormData();
-            formData.append("image", file);
+            // Check for bot commands
+            if (messageText.startsWith('/')) {
+                handleBotCommand(messageText);
+                messageInput.value = ''; // Clear input after command
+                hideCommandSuggestions();
+                return;
+            }
 
-            fetch(`https://api.imgbb.com/1/upload?key=${imgbbKey}`, {
-                    method: "POST",
-                    body: formData,
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.data && data.data.url) {
-                        callback(data.data.url);
-                        showToast("Gambar berhasil diunggah!");
-                    } else {
-                        console.error("ImgBB upload error:", data);
-                        showToast("Gagal mengunggah gambar.");
+            const messageData = {
+                uid: currentLoggedInUser.uid,
+                text: messageText,
+                timestamp: firebase.database.ServerValue.TIMESTAMP,
+                replyTo: null // Default null
+            };
+
+            // If replying, add replyTo data
+            if (replyingToMessageId && replyingToMessageContent) {
+                messageData.replyTo = {
+                    messageId: replyingToMessageId,
+                    senderName: getSenderNameFromMessageId(replyingToMessageId), // Get sender name of original message
+                    content: replyingToMessageContent
+                };
+            }
+
+            // Upload image if selected
+            if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                const storageRef = storage.ref(`chat_images/${currentChatId}/${Date.now()}_${file.name}`);
+                const uploadTask = storageRef.put(file);
+
+                uploadTask.on('state_changed',
+                    (snapshot) => {
+                        // Progress function (optional)
+                        showToast('Mengunggah gambar: ' + Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100) + '%', 'info', 5000);
+                    },
+                    (error) => {
+                        // Error function
+                        showToast('Gagal mengunggah gambar: ' + error.message, 'error');
+                        console.error("Upload error:", error);
+                    },
+                    () => {
+                        // Complete function
+                        uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
+                            messageData.imageUrl = downloadURL;
+                            db.ref(`chats/${currentChatId}`).push(messageData);
+                            incrementUserTextCount(messageText.length); // Increment text count for money
+                            resetInput();
+                            cancelReply(); // Clear reply after sending
+                            showToast('Gambar berhasil diunggah dan pesan dikirim!', 'success');
+                        });
                     }
+                );
+            } else {
+                // No image, just send text message
+                db.ref(`chats/${currentChatId}`).push(messageData);
+                incrementUserTextCount(messageText.length); // Increment text count for money
+                resetInput();
+                cancelReply(); // Clear reply after sending
+            }
+        }
+
+        function resetInput() {
+            messageInput.value = '';
+            fileInput.value = ''; // Clear selected file
+            messageInput.style.height = 'auto'; // Reset textarea height
+            document.documentElement.style.setProperty('--input-area-total-height', `${inputArea.offsetHeight}px`); // Reset CSS variable
+        }
+
+        function formatTimestamp(timestamp) {
+            const date = new Date(timestamp);
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            return `${hours}:${minutes}`;
+        }
+
+        // --- Money System ---
+        function incrementUserTextCount(charsSent) {
+            if (!currentLoggedInUser) return;
+
+            const userTextCountRef = db.ref('users/' + currentLoggedInUser.uid + '/textCount');
+            userTextCountRef.transaction((currentCount) => {
+                const newCount = (currentCount || 0) + charsSent;
+                if (Math.floor(newCount / TEXT_TO_MONEY_RATE) > Math.floor((currentCount || 0) / TEXT_TO_MONEY_RATE)) {
+                    // Award money if a new TEXT_TO_MONEY_RATE block is completed
+                    const moneyAwarded = Math.floor(newCount / TEXT_TO_MONEY_RATE) - Math.floor((currentCount || 0) / TEXT_TO_MONEY_RATE);
+                    db.ref('users/' + currentLoggedInUser.uid + '/money').transaction((currentMoney) => {
+                        return (currentMoney || 0) + moneyAwarded;
+                    });
+                    showToast(`Anda mendapatkan ${moneyAwarded} Money dari chat!`, 'success');
+                }
+                return newCount;
+            });
+        }
+
+        // --- Image Upload ---
+        uploadButton.addEventListener('click', () => {
+            fileInput.click(); // Trigger file input click
+        });
+
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                showToast(`Gambar dipilih: ${fileInput.files[0].name}`, 'info');
+                // You might want to display a preview here
+            }
+        });
+
+        // --- Context Menu for Messages ---
+        function showContextMenu(e, message) {
+            currentContextMenuMessage = message;
+            activeMessageElement = e.currentTarget; // Store the actual message div
+
+            // Check if current user is admin OR message owner
+            const isOwner = message.uid === currentLoggedInUser.uid;
+            const isAdmin = currentLoggedInUser.isAdmin;
+
+            // Clear existing context menu items
+            messageContextMenu.innerHTML = '<ul></ul>';
+            const ul = messageContextMenu.querySelector('ul');
+
+            // Always add Reply option
+            const replyOption = document.createElement('li');
+            replyOption.textContent = 'Balas Pesan';
+            replyOption.addEventListener('click', () => {
+                startReply(currentContextMenuMessage);
+                hideMessageContextMenu();
+            });
+            ul.appendChild(replyOption);
+
+            // Add Delete option for owner or admin
+            if (isOwner || isAdmin) {
+                const deleteOption = document.createElement('li');
+                deleteOption.textContent = 'Hapus Pesan';
+                deleteOption.addEventListener('click', () => {
+                    deleteMessage(currentContextMenuMessage.id);
+                    hideMessageContextMenu();
+                });
+                ul.appendChild(deleteOption);
+            }
+
+            // Add Report option if not owner and not admin
+            if (!isOwner && !isAdmin) {
+                const reportOption = document.createElement('li');
+                reportOption.textContent = 'Laporkan Pesan';
+                reportOption.addEventListener('click', () => {
+                    reportMessage(currentContextMenuMessage);
+                    hideMessageContextMenu();
+                });
+                ul.appendChild(reportOption);
+            }
+
+            // Position context menu
+            messageContextMenu.style.top = `${e.clientY}px`;
+            messageContextMenu.style.left = `${e.clientX}px`;
+            messageContextMenu.style.display = 'block';
+            fullScreenOverlay.classList.add('active'); // Show overlay
+        }
+
+        function hideMessageContextMenu() {
+            messageContextMenu.style.display = 'none';
+            fullScreenOverlay.classList.remove('active'); // Hide overlay
+            currentContextMenuMessage = null;
+            activeMessageElement = null;
+        }
+
+        // --- Delete Message ---
+        function deleteMessage(messageId) {
+            if (!currentLoggedInUser) {
+                showToast("Anda harus login untuk menghapus pesan.", 'error');
+                return;
+            }
+
+            const messageRef = db.ref(`chats/${currentChatId}/${messageId}`);
+            messageRef.once('value', (snapshot) => {
+                const messageData = snapshot.val();
+                if (messageData) {
+                    // Only allow deletion by owner or admin
+                    if (messageData.uid === currentLoggedInUser.uid || currentLoggedInUser.isAdmin) {
+                        messageRef.update({
+                            text: 'Pesan ini telah dihapus',
+                            imageUrl: null, // Remove image if any
+                            deleted: true,
+                            deletedBy: currentLoggedInUser.uid,
+                            deletedAt: firebase.database.ServerValue.TIMESTAMP
+                        }).then(() => {
+                            showToast('Pesan berhasil dihapus.', 'success');
+                            // Visually update the message
+                            const msgDiv = document.querySelector(`[data-message-id="${messageId}"]`);
+                            if (msgDiv) {
+                                msgDiv.innerHTML = `<p>Pesan ini telah dihapus</p><span class="time">${formatTimestamp(messageData.timestamp)}</span>`;
+                                msgDiv.classList.add('deleted-message');
+                                msgDiv.classList.remove('own', 'other'); // Remove original alignment classes for visual center
+                                // Re-apply alignment for deleted if it was own/other
+                                if (messageData.uid === currentLoggedInUser.uid) {
+                                    msgDiv.classList.add('own');
+                                } else {
+                                    msgDiv.classList.add('other');
+                                }
+                            }
+                        }).catch(error => {
+                            showToast('Gagal menghapus pesan: ' + error.message, 'error');
+                            console.error("Delete message error:", error);
+                        });
+                    } else {
+                        showToast('Anda tidak memiliki izin untuk menghapus pesan ini.', 'error');
+                    }
+                }
+            });
+        }
+
+        // --- Report Message ---
+        function reportMessage(message) {
+            if (!currentLoggedInUser) {
+                showToast("Anda harus login untuk melaporkan pesan.", 'error');
+                return;
+            }
+
+            // Prevent reporting own message
+            if (message.uid === currentLoggedInUser.uid) {
+                showToast("Anda tidak dapat melaporkan pesan Anda sendiri.", 'error');
+                return;
+            }
+
+            const reportData = {
+                reporterUid: currentLoggedInUser.uid,
+                reportedMessageId: message.id,
+                reportedMessageContent: message.text,
+                reportedMessageSenderUid: message.uid,
+                timestamp: firebase.database.ServerValue.TIMESTAMP,
+                status: 'pending' // pending, reviewed, resolved
+            };
+
+            // Push report to a dedicated 'reports' node or directly to 'reportChat'
+            db.ref('reports').push(reportData)
+                .then(() => {
+                    // Also send a simplified message to the report chat for admins to see
+                    const reportChatRef = db.ref(`chats/${REPORT_CHAT_ID}`);
+                    reportChatRef.push({
+                        uid: 'system', // System message
+                        text: `Pesan dilaporkan dari ${message.uid}: "${message.text}". ID Pesan: ${message.id}`,
+                        timestamp: firebase.database.ServerValue.TIMESTAMP,
+                        isReport: true, // Custom flag for report messages
+                        originalMessageId: message.id
+                    });
+                    showToast('Pesan berhasil dilaporkan. Terima kasih atas bantuan Anda!', 'success');
                 })
                 .catch(error => {
-                    console.error("ImgBB fetch error:", error);
-                    showToast("Gagal mengunggah gambar.");
+                    showToast('Gagal melaporkan pesan: ' + error.message, 'error');
+                    console.error("Report message error:", error);
                 });
         }
 
-
-        // --- Sidebar Functions ---
-        function openNav() {
-            sidebar.classList.add('open');
-            fullScreenOverlay.classList.add('active');
-            history.pushState({ screen: currentScreen, sidebarOpen: true, chatId: currentChatId }, '', window.location.hash);
-        }
-
-        function closeNav() {
-            sidebar.classList.remove('open');
-            fullScreenOverlay.classList.remove('active');
-            if (history.state && history.state.sidebarOpen) {
-                history.back();
+        // --- Reply Functionality ---
+        function startReply(message) {
+            if (!message || message.deleted) {
+                showToast('Tidak bisa membalas pesan yang sudah dihapus.', 'error');
+                return;
             }
+            replyingToMessageId = message.id;
+            replyingToMessageContent = message.text || (message.imageUrl ? '[Gambar]' : ''); // Use [Gambar] if only image
+            replyText.innerHTML = `Membalas <strong>${getSenderNameFromMessageId(message.id)}</strong>: ${replyingToMessageContent.length > 30 ? replyingToMessageContent.substring(0, 30) + '...' : replyingToMessageContent}`;
+            replyPreview.style.display = 'flex';
+            adjustInputAreaHeight(); // Adjust input area position
+            messageInput.focus(); // Focus input after starting reply
         }
 
-        // --- Profile Modal Functions ---
-        function openProfileModal() {
-            if (currentLoggedInUser) {
-                profileEmailEl.textContent = currentLoggedInUser.email;
-                profileDisplayNameInput.value = currentDisplayName;
-                profileModal.style.display = 'block';
-                fullScreenOverlay.classList.add('active');
-                history.pushState({ screen: currentScreen, profileModalOpen: true, chatId: currentChatId }, '', window.location.hash);
+        function cancelReply() {
+            replyingToMessageId = null;
+            replyingToMessageContent = null;
+            replyPreview.style.display = 'none';
+            adjustInputAreaHeight(); // Adjust input area position
+        }
+
+        function getSenderNameFromMessageId(messageId) {
+            // Find the message element by its data-message-id
+            const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+            if (messageElement) {
+                const senderUid = messageElement.dataset.senderUid;
+                // If it's the current user's message
+                if (senderUid === currentLoggedInUser.uid) {
+                    return currentDisplayName;
+                } else {
+                    // Try to get sender name from the displayed message itself
+                    const senderNameSpan = messageElement.querySelector('.sender-name');
+                    if (senderNameSpan) {
+                        return senderNameSpan.textContent;
+                    }
+                    // Fallback if sender name span is not found (e.g., deleted message or very old)
+                    return 'Pengguna Lain';
+                }
             }
+            return 'Pengguna'; // Fallback if message element not found
         }
 
-        function closeProfileModal() {
-            profileModal.style.display = 'none';
-            fullScreenOverlay.classList.remove('active');
-            profileMessageEl.textContent = "";
-            if (history.state && history.state.profileModalOpen) {
-                history.back();
+        // --- Swipe Gesture (for reply) ---
+        function handleTouchStart(e) {
+            initialX = e.touches[0].clientX;
+            initialY = e.touches[0].clientY;
+            swipedElement = e.currentTarget; // Store the element being swiped
+            swipedElement.style.transition = ''; // Remove transition for immediate feedback
+        }
+
+        function handleTouchMove(e) {
+            if (initialX === null || initialY === null) {
+                return;
             }
-        }
 
-        saveProfileBtn.addEventListener("click", () => {
-            const newDisplayName = profileDisplayNameInput.value.trim();
-            if (newDisplayName && currentLoggedInUser) {
-                db.ref('users/' + currentLoggedInUser.uid).update({ displayName: newDisplayName })
-                    .then(() => {
-                        currentDisplayName = newDisplayName;
-                        profileMessageEl.textContent = "Nama pengguna berhasil disimpan!";
-                        profileMessageEl.style.color = 'green';
-                        setTimeout(closeProfileModal, 1500); // Close after a short delay
-                    })
-                    .catch(error => {
-                        profileMessageEl.textContent = "Gagal menyimpan nama pengguna: " + error.message;
-                        profileMessageEl.style.color = 'red';
-                        console.error("Error saving display name:", error);
-                    });
+            const currentX = e.touches[0].clientX;
+            const currentY = e.touches[0].clientY;
+
+            const diffX = initialX - currentX;
+            const diffY = initialY - currentY;
+
+            // Only consider horizontal swipe if vertical movement is minimal
+            if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffY) < VERTICAL_THRESHOLD) {
+                // Prevent vertical scrolling while swiping horizontally
+                e.preventDefault();
+                // Apply transform for visual feedback
+                if (diffX > 0) { // Swiping left
+                    swipedElement.style.transform = `translateX(${-Math.min(diffX, SWIPE_THRESHOLD * 2)}px)`;
+                } else { // Swiping right
+                    swipedElement.style.transform = `translateX(${-Math.max(diffX, -SWIPE_THRESHOLD * 2)}px)`;
+                }
             } else {
-                profileMessageEl.textContent = "Nama pengguna tidak boleh kosong.";
-                profileMessageEl.style.color = 'red';
+                // If it's more of a vertical scroll, reset transform
+                swipedElement.style.transform = '';
             }
-        });
-
-        viewProfileBtn.addEventListener("click", openProfileModal);
-
-        // --- Logout Function ---
-        function logout() {
-            auth.signOut()
-                .then(() => {
-                    console.log("User signed out.");
-                    showToast("Anda telah logout.");
-                })
-                .catch((error) => {
-                    console.error("Logout Error:", error);
-                    showToast("Gagal logout: " + error.message);
-                });
         }
 
-        lobbyLogoutBtn.addEventListener("click", logout);
+        function handleTouchEnd(e) {
+            if (initialX === null || swipedElement === null) {
+                return;
+            }
 
-        backToChatListBtn.addEventListener("click", () => {
-            history.back();
-        });
+            const currentX = e.changedTouches[0].clientX;
+            const diffX = initialX - currentX;
 
-        // Event listener for profile modal/sidebar/context menu/command suggestions closing via overlay
-        fullScreenOverlay.addEventListener("click", (e) => {
-            if (profileModal.style.display === 'block') {
-                closeProfileModal();
-            }
-            if (sidebar.classList.contains('open')) {
-                closeNav();
-            }
-            if (messageContextMenu.style.display === 'block') {
-                hideMessageContextMenu();
-            }
-            if (commandSuggestions.style.display === 'block' && !commandSuggestions.contains(e.target)) {
-                 hideCommandSuggestions();
-            }
-            if (sellConfirmModal.style.display === 'block') { // New: close sell confirm modal
-                hideSellConfirmModal();
-            }
-        });
-
-        // --- MODIFIKASI: Bot Command Suggestions Logic ---
-        function showCommandSuggestions(query) {
-            commandSuggestionsList.innerHTML = '';
-            const filteredCommands = botCommands.filter(cmd =>
-                cmd.command.startsWith(query.substring(1))
-            );
-
-            if (filteredCommands.length > 0 && currentChatId === PUBLIC_CHAT_ID) {
-                filteredCommands.forEach(cmd => {
-                    const listItem = document.createElement('li');
-                    listItem.innerHTML = `<b>-${cmd.command}</b> - ${cmd.description}`;
-                    listItem.addEventListener('click', () => {
-                        input.value = `-${cmd.command} `;
-                        hideCommandSuggestions();
-                        input.focus();
-                        updateInputAreaHeight();
+            if (Math.abs(diffX) > SWIPE_THRESHOLD) {
+                // Swipe detected
+                if (diffX > 0) { // Swiped left (Reply)
+                    const messageId = swipedElement.dataset.messageId;
+                    // Retrieve full message object from Firebase if needed, or reconstruct
+                    db.ref(`chats/${currentChatId}/${messageId}`).once('value', (snapshot) => {
+                        const message = snapshot.val();
+                        message.id = messageId;
+                        startReply(message);
                     });
-                    commandSuggestionsList.appendChild(listItem);
-                });
+                }
+            }
+
+            // Reset for next swipe
+            swipedElement.style.transition = 'transform 0.2s ease-out'; // Re-enable transition
+            swipedElement.style.transform = '';
+            initialX = null;
+            initialY = null;
+            swipedElement = null;
+        }
+
+        // --- Bot Command Suggestions ---
+        function showCommandSuggestionsHandler() {
+            const inputText = messageInput.value;
+            if (inputText.startsWith('/')) {
+                const query = inputText.substring(1).toLowerCase();
+                const filteredCommands = botCommands.filter(cmd =>
+                    cmd.command.toLowerCase().startsWith(query) ||
+                    cmd.description.toLowerCase().includes(query)
+                );
+                renderCommandSuggestions(filteredCommands);
                 commandSuggestions.style.display = 'block';
             } else {
                 hideCommandSuggestions();
             }
         }
 
+        function renderCommandSuggestions(commands) {
+            commandSuggestionsList.innerHTML = '';
+            if (commands.length === 0) {
+                commandSuggestionsList.innerHTML = '<li>Tidak ada perintah ditemukan.</li>';
+                return;
+            }
+            commands.forEach(cmd => {
+                const li = document.createElement('li');
+                li.textContent = `/${cmd.command} - ${cmd.description}`;
+                li.dataset.command = `/${cmd.command}`;
+                li.addEventListener('click', () => {
+                    messageInput.value = li.dataset.command + ' '; // Auto-fill command
+                    messageInput.focus();
+                    hideCommandSuggestions();
+                    adjustInputAreaHeight();
+                });
+                commandSuggestionsList.appendChild(li);
+            });
+        }
+
         function hideCommandSuggestions() {
             commandSuggestions.style.display = 'none';
         }
 
-        input.addEventListener('input', () => {
-            const text = input.value;
-            if (text.startsWith('-')) {
-                showCommandSuggestions(text);
-            } else {
-                hideCommandSuggestions();
-            }
-            updateInputAreaHeight();
-        });
+        function handleBotCommand(commandText) {
+            // Trim leading slash and split into command and arguments
+            const parts = commandText.substring(1).split(' ');
+            const command = parts[0].toLowerCase();
+            const args = parts.slice(1);
 
-        input.addEventListener('blur', () => {
-            setTimeout(() => {
-                if (!commandSuggestions.contains(document.activeElement)) {
-                    hideCommandSuggestions();
-                }
-            }, 100);
-        });
+            let botResponse = '';
 
-        // --- NEW: Bottom Navigation Logic ---
-        navChat.addEventListener('click', () => showScreen('chatList'));
-        navInventory.addEventListener('click', () => showScreen('inventory'));
-        navGacha.addEventListener('click', () => showScreen('gacha'));
-        navSell.addEventListener('click', () => showScreen('sell'));
-
-        // --- NEW: Gacha Logic ---
-        gachaButton.addEventListener('click', () => {
-            if (!currentLoggedInUser) {
-                showToast("Anda harus login untuk melakukan gacha.");
-                return;
+            switch (command) {
+                case 'report':
+                    botResponse = "Untuk melaporkan pesan, tahan pesan yang ingin dilaporkan, lalu pilih 'Laporkan Pesan'.";
+                    break;
+                case 'help':
+                    botResponse = "Selamat datang di ZedxChat! Anda bisa mengetik pesan, membalas (swipe kanan pada pesan), menghapus pesan Anda, dan melaporkan pesan orang lain.";
+                    break;
+                case 'system':
+                    // Simulate system info (not real system data from client)
+                    const ram = (Math.random() * 8 + 4).toFixed(2); // 4-12 GB
+                    const cpu = (Math.random() * 80 + 10).toFixed(2); // 10-90%
+                    const uptime = (Math.random() * 24).toFixed(0); // 0-24 hours
+                    const cores = Math.floor(Math.random() * 8) + 2; // 2-9 cores
+                    botResponse = `Info Sistem (Simulasi):\nRAM: ${ram} GB\nCPU: ${cpu}%\nUptime: ${uptime} jam\nCore: ${cores}`;
+                    break;
+                default:
+                    botResponse = `Perintah '${command}' tidak dikenal. Ketik /help untuk daftar perintah.`;
             }
 
-            db.ref(`users/${currentLoggedInUser.uid}/money`).transaction((currentMoney) => {
-                if (currentMoney === null) currentMoney = 0; // Initialize if null
-                if (currentMoney < GACHA_COST) {
-                    showToast("Money tidak cukup untuk gacha! Butuh 14 Money.");
-                    return undefined; // Abort the transaction
-                }
-                return currentMoney - GACHA_COST;
-            }, (error, committed, snapshot) => {
-                if (error) {
-                    console.error("Gacha money transaction failed:", error);
-                    showToast("Gagal melakukan gacha: " + error.message);
-                } else if (committed) {
-                    showToast("Gacha berhasil! Mengambil kartu...");
-                    performGacha();
-                }
-            });
-        });
-
-        function performGacha() {
-            if (cardData.length === 0) {
-                showToast("Data kartu belum dimuat. Coba lagi nanti.");
-                return;
-            }
-
-            // Simple random selection for now. You might implement rarity logic later.
-            const randomIndex = Math.floor(Math.random() * cardData.length);
-            const drawnCard = cardData[randomIndex];
-
-            if (drawnCard) {
-                // Save the drawn card to user's inventory in Firebase
-                db.ref(`users/${currentLoggedInUser.uid}/cards`).push(drawnCard)
-                    .then(() => {
-                        console.log("Card added to inventory:", drawnCard.nama);
-                        showToast(`Selamat! Anda mendapatkan ${drawnCard.nama}!`);
-                        displayGachaResult(drawnCard);
-                    })
-                    .catch(error => {
-                        console.error("Failed to save card to inventory:", error);
-                        showToast("Gagal menyimpan kartu ke inventori.");
-                    });
-            } else {
-                showToast("Gagal mendapatkan kartu. Coba lagi.");
-            }
-        }
-
-        function displayGachaResult(card) {
-            gachaCardImage.src = card.ibb;
-            gachaCardStars.textContent = card.bint;
-            gachaCardImage.style.display = 'block';
-            gachaCardStars.style.display = 'block';
-        }
-
-        // --- NEW: Inventory Logic ---
-        function renderInventory() {
-            inventoryGrid.innerHTML = ''; // Clear current inventory display
-            const cardsArray = Object.values(userCards); // Convert object of cards to array
-            if (cardsArray.length === 0) {
-                inventoryGrid.innerHTML = '<p style="text-align: center; color: #aebac1; margin-top: 50px;">Inventori Anda kosong. Lakukan gacha untuk mendapatkan kartu!</p>';
-                return;
-            }
-
-            cardsArray.forEach(card => {
-                const cardEl = document.createElement('div');
-                cardEl.className = 'card-item';
-                cardEl.innerHTML = `
-                    <img src="${card.ibb}" alt="${card.nama}">
-                    <div class="card-stars">${card.bint}</div>
-                `;
-                // No click handler for inventory, just display
-                inventoryGrid.appendChild(cardEl);
+            // Send bot's response to the chat
+            db.ref(`chats/${currentChatId}`).push({
+                uid: 'bot', // Special UID for bot
+                text: botResponse,
+                timestamp: firebase.database.ServerValue.TIMESTAMP
             });
         }
 
-        // --- NEW: Sell Logic ---
-        function renderSellPage() {
-            sellGrid.innerHTML = ''; // Clear current sell display
-            const cardsArray = Object.entries(userCards); // Get [key, value] pairs to know Firebase key
-            if (cardsArray.length === 0) {
-                sellGrid.innerHTML = '<p style="text-align: center; color: #aebac1; margin-top: 50px;">Anda tidak memiliki kartu untuk dijual.</p>';
-                return;
-            }
-
-            cardsArray.forEach(([cardFirebaseKey, card]) => {
-                const cardEl = document.createElement('div');
-                cardEl.className = 'card-item';
-                cardEl.innerHTML = `
-                    <img src="${card.ibb}" alt="${card.nama}">
-                    <div class="card-stars">${card.bint}</div>
-                    <div style="font-size: 0.8em; color: #bada55;">${card.harga || 0} Money</div>
-                `;
-                cardEl.addEventListener('click', () => showSellConfirm(cardFirebaseKey, card));
-                sellGrid.appendChild(cardEl);
-            });
-        }
-
-        function showSellConfirm(cardFirebaseKey, card) {
-            selectedCardToSell = { firebaseKey: cardFirebaseKey, data: card };
-            sellConfirmText.textContent = `Apakah Anda yakin ingin menjual kartu ${card.nama} seharga ${card.harga || 0} Money?`;
-            sellConfirmModal.style.display = 'block';
+        // --- Sidebar Functions ---
+        function openNav() {
+            sidebar.classList.add('open');
             fullScreenOverlay.classList.add('active');
-            history.pushState({ screen: currentScreen, sellConfirmModalOpen: true }, '', window.location.hash);
         }
 
-        function hideSellConfirmModal() {
-            sellConfirmModal.style.display = 'none';
+        function closeNav() {
+            sidebar.classList.remove('open');
             fullScreenOverlay.classList.remove('active');
-            selectedCardToSell = null;
-            if (history.state && history.state.sellConfirmModalOpen) {
-                history.back();
-            }
         }
 
-        cancelSellBtn.addEventListener('click', hideSellConfirmModal);
-
-        confirmSellBtn.addEventListener('click', () => {
-            if (!selectedCardToSell || !currentLoggedInUser) {
-                hideSellConfirmModal();
-                showToast("Kesalahan: Kartu tidak terpilih atau tidak login.");
-                return;
+        // --- Toast Message ---
+        function showToast(message, type = 'info', duration = 3000) {
+            let toastDiv = document.getElementById('toastMessage');
+            if (!toastDiv) { // Create if it doesn't exist
+                toastDiv = document.createElement('div');
+                toastDiv.id = 'toastMessage';
+                document.body.appendChild(toastDiv);
             }
 
-            const cardKey = selectedCardToSell.firebaseKey;
-            const cardPrice = parseInt(selectedCardToSell.data.harga || 0);
+            toastDiv.textContent = message;
+            toastDiv.className = `toast-message show ${type}`; // Add type for styling if needed
+            clearTimeout(toastDiv.timeoutId); // Clear any existing timeout
 
-            // Remove card from user's inventory
-            db.ref(`users/${currentLoggedInUser.uid}/cards/${cardKey}`).remove()
-                .then(() => {
-                    // Add money to user's balance
-                    return db.ref(`users/${currentLoggedInUser.uid}/money`).transaction((currentMoney) => {
-                        return (currentMoney || 0) + cardPrice;
-                    });
-                })
-                .then((transactionResult) => {
-                    if (transactionResult.committed) {
-                        showToast(`Kartu ${selectedCardToSell.data.nama} berhasil dijual! Anda mendapatkan ${cardPrice} Money.`);
-                        // userCards will update automatically due to listener
-                        hideSellConfirmModal();
-                    } else {
-                        throw new Error("Money transaction not committed.");
-                    }
-                })
-                .catch(error => {
-                    console.error("Error selling card:", error);
-                    showToast("Gagal menjual kartu: " + error.message);
-                    hideSellConfirmModal();
-                });
+            toastDiv.timeoutId = setTimeout(() => {
+                toastDiv.classList.remove('show');
+            }, duration);
+        }
+
+        // --- Hardware Back Button (Android) ---
+        document.addEventListener('backbutton', function() {
+            if (sidebar.classList.contains('open')) {
+                closeNav();
+            } else if (profileModal.style.display === 'block') {
+                closeProfileModal();
+            } else if (messageContextMenu.style.display === 'block') {
+                hideMessageContextMenu();
+            } else if (commandSuggestions.style.display === 'block') {
+                hideCommandSuggestions();
+            } else if (replyPreview.style.display === 'flex') {
+                cancelReply();
+            } else if (currentScreen === 'mainChat') {
+                backToChatListBtn.click(); // Simulate clicking back button
+            } else if (currentScreen === 'chatList') {
+                if (backButtonPressedOnce) {
+                    // Implement app exit logic here
+                    // navigator.app.exitApp(); // For Cordova/PhoneGap
+                    // For web, you might redirect or simply do nothing
+                    console.log("Exiting app (simulated)");
+                } else {
+                    backButtonPressedOnce = true;
+                    showToast('Tekan kembali sekali lagi untuk keluar.');
+                    backButtonTimeout = setTimeout(() => {
+                        backButtonPressedOnce = false;
+                    }, 2000); // Reset after 2 seconds
+                }
+            } else if (currentScreen === 'login' || currentScreen === 'register') {
+                if (backButtonPressedOnce) {
+                    // navigator.app.exitApp();
+                    console.log("Exiting app (simulated)");
+                } else {
+                    backButtonPressedOnce = true;
+                    showToast('Tekan kembali sekali lagi untuk keluar.');
+                    backButtonTimeout = setTimeout(() => {
+                        backButtonPressedOnce = false;
+                    }, 2000);
+                }
+            }
+        });
+
+        // --- Bottom Navigation Event Listeners ---
+        navChat.addEventListener('click', showChatListScreen);
+
+        // --- Initial Load ---
+        document.addEventListener('DOMContentLoaded', () => {
+            showLoadingScreen();
+            // The auth.onAuthStateChanged listener in shared.js will handle showing the correct screen after Firebase initializes
         });
 
     </script>
