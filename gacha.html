@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kusuriya (Gacha)</title>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="shared.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #111b21; /* Dark background */
+            color: #e9edef; /* Light text */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        h1 {
+            color: #008069; /* WhatsApp Green */
+            margin-bottom: 20px;
+        }
+        p {
+            font-size: 1.1em;
+            line-height: 1.5;
+        }
+        .back-button {
+            margin-top: 30px;
+            padding: 10px 20px;
+            background-color: #202c33; /* Darker button */
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none; /* For anchor tag */
+            font-size: 1em;
+            transition: background-color 0.3s ease;
+        }
+        .back-button:hover {
+            background-color: #2a3942;
+        }
+        #userInfo {
+            margin-top: 20px;
+            font-size: 0.9em;
+            color: #aebac1;
+        }
+    </style>
+</head>
+<body>
+    <h1>Selamat Datang di Halaman Kusuriya</h1>
+    <p>Ini adalah halaman untuk fitur Gacha/Kartu Anda. Konten akan ditambahkan di sini nanti.</p>
+
+    <div id="userInfo">
+        <p>Status Login: <span id="authStatus">Belum Login</span></p>
+        <p>Money Anda: <span id="userMoney">0</span></p>
+        <p>Nama Pengguna: <span id="displayName"></span></p>
+    </div>
+
+    <a href="index.html" class="back-button">Kembali ke Chat Lobby</a>
+
+    <script>
+        // Fungsi dari shared.js akan tersedia di sini
+        // Kita bisa menggunakan auth dan database dari shared.js
+        const authStatusSpan = document.getElementById('authStatus');
+        const userMoneySpan = document.getElementById('userMoney');
+        const displayNameSpan = document.getElementById('displayName');
+
+        // Fungsi updateUserInfoDisplay dari shared.js akan otomatis dipanggil
+        // saat status autentikasi berubah. Kita hanya perlu memastikan elemennya ada.
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                authStatusSpan.textContent = 'Login';
+                // shared.js will set up the listener for money and display name
+                // just ensure our elements exist
+                database.ref('users/' + user.uid).on('value', (snapshot) => {
+                    const userData = snapshot.val();
+                    if (userData) {
+                        displayNameSpan.textContent = userData.displayName || user.email.split('@')[0];
+                        userMoneySpan.textContent = userData.money || 0;
+                    }
+                });
+            } else {
+                authStatusSpan.textContent = 'Belum Login';
+                userMoneySpan.textContent = '0';
+                displayNameSpan.textContent = '';
+            }
+        });
+
+        // Contoh penggunaan fungsi logout dari shared.js (jika Anda ingin tombol logout di sini)
+        // document.getElementById('logoutButton').addEventListener('click', logout);
+    </script>
+</body>
+</html>
