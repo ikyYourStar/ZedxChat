@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Catur Realtime</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f0f0f0;
+        }
+        #game-container {
+            display: none;
+            flex-direction: row;
+            gap: 40px;
+            align-items: flex-start;
+        }
+        #board-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #board {
+            display: grid;
+            grid-template-columns: repeat(8, 50px);
+            grid-template-rows: repeat(8, 50px);
+            border: 2px solid #333;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            margin: 20px 0;
+        }
+        .square {
+            width: 50px;
+            height: 50px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 30px;
+            cursor: pointer;
+            user-select: none;
+            transition: background-color 0.2s;
+        }
+        .light { background-color: #f0d9b5; }
+        .dark { background-color: #b58863; }
+        .selected { background-color: #aaccff !important; }
+        .highlight { background-color: #a5d6a7 !important; }
+        .piece { cursor: pointer; user-select: none; }
+        
+        #waiting-room {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        #chat-box {
+            width: 300px;
+            height: 400px;
+            border: 1px solid #ccc;
+            display: flex;
+            flex-direction: column;
+            background-color: #fff;
+            padding: 10px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.1);
+        }
+        #chat-messages {
+            flex-grow: 1;
+            overflow-y: auto;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 10px;
+        }
+        .chat-message {
+            margin-bottom: 5px;
+        }
+        #chat-input-container {
+            display: flex;
+            gap: 5px;
+        }
+        #chat-input {
+            flex-grow: 1;
+            padding: 5px;
+            border: 1px solid #ccc;
+        }
+        #controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        #controls input, #controls button {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        #controls button {
+            background-color: #3498db;
+            color: white;
+            cursor: pointer;
+            border: none;
+        }
+        #controls button:hover {
+            background-color: #2980b9;
+        }
+    </style>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+</head>
+<body>
+
+    <h1>Game Catur Realtime ♟️</h1>
+
+    <div id="waiting-room">
+        <h3>Selamat Datang!</h3>
+        <p id="waitingMessage">Buat atau gabung ke game untuk memulai.</p>
+        <div id="controls">
+            <input type="text" id="gameIdInput" placeholder="ID Game (misal: ABC123)">
+            <button onclick="createGame()">Buat Game Baru</button>
+            <button onclick="joinGame()">Gabung Game</button>
+        </div>
+        <p id="gameIdDisplay"></p>
+    </div>
+
+    <div id="game-container">
+        <div id="board-area">
+            <div id="message"></div>
+            <div id="board"></div>
+        </div>
+        <div id="chat-box">
+            <h4>Chat Game</h4>
+            <div id="chat-messages"></div>
+            <div id="chat-input-container">
+                <input type="text" id="chat-input" placeholder="Ketik pesan...">
+                <button onclick="sendMessage()">Kirim</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- KONFIGURASI FIREBASE ANDA ---
+        const firebaseConfig = {
+          apiKey: "AIzaSyArV0iz67c7EG9_uv45WpE4bcu7O2RICS8",
+          authDomain: "ponygame-d42f1.firebaseapp.com",
+          databaseURL: "https://ponygame-d42f1-default-rtdb.firebaseio.com",
+          projectId: "ponygame-d42f1",
+          storageBucket: "ponygame-d42f1.firebasestorage.app",
+          messagingSenderId: "864487886507",
+          appId: "1:864487886507:web:e9368460dbe19403bb31ee",
+          measurementId: "G-WRP94N0V74"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        
+        // --- Elemen HTML ---
+        const gameContainerEl = document.getElementById('game-container');
+        const waitingRoomEl = document.getElementById('waiting-room');
+        const waitingMessageEl = document.getElementById('waitingMessage');
+        const boardEl = document.getElementById('board');
+        const messageEl = document.getElementById('message');
+        const gameIdDisplayEl = document.getElementById('gameIdDisplay');
+        const gameIdInputEl = document.getElementById('gameIdInput');
+        const chatMessagesEl = document.getElementById('chat-messages');
+        const chatInputEl = document.getElementById('chat-input');
+        
+        // --- Game State Variables ---
+        let gameRef;
+        let myPlayer; // 'white' or 'black'
+        let currentBoard = [];
+        let turn = 'white';
+        let selectedPiece = null;
+        let validMoves = [];
+        
+        const initialBoard = [
+            ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+            ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+            ['', '', '', '', '', '', '', ''],
+            ['', '', '', '', '', '', '', ''],
+            ['', '', '', '', '', '', '', ''],
+            ['', '', '', '', '', '', '', ''],
+            ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+            ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+        ];
+        
+        const pieces = {
+            'R': '♜', 'N': '♞', 'B': '♝', 'Q': '♛', 'K': '♚', 'P': '♙',
+            'r': '♖', 'n': '♘', 'b': '♗', 'q': '♕', 'k': '♔', 'p': '♟'
+        };
+        
+        // --- Game Initialization and Sync ---
+        function createGame() {
+            const gameId = Math.random().toString(36).substring(2, 8).toUpperCase();
+            gameRef = database.ref('games/' + gameId);
+            gameRef.set({
+                board: initialBoard,
+                turn: 'white',
+                players: {
+                    white: 'waiting',
+                    black: null
+                },
+                status: 'waiting'
+            });
+            myPlayer = 'white';
+            gameIdDisplayEl.textContent = `Bagikan ID Game ini: ${gameId}`;
+            waitingMessageEl.textContent = 'Menunggu pemain lain...';
+            startListening();
+        }
+        
+        function joinGame() {
+            const gameId = gameIdInputEl.value.toUpperCase();
+            if (!gameId) {
+                alert("Masukkan ID Game");
+                return;
+            }
+            gameRef = database.ref('games/' + gameId);
+            gameRef.once('value', snapshot => {
+                const gameData = snapshot.val();
+                if (gameData && gameData.players.black === null) {
+                    gameRef.child('players').update({ black: 'joined' });
+                    myPlayer = 'black';
+                    gameIdDisplayEl.textContent = `Anda bergabung dengan ID: ${gameId}`;
+                    startListening();
+                } else {
+                    alert("Game tidak ditemukan atau sudah penuh!");
+                }
+            });
+        }
+        
+        function startListening() {
+            gameRef.on('value', snapshot => {
+                const gameData = snapshot.val();
+                if (gameData) {
+                    currentBoard = gameData.board;
+                    turn = gameData.turn;
+                    renderBoard();
+                    updateMessage();
+                    
+                    if (gameData.players.white && gameData.players.black) {
+                        waitingRoomEl.style.display = 'none';
+                        gameContainerEl.style.display = 'flex';
+                    }
+                }
+            });
+            
+            gameRef.child('chat').on('child_added', snapshot => {
+                const message = snapshot.val();
+                displayMessage(message);
+            });
+        }
+        
+        // --- UI Rendering ---
+        function renderBoard() {
+            boardEl.innerHTML = '';
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const square = document.createElement('div');
+                    square.className = `square ${(r + c) % 2 === 0 ? 'light' : 'dark'}`;
+                    square.dataset.row = r;
+                    square.dataset.col = c;
+                    
+                    const piece = currentBoard[r][c];
+                    if (piece) {
+                        const pieceElement = document.createElement('span');
+                        pieceElement.className = 'piece';
+                        pieceElement.textContent = pieces[piece];
+                        square.appendChild(pieceElement);
+                    }
+                    square.addEventListener('click', handleMove);
+                    boardEl.appendChild(square);
+                }
+            }
+            validMoves.forEach(move => {
+                const square = document.querySelector(`[data-row="${move.r}"][data-col="${move.c}"]`);
+                if (square) {
+                    square.classList.add('highlight');
+                }
+            });
+        }
+        
+        function updateMessage() {
+            if (!myPlayer) {
+                messageEl.textContent = 'Pilih atau buat game baru.';
+            } else if (turn === myPlayer) {
+                messageEl.textContent = 'Giliran Anda!';
+            } else {
+                messageEl.textContent = `Menunggu giliran lawan...`;
+            }
+        }
+        
+        // --- Game Logic ---
+        function handleMove(event) {
+            const clickedSquare = event.currentTarget;
+            const row = parseInt(clickedSquare.dataset.row);
+            const col = parseInt(clickedSquare.dataset.col);
+            const piece = currentBoard[row][col];
+            const isWhitePiece = piece && piece === piece.toUpperCase();
+            
+            if (turn !== myPlayer) {
+                return;
+            }
+            
+            if (piece) {
+                if ((myPlayer === 'white' && isWhitePiece) || (myPlayer === 'black' && !isWhitePiece)) {
+                    document.querySelector('.selected')?.classList.remove('selected');
+                    clickedSquare.classList.add('selected');
+                    selectedPiece = { piece: piece, row: row, col: col };
+                    validMoves = getValidMoves(selectedPiece.piece, selectedPiece.row, selectedPiece.col);
+                    renderBoard();
+                    return;
+                }
+            }
+            
+            if (selectedPiece) {
+                const startRow = selectedPiece.row;
+                const startCol = selectedPiece.col;
+                const isValidTarget = validMoves.some(move => move.r === row && move.c === col);
+                
+                if (isValidTarget) {
+                    let newBoard = JSON.parse(JSON.stringify(currentBoard));
+                    newBoard[row][col] = selectedPiece.piece;
+                    newBoard[startRow][startCol] = '';
+                    
+                    gameRef.update({
+                        board: newBoard,
+                        turn: turn === 'white' ? 'black' : 'white'
+                    });
+                    
+                    selectedPiece = null;
+                    validMoves = [];
+                    renderBoard();
+                } else {
+                    document.querySelector('.selected')?.classList.remove('selected');
+                    selectedPiece = null;
+                    validMoves = [];
+                    renderBoard();
+                }
+            }
+        }
+        
+        function getValidMoves(piece, r, c) {
+            const moves = [];
+            const pieceType = piece.toLowerCase();
+            const isWhite = piece === piece.toUpperCase();
+            
+            // Logika Gerakan Bidak
+            if (pieceType === 'p') {
+                const direction = isWhite ? -1 : 1;
+                // Gerak maju 1 petak
+                if (r + direction >= 0 && r + direction < 8 && !currentBoard[r + direction][c]) {
+                    moves.push({ r: r + direction, c: c });
+                }
+                // Gerak maju 2 petak (hanya dari posisi awal)
+                if ((isWhite && r === 6) || (!isWhite && r === 1)) {
+                    if (!currentBoard[r + direction][c] && !currentBoard[r + 2 * direction][c]) {
+                        moves.push({ r: r + 2 * direction, c: c });
+                    }
+                }
+                // Makan diagonal
+                for (let dc of [-1, 1]) {
+                    if (c + dc >= 0 && c + dc < 8) {
+                        const targetPiece = currentBoard[r + direction][c + dc];
+                        if (targetPiece && isWhite !== (targetPiece === targetPiece.toUpperCase())) {
+                            moves.push({ r: r + direction, c: c + dc });
+                        }
+                    }
+                }
+            }
+            
+            if (pieceType === 'n') {
+                const knightMoves = [
+                    {dr: 2, dc: 1}, {dr: 2, dc: -1}, {dr: -2, dc: 1}, {dr: -2, dc: -1},
+                    {dr: 1, dc: 2}, {dr: 1, dc: -2}, {dr: -1, dc: 2}, {dr: -1, dc: -2}
+                ];
+                knightMoves.forEach(move => {
+                    const newR = r + move.dr;
+                    const newC = c + move.dc;
+                    if (newR >= 0 && newR < 8 && newC >= 0 && newC < 8) {
+                        const targetPiece = currentBoard[newR][newC];
+                        if (!targetPiece || (isWhite !== (targetPiece === targetPiece.toUpperCase()))) {
+                            moves.push({ r: newR, c: newC });
+                        }
+                    }
+                });
+            }
+            
+            // --- Tambahkan logika untuk Benteng, Gajah, Menteri, Raja di sini ---
+            // Benteng (Rook)
+            if (pieceType === 'r') {
+                const directions = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+                directions.forEach(([dr, dc]) => {
+                    let tempR = r + dr;
+                    let tempC = c + dc;
+                    while (tempR >= 0 && tempR < 8 && tempC >= 0 && tempC < 8) {
+                        const targetPiece = currentBoard[tempR][tempC];
+                        if (targetPiece) {
+                            if (isWhite !== (targetPiece === targetPiece.toUpperCase())) {
+                                moves.push({ r: tempR, c: tempC });
+                            }
+                            break; // Blokir oleh bidak
+                        }
+                        moves.push({ r: tempR, c: tempC });
+                        tempR += dr;
+                        tempC += dc;
+                    }
+                });
+            }
+
+            // Gajah (Bishop)
+            if (pieceType === 'b') {
+                const directions = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
+                directions.forEach(([dr, dc]) => {
+                    let tempR = r + dr;
+                    let tempC = c + dc;
+                    while (tempR >= 0 && tempR < 8 && tempC >= 0 && tempC < 8) {
+                        const targetPiece = currentBoard[tempR][tempC];
+                        if (targetPiece) {
+                            if (isWhite !== (targetPiece === targetPiece.toUpperCase())) {
+                                moves.push({ r: tempR, c: tempC });
+                            }
+                            break;
+                        }
+                        moves.push({ r: tempR, c: tempC });
+                        tempR += dr;
+                        tempC += dc;
+                    }
+                });
+            }
+
+            // Ratu (Queen)
+            if (pieceType === 'q') {
+                const directions = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+                directions.forEach(([dr, dc]) => {
+                    let tempR = r + dr;
+                    let tempC = c + dc;
+                    while (tempR >= 0 && tempR < 8 && tempC >= 0 && tempC < 8) {
+                        const targetPiece = currentBoard[tempR][tempC];
+                        if (targetPiece) {
+                            if (isWhite !== (targetPiece === targetPiece.toUpperCase())) {
+                                moves.push({ r: tempR, c: tempC });
+                            }
+                            break;
+                        }
+                        moves.push({ r: tempR, c: tempC });
+                        tempR += dr;
+                        tempC += dc;
+                    }
+                });
+            }
+            
+            // Raja (King)
+            if (pieceType === 'k') {
+                const directions = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+                directions.forEach(([dr, dc]) => {
+                    const newR = r + dr;
+                    const newC = c + dc;
+                    if (newR >= 0 && newR < 8 && newC >= 0 && newC < 8) {
+                        const targetPiece = currentBoard[newR][newC];
+                        if (!targetPiece || (isWhite !== (targetPiece === targetPiece.toUpperCase()))) {
+                            moves.push({ r: newR, c: newC });
+                        }
+                    }
+                });
+            }
+
+            return moves;
+        }
+
+        // --- Fungsi Chat ---
+        function sendMessage() {
+            const message = chatInputEl.value.trim();
+            if (message && gameRef) {
+                gameRef.child('chat').push({
+                    sender: myPlayer === 'white' ? 'Putih' : 'Hitam',
+                    text: message,
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                });
+                chatInputEl.value = '';
+            }
+        }
+        
+        function displayMessage(message) {
+            const p = document.createElement('p');
+            p.className = 'chat-message';
+            p.innerHTML = `<strong>${message.sender}:</strong> ${message.text}`;
+            chatMessagesEl.appendChild(p);
+            chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+        }
+
+        renderBoard();
+    </script>
+</body>
+</html>
