@@ -14,6 +14,29 @@
             min-height: 100vh;
             background-color: #f0f0f0;
         }
+        /* Style Overlay */
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+        .overlay-content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        /* Style Game Components */
         #game-container {
             display: none;
             flex-direction: row;
@@ -115,9 +138,8 @@
         <h3>Selamat Datang!</h3>
         <p id="waitingMessage">Buat atau gabung ke game untuk memulai.</p>
         <div id="controls">
-            <input type="text" id="gameIdInput" placeholder="ID Game (misal: ABC123)">
-            <button onclick="createGame()">Buat Game Baru</button>
-            <button onclick="joinGame()">Gabung Game</button>
+            <button onclick="showCreateGameOverlay()">Buat Game Baru</button>
+            <button onclick="showJoinGameOverlay()">Gabung Game</button>
         </div>
         <p id="gameIdDisplay"></p>
     </div>
@@ -134,6 +156,24 @@
                 <input type="text" id="chat-input" placeholder="Ketik pesan...">
                 <button onclick="sendMessage()">Kirim</button>
             </div>
+        </div>
+    </div>
+    
+    <div id="create-overlay" class="overlay">
+        <div class="overlay-content">
+            <h3>Buat Game Baru</h3>
+            <input type="text" id="createGameIdInput" placeholder="Masukkan ID Game (contoh: MYGAME123)">
+            <button onclick="createGame()">Buat</button>
+            <button onclick="hideOverlay('create')">Batal</button>
+        </div>
+    </div>
+    
+    <div id="join-overlay" class="overlay">
+        <div class="overlay-content">
+            <h3>Gabung Game</h3>
+            <input type="text" id="joinGameIdInput" placeholder="Masukkan ID Game Teman">
+            <button onclick="joinGame()">Gabung</button>
+            <button onclick="hideOverlay('join')">Batal</button>
         </div>
     </div>
 
@@ -160,13 +200,16 @@
         const boardEl = document.getElementById('board');
         const messageEl = document.getElementById('message');
         const gameIdDisplayEl = document.getElementById('gameIdDisplay');
-        const gameIdInputEl = document.getElementById('gameIdInput');
         const chatMessagesEl = document.getElementById('chat-messages');
         const chatInputEl = document.getElementById('chat-input');
+        const createOverlayEl = document.getElementById('create-overlay');
+        const createGameIdInputEl = document.getElementById('createGameIdInput');
+        const joinOverlayEl = document.getElementById('join-overlay');
+        const joinGameIdInputEl = document.getElementById('joinGameIdInput');
         
         // --- Game State Variables ---
         let gameRef;
-        let myPlayer; // 'white' or 'black'
+        let myPlayer;
         let currentBoard = [];
         let turn = 'white';
         let selectedPiece = null;
@@ -188,31 +231,61 @@
             'r': '♖', 'n': '♘', 'b': '♗', 'q': '♕', 'k': '♔', 'p': '♟'
         };
         
+        // --- Fungsi Overlay ---
+        function showCreateGameOverlay() {
+            createOverlayEl.style.display = 'flex';
+        }
+        
+        function showJoinGameOverlay() {
+            joinOverlayEl.style.display = 'flex';
+        }
+        
+        function hideOverlay(type) {
+            if (type === 'create') {
+                createOverlayEl.style.display = 'none';
+            } else {
+                joinOverlayEl.style.display = 'none';
+            }
+        }
+        
         // --- Game Initialization and Sync ---
         function createGame() {
-            const gameId = Math.random().toString(36).substring(2, 8).toUpperCase();
+            const gameId = createGameIdInputEl.value.trim().toUpperCase();
+            if (!gameId) {
+                alert("ID Game tidak boleh kosong!");
+                return;
+            }
+            hideOverlay('create');
             gameRef = database.ref('games/' + gameId);
-            gameRef.set({
-                board: initialBoard,
-                turn: 'white',
-                players: {
-                    white: 'waiting',
-                    black: null
-                },
-                status: 'waiting'
+            gameRef.once('value', snapshot => {
+                if (snapshot.exists()) {
+                    alert("ID Game sudah ada, coba ID lain!");
+                    showCreateGameOverlay();
+                } else {
+                    gameRef.set({
+                        board: initialBoard,
+                        turn: 'white',
+                        players: {
+                            white: 'waiting',
+                            black: null
+                        },
+                        status: 'waiting'
+                    });
+                    myPlayer = 'white';
+                    gameIdDisplayEl.textContent = `ID Game Anda: ${gameId}`;
+                    waitingMessageEl.textContent = 'Menunggu pemain lain...';
+                    startListening();
+                }
             });
-            myPlayer = 'white';
-            gameIdDisplayEl.textContent = `Bagikan ID Game ini: ${gameId}`;
-            waitingMessageEl.textContent = 'Menunggu pemain lain...';
-            startListening();
         }
         
         function joinGame() {
-            const gameId = gameIdInputEl.value.toUpperCase();
+            const gameId = joinGameIdInputEl.value.trim().toUpperCase();
             if (!gameId) {
-                alert("Masukkan ID Game");
+                alert("ID Game tidak boleh kosong!");
                 return;
             }
+            hideOverlay('join');
             gameRef = database.ref('games/' + gameId);
             gameRef.once('value', snapshot => {
                 const gameData = snapshot.val();
@@ -223,6 +296,7 @@
                     startListening();
                 } else {
                     alert("Game tidak ditemukan atau sudah penuh!");
+                    showJoinGameOverlay();
                 }
             });
         }
@@ -346,17 +420,14 @@
             // Logika Gerakan Bidak
             if (pieceType === 'p') {
                 const direction = isWhite ? -1 : 1;
-                // Gerak maju 1 petak
                 if (r + direction >= 0 && r + direction < 8 && !currentBoard[r + direction][c]) {
                     moves.push({ r: r + direction, c: c });
                 }
-                // Gerak maju 2 petak (hanya dari posisi awal)
                 if ((isWhite && r === 6) || (!isWhite && r === 1)) {
                     if (!currentBoard[r + direction][c] && !currentBoard[r + 2 * direction][c]) {
                         moves.push({ r: r + 2 * direction, c: c });
                     }
                 }
-                // Makan diagonal
                 for (let dc of [-1, 1]) {
                     if (c + dc >= 0 && c + dc < 8) {
                         const targetPiece = currentBoard[r + direction][c + dc];
@@ -384,8 +455,6 @@
                 });
             }
             
-            // --- Tambahkan logika untuk Benteng, Gajah, Menteri, Raja di sini ---
-            // Benteng (Rook)
             if (pieceType === 'r') {
                 const directions = [[1, 0], [-1, 0], [0, 1], [0, -1]];
                 directions.forEach(([dr, dc]) => {
@@ -397,7 +466,7 @@
                             if (isWhite !== (targetPiece === targetPiece.toUpperCase())) {
                                 moves.push({ r: tempR, c: tempC });
                             }
-                            break; // Blokir oleh bidak
+                            break;
                         }
                         moves.push({ r: tempR, c: tempC });
                         tempR += dr;
@@ -406,7 +475,6 @@
                 });
             }
 
-            // Gajah (Bishop)
             if (pieceType === 'b') {
                 const directions = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
                 directions.forEach(([dr, dc]) => {
@@ -427,7 +495,6 @@
                 });
             }
 
-            // Ratu (Queen)
             if (pieceType === 'q') {
                 const directions = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
                 directions.forEach(([dr, dc]) => {
@@ -448,7 +515,6 @@
                 });
             }
             
-            // Raja (King)
             if (pieceType === 'k') {
                 const directions = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
                 directions.forEach(([dr, dc]) => {
@@ -462,7 +528,6 @@
                     }
                 });
             }
-
             return moves;
         }
 
